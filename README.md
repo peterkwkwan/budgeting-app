@@ -1,4 +1,4 @@
-﻿# Budgeting App
+# Budgeting App
 
 Android-first couple budgeting app (Expo + Supabase). Milestone **M0** scaffolds the repo, Google sign-in wiring, and a `profiles` schema. Later milestones add ledger, stats, recurring, partner aggregates, and voice.
 
