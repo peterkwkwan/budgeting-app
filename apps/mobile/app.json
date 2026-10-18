@@ -1,19 +1,19 @@
 {
   "expo": {
-    "name": "Budgeting",
-    "slug": "budgeting-app",
+    "name": "Fudget",
+    "slug": "fudget",
     "version": "0.1.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "budgeting",
+    "scheme": "fudget",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.peterkwkwan.budgeting"
+      "bundleIdentifier": "com.koolkrib.fudget"
     },
     "android": {
-      "package": "com.peterkwkwan.budgeting",
+      "package": "com.koolkrib.fudget",
       "adaptiveIcon": {
         "backgroundColor": "#0f1c14",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -26,7 +26,7 @@
           "autoVerify": true,
           "data": [
             {
-              "scheme": "budgeting",
+              "scheme": "fudget",
               "host": "auth",
               "pathPrefix": "/callback"
             }
@@ -63,6 +63,7 @@
       "eas": {
         "projectId": "REPLACE_WITH_EAS_PROJECT_ID"
       }
-    }
+    },
+    "owner": "koolkrib"
   }
 }

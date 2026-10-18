@@ -28,7 +28,7 @@ export default function LoginScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.container}>
-        <Text style={styles.brand}>Budgeting</Text>
+        <Text style={styles.brand}>Fudget</Text>
         <Text style={styles.sub}>
           Sign in with Google to sync your ledger across devices.
         </Text>

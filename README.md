@@ -1,6 +1,6 @@
-# Budgeting App
+# Fudget
 
-Android-first couple budgeting app (Expo + Supabase). Milestone **M0** scaffolds the repo, Google sign-in wiring, and a `profiles` schema. Later milestones add ledger, stats, recurring, partner aggregates, and voice.
+Android-first couple budgeting app by **Kool Krib** (Expo + Supabase). App display name: **Fudget**. Milestone **M0** scaffolds the repo, Google sign-in wiring, and a `profiles` schema. Later milestones add ledger, stats, recurring, partner aggregates, and voice.
 
 ## Repo layout
 
@@ -71,7 +71,7 @@ Do these once so sign-in works end-to-end on a physical Android device or emulat
 2. **Create a Google Cloud OAuth client (Android)**  
    - Google Cloud Console → APIs & Services → Credentials → Create credentials → OAuth client ID  
    - Application type: **Android**  
-   - Package name: `com.peterkwkwan.budgeting` (see `apps/mobile/app.json`)  
+   - Package name: `com.koolkrib.fudget` (see `apps/mobile/app.json`)  
    - SHA-1: from your debug/upload keystore, e.g.  
      `keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android`  
      For EAS builds, use the SHA-1 from `eas credentials` / Play App Signing.
@@ -84,11 +84,11 @@ Do these once so sign-in works end-to-end on a physical Android device or emulat
 
 5. **Add redirect URLs in Supabase**  
    Authentication → URL configuration:  
-   - Site URL: `budgeting://auth/callback` (or your preferred app deep link)  
+   - Site URL: `fudget://auth/callback`  
    - Additional redirect URLs:  
-     - `budgeting://auth/callback`  
+     - `fudget://auth/callback`  
      - Expo AuthSession redirect (printed at runtime / from `makeRedirectUri`), e.g. `exp://192.168.x.x:8081/--/auth/callback` during local dev  
-     - After Dev Client: the same custom scheme `budgeting://auth/callback`
+     - After Dev Client: the same custom scheme `fudget://auth/callback`
 
 6. **Run the profiles migration** (see above).
 

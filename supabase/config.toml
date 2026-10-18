@@ -2,7 +2,7 @@
 # Founder: run `npx supabase init` / link a project when ready.
 # See root README for Google OAuth + migration steps.
 
-project_id = "budgeting-app"
+project_id = "fudget"
 
 [api]
 enabled = true
@@ -12,5 +12,5 @@ major_version = 15
 
 [auth]
 enabled = true
-site_url = "budgeting://auth/callback"
-additional_redirect_urls = ["budgeting://auth/callback", "exp://127.0.0.1:8081"]
+site_url = "fudget://auth/callback"
+additional_redirect_urls = ["fudget://auth/callback", "exp://127.0.0.1:8081"]

@@ -31,7 +31,7 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 const redirectTo = makeRedirectUri({
-  scheme: 'budgeting',
+  scheme: 'fudget',
   path: 'auth/callback',
 });
 
