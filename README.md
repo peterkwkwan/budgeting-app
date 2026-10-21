@@ -37,7 +37,7 @@ Expo Go is fine for early UI, but **on-device speech (M5) needs a Development Bu
 ```bash
 cd apps/mobile
 npx eas-cli@latest login
-npx eas-cli@latest build:configure   # once; replaces REPLACE_WITH_EAS_PROJECT_ID in app.json
+npx eas-cli@latest build:configure   # once if needed; project already linked in app.json
 npx eas-cli@latest build --platform android --profile development
 ```
 
