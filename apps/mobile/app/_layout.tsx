@@ -15,6 +15,7 @@ import 'react-native-reanimated';
 
 import { colors } from '@/constants/theme';
 import { AuthProvider, useAuth } from '@/lib/auth';
+import { AppQueryProvider } from '@/lib/query';
 
 export { ErrorBoundary } from 'expo-router';
 
@@ -93,15 +94,18 @@ export default function RootLayout() {
   const fontsReady = fontsLoaded || fontError != null;
 
   return (
-    <AuthProvider>
-      <ThemeProvider value={FudgetNavTheme}>
-        <AuthGate fontsReady={fontsReady}>
-          <Stack>
-            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          </Stack>
-        </AuthGate>
-      </ThemeProvider>
-    </AuthProvider>
+    <AppQueryProvider>
+      <AuthProvider>
+        <ThemeProvider value={FudgetNavTheme}>
+          <AuthGate fontsReady={fontsReady}>
+            <Stack>
+              <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen name="transaction" options={{ headerShown: false }} />
+            </Stack>
+          </AuthGate>
+        </ThemeProvider>
+      </AuthProvider>
+    </AppQueryProvider>
   );
 }

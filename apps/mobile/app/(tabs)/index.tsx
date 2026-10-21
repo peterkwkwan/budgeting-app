@@ -1,47 +1,81 @@
-import { Pressable, StyleSheet } from 'react-native';
+import { useRouter } from 'expo-router';
+import {
+  ActivityIndicator,
+  FlatList,
+  Pressable,
+  StyleSheet,
+  View,
+} from 'react-native';
 
-import { Text, View } from '@/components/Themed';
+import { CaptionText, TitleText } from '@/components/StyledText';
+import { TransactionRow } from '@/components/TransactionRow';
 import { colors, fonts, radius, space, typography } from '@/constants/theme';
-import { useAuth } from '@/lib/auth';
+import { useTransactionList } from '@/hooks/useTransactions';
 
-export default function HomeScreen() {
-  const { user, profile, signOut } = useAuth();
+export default function LedgerScreen() {
+  const router = useRouter();
+  const { data, isLoading, isError, error, refetch, isRefetching } =
+    useTransactionList();
 
   return (
-    <View style={styles.container} lightColor={colors.green[50]} darkColor={colors.green[950]}>
-      <Text style={styles.title}>You are signed in</Text>
-
-      <View style={styles.block} lightColor={colors.surfaceMuted} darkColor="#1a2a1f">
-        <Text style={styles.label} lightColor={colors.inkMuted} darkColor={colors.green[200]}>
-          Email
-        </Text>
-        <Text style={styles.value}>{user?.email ?? '—'}</Text>
-
-        <Text style={styles.label} lightColor={colors.inkMuted} darkColor={colors.green[200]}>
-          Display name
-        </Text>
-        <Text style={styles.value}>{profile?.display_name ?? '—'}</Text>
-
-        <Text style={styles.label} lightColor={colors.inkMuted} darkColor={colors.green[200]}>
-          Timezone
-        </Text>
-        <Text style={styles.value}>{profile?.timezone ?? '—'}</Text>
-      </View>
-
-      <Text style={styles.note} lightColor={colors.inkMuted} darkColor={colors.green[200]}>
-        M0 scaffold: auth + profile only. Ledger, stats, recurring, and partner
-        land in later milestones.
-      </Text>
+    <View style={styles.container}>
+      {isLoading ? (
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color={colors.green[700]} />
+        </View>
+      ) : isError ? (
+        <View style={styles.centered}>
+          <TitleText style={styles.emptyTitle}>Couldn’t load ledger</TitleText>
+          <CaptionText style={styles.emptyBody}>
+            {error instanceof Error ? error.message : 'Something went wrong.'}
+          </CaptionText>
+          <Pressable
+            style={({ pressed }) => [
+              styles.secondary,
+              pressed && styles.secondaryPressed,
+            ]}
+            onPress={() => void refetch()}
+          >
+            <CaptionText style={styles.secondaryText}>Try again</CaptionText>
+          </Pressable>
+        </View>
+      ) : (
+        <FlatList
+          data={data ?? []}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <TransactionRow
+              transaction={item}
+              onPress={() => router.push(`/transaction/${item.id}`)}
+            />
+          )}
+          refreshing={isRefetching}
+          onRefresh={() => void refetch()}
+          contentContainerStyle={
+            (data?.length ?? 0) === 0 ? styles.emptyList : styles.list
+          }
+          ListEmptyComponent={
+            <View style={styles.empty}>
+              <TitleText style={styles.emptyTitle}>No transactions yet</TitleText>
+              <CaptionText style={styles.emptyBody}>
+                Add your first expense or income. It syncs to the cloud for every
+                device on this account.
+              </CaptionText>
+            </View>
+          }
+        />
+      )}
 
       <Pressable
-        style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
-        onPress={() => void signOut()}
+        style={({ pressed }) => [
+          styles.fab,
+          pressed && styles.fabPressed,
+        ]}
+        onPress={() => router.push('/transaction/new')}
         accessibilityRole="button"
-        accessibilityLabel="Sign out"
+        accessibilityLabel="Add transaction"
       >
-        <Text style={styles.buttonText} lightColor={colors.inkInverse} darkColor={colors.inkInverse}>
-          Sign out
-        </Text>
+        <TitleText style={styles.fabText}>Add</TitleText>
       </Pressable>
     </View>
   );
@@ -50,47 +84,74 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: colors.green[50],
+  },
+  list: {
+    paddingBottom: 96,
+  },
+  emptyList: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingBottom: 96,
+  },
+  centered: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
     paddingHorizontal: space.md,
-    paddingVertical: space.lg,
-    gap: space.md,
+    gap: space.sm,
   },
-  title: {
-    ...typography.title,
+  empty: {
+    paddingHorizontal: space.xl,
+    alignItems: 'center',
+    gap: space.sm,
+  },
+  emptyTitle: {
     color: colors.green[950],
+    textAlign: 'center',
   },
-  block: {
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.green[200],
-    padding: space.md,
-    gap: space.xs,
-  },
-  label: {
-    marginTop: space.sm,
-    ...typography.caption,
-    textTransform: 'uppercase',
-  },
-  value: {
-    ...typography.bodyStrong,
-  },
-  note: {
+  emptyBody: {
+    color: colors.inkMuted,
+    textAlign: 'center',
     ...typography.body,
     fontSize: 14,
     lineHeight: 20,
   },
-  button: {
-    marginTop: 'auto',
-    backgroundColor: colors.green[700],
-    height: 48,
+  secondary: {
+    marginTop: space.sm,
+    paddingHorizontal: space.md,
+    height: 40,
     borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.green[700],
     alignItems: 'center',
     justifyContent: 'center',
   },
-  buttonPressed: {
+  secondaryPressed: {
+    backgroundColor: colors.surfaceMuted,
+  },
+  secondaryText: {
+    color: colors.green[700],
+    fontFamily: fonts.bodyStrong,
+  },
+  fab: {
+    position: 'absolute',
+    right: space.md,
+    bottom: space.lg,
+    minWidth: 88,
+    height: 48,
+    paddingHorizontal: space.md,
+    borderRadius: radius.md,
+    backgroundColor: colors.green[700],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fabPressed: {
     backgroundColor: colors.green[950],
     transform: [{ scale: 0.98 }],
   },
-  buttonText: {
+  fabText: {
+    color: colors.inkInverse,
     fontFamily: fonts.bodyStrong,
     fontSize: 16,
     lineHeight: 24,
