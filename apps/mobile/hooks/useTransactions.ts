@@ -1,9 +1,9 @@
-import { useFocusEffect } from '@react-navigation/native';
 import {
   useMutation,
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query';
+import { useFocusEffect } from 'expo-router';
 import { useCallback } from 'react';
 
 import { useAuth } from '@/lib/auth';
