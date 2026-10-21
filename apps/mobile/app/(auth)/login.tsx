@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { colors, fonts, radius, space, typography } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 
 export default function LoginScreen() {
@@ -41,14 +42,18 @@ export default function LoginScreen() {
         ) : null}
 
         <Pressable
-          style={[styles.button, busy && styles.buttonDisabled]}
+          style={({ pressed }) => [
+            styles.button,
+            busy && styles.buttonDisabled,
+            pressed && !busy && styles.buttonPressed,
+          ]}
           onPress={onGooglePress}
           disabled={busy}
           accessibilityRole="button"
           accessibilityLabel="Sign in with Google"
         >
           {busy ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={colors.inkInverse} />
           ) : (
             <Text style={styles.buttonText}>Continue with Google</Text>
           )}
@@ -63,52 +68,57 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: '#0f1c14',
+    backgroundColor: colors.green[50],
   },
   container: {
     flex: 1,
-    paddingHorizontal: 28,
+    paddingHorizontal: space.md,
     justifyContent: 'center',
-    gap: 16,
+    gap: space.md,
   },
   brand: {
+    ...typography.display,
     fontSize: 40,
-    fontWeight: '700',
-    color: '#e8f5e9',
-    letterSpacing: -0.5,
+    lineHeight: 46,
+    color: colors.green[950],
   },
   sub: {
-    fontSize: 16,
-    lineHeight: 24,
-    color: '#b7c9bb',
-    marginBottom: 12,
+    ...typography.body,
+    color: colors.inkMuted,
+    marginBottom: space.sm,
   },
   hint: {
-    fontSize: 13,
-    lineHeight: 20,
-    color: '#c9a227',
-    backgroundColor: '#1a2a1f',
-    padding: 12,
-    borderRadius: 8,
+    ...typography.caption,
+    color: colors.warning,
+    backgroundColor: colors.surfaceMuted,
+    borderWidth: 1,
+    borderColor: colors.green[200],
+    padding: space.sm + 4,
+    borderRadius: radius.sm,
   },
   button: {
-    marginTop: 8,
-    backgroundColor: '#2e7d4f',
-    paddingVertical: 14,
-    borderRadius: 10,
+    marginTop: space.sm,
+    backgroundColor: colors.green[700],
+    height: 48,
+    borderRadius: radius.md,
     alignItems: 'center',
+    justifyContent: 'center',
+  },
+  buttonPressed: {
+    backgroundColor: colors.green[950],
+    transform: [{ scale: 0.98 }],
   },
   buttonDisabled: {
-    opacity: 0.7,
+    backgroundColor: colors.green[200],
   },
   buttonText: {
-    color: '#fff',
+    fontFamily: fonts.bodyStrong,
     fontSize: 16,
-    fontWeight: '600',
+    lineHeight: 24,
+    color: colors.inkInverse,
   },
   error: {
-    color: '#ff8a80',
-    fontSize: 14,
-    lineHeight: 20,
+    ...typography.caption,
+    color: colors.danger,
   },
 });

@@ -1,27 +1,49 @@
 import {
-  DarkTheme,
-  DefaultTheme,
-  Stack,
-  ThemeProvider,
-  useRouter,
-  useSegments,
-} from 'expo-router';
+  DMSans_400Regular,
+  DMSans_500Medium,
+  DMSans_600SemiBold,
+  DMSans_700Bold,
+} from '@expo-google-fonts/dm-sans';
+import { Fraunces_600SemiBold } from '@expo-google-fonts/fraunces';
+import { DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { useFonts } from 'expo-font';
+import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, type ReactNode } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import 'react-native-reanimated';
 
-import { useColorScheme } from '@/components/useColorScheme';
+import { colors } from '@/constants/theme';
 import { AuthProvider, useAuth } from '@/lib/auth';
 
 export { ErrorBoundary } from 'expo-router';
 
 SplashScreen.preventAutoHideAsync();
 
-function AuthGate({ children }: { children: ReactNode }) {
+const FudgetNavTheme = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
+    primary: colors.green[700],
+    background: colors.green[50],
+    card: colors.surface,
+    text: colors.ink,
+    border: colors.green[200],
+    notification: colors.green[700],
+  },
+};
+
+function AuthGate({
+  children,
+  fontsReady,
+}: {
+  children: ReactNode;
+  fontsReady: boolean;
+}) {
   const { session, loading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
+  const ready = fontsReady && !loading;
 
   useEffect(() => {
     if (loading) return;
@@ -36,15 +58,22 @@ function AuthGate({ children }: { children: ReactNode }) {
   }, [session, loading, segments, router]);
 
   useEffect(() => {
-    if (!loading) {
+    if (ready) {
       SplashScreen.hideAsync();
     }
-  }, [loading]);
+  }, [ready]);
 
-  if (loading) {
+  if (!ready) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator size="large" />
+      <View
+        style={{
+          flex: 1,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: colors.green[50],
+        }}
+      >
+        <ActivityIndicator size="large" color={colors.green[700]} />
       </View>
     );
   }
@@ -53,12 +82,20 @@ function AuthGate({ children }: { children: ReactNode }) {
 }
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
+  const [fontsLoaded, fontError] = useFonts({
+    Fraunces_600SemiBold,
+    DMSans_400Regular,
+    DMSans_500Medium,
+    DMSans_600SemiBold,
+    DMSans_700Bold,
+  });
+
+  const fontsReady = fontsLoaded || fontError != null;
 
   return (
     <AuthProvider>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <AuthGate>
+      <ThemeProvider value={FudgetNavTheme}>
+        <AuthGate fontsReady={fontsReady}>
           <Stack>
             <Stack.Screen name="(auth)" options={{ headerShown: false }} />
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
