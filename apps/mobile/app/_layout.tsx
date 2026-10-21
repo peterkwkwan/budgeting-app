@@ -1,3 +1,5 @@
+import 'react-native-gesture-handler';
+
 import {
   DMSans_400Regular,
   DMSans_500Medium,
@@ -9,6 +11,8 @@ import { useFonts } from 'expo-font';
 import { DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
+import { StyleSheet } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 
 import { colors } from '@/constants/theme';
@@ -58,6 +62,7 @@ function RootNavigator() {
       <Stack.Protected guard={!!session}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="transaction" options={{ headerShown: false }} />
+        <Stack.Screen name="stats" options={{ headerShown: false }} />
       </Stack.Protected>
       <Stack.Protected guard={!session}>
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
@@ -78,13 +83,19 @@ export default function RootLayout() {
   const fontsReady = fontsLoaded || fontError != null;
 
   return (
-    <AppQueryProvider>
-      <AuthProvider>
-        <ThemeProvider value={FudgetNavTheme}>
-          <SplashController fontsReady={fontsReady} />
-          <RootNavigator />
-        </ThemeProvider>
-      </AuthProvider>
-    </AppQueryProvider>
+    <GestureHandlerRootView style={styles.root}>
+      <AppQueryProvider>
+        <AuthProvider>
+          <ThemeProvider value={FudgetNavTheme}>
+            <SplashController fontsReady={fontsReady} />
+            <RootNavigator />
+          </ThemeProvider>
+        </AuthProvider>
+      </AppQueryProvider>
+    </GestureHandlerRootView>
   );
 }
+
+const styles = StyleSheet.create({
+  root: { flex: 1 },
+});

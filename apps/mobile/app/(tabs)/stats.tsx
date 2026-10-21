@@ -1,0 +1,358 @@
+import { useRouter } from 'expo-router';
+import { useMemo, useState } from 'react';
+import {
+  ActivityIndicator,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  View,
+} from 'react-native';
+
+import { CategoryBreakdownList } from '@/components/stats/CategoryBreakdownList';
+import { CategoryPieChart } from '@/components/stats/CategoryPieChart';
+import { PeriodSelector } from '@/components/stats/PeriodSelector';
+import { TrendLineChart } from '@/components/stats/TrendLineChart';
+import { CaptionText, StrongText, TitleText } from '@/components/StyledText';
+import type { TransactionType } from '@/constants/categories';
+import { colors, fonts, radius, space, typography } from '@/constants/theme';
+import { usePersonalStats, usePersonalTrend } from '@/hooks/useStats';
+import { useAuth } from '@/lib/auth';
+import {
+  resolvePeriodBounds,
+  type PeriodPreset,
+} from '@/lib/periods';
+import type { StatsMetric } from '@/lib/stats';
+
+function formatMoney(n: number): string {
+  const sign = n < 0 ? '−' : '';
+  return `${sign}$${Math.abs(n).toFixed(2)}`;
+}
+
+export default function StatsScreen() {
+  const router = useRouter();
+  const { profile } = useAuth();
+  const timeZone = profile?.timezone || 'UTC';
+
+  const [preset, setPreset] = useState<PeriodPreset>('month');
+  const [customStart, setCustomStart] = useState(() => {
+    const d = new Date();
+    return new Date(d.getFullYear(), d.getMonth(), 1);
+  });
+  const [customEnd, setCustomEnd] = useState(() => new Date());
+  const [pieType, setPieType] = useState<TransactionType>('expense');
+  const [trendMetric, setTrendMetric] = useState<StatsMetric>('expense');
+
+  const period = useMemo(
+    () =>
+      resolvePeriodBounds(
+        preset,
+        timeZone,
+        preset === 'custom' ? customStart : undefined,
+        preset === 'custom' ? customEnd : undefined
+      ),
+    [preset, timeZone, customStart, customEnd]
+  );
+
+  const { totals, categories, bucket } = usePersonalStats(period, pieType);
+  const trend = usePersonalTrend(period, trendMetric, bucket);
+
+  const refreshing =
+    totals.isRefetching || categories.isRefetching || trend.isRefetching;
+  const loading = totals.isLoading || categories.isLoading;
+  const error =
+    (totals.error instanceof Error && totals.error.message) ||
+    (categories.error instanceof Error && categories.error.message) ||
+    (trend.error instanceof Error && trend.error.message) ||
+    null;
+
+  const onRefresh = () => {
+    void totals.refetch();
+    void categories.refetch();
+    void trend.refetch();
+  };
+
+  return (
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          tintColor={colors.green[700]}
+        />
+      }
+    >
+      <PeriodSelector
+        preset={preset}
+        label={period.label}
+        customStart={customStart}
+        customEnd={customEnd}
+        onPresetChange={setPreset}
+        onCustomStartChange={setCustomStart}
+        onCustomEndChange={setCustomEnd}
+      />
+
+      {loading ? (
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color={colors.green[700]} />
+        </View>
+      ) : error ? (
+        <View style={styles.centered}>
+          <TitleText style={styles.emptyTitle}>Couldn’t load stats</TitleText>
+          <CaptionText style={styles.emptyBody}>{error}</CaptionText>
+          <Pressable
+            style={({ pressed }) => [
+              styles.secondary,
+              pressed && styles.secondaryPressed,
+            ]}
+            onPress={onRefresh}
+          >
+            <CaptionText style={styles.secondaryText}>Try again</CaptionText>
+          </Pressable>
+        </View>
+      ) : (
+        <>
+          <View style={styles.totals}>
+            <View style={styles.totalBlock}>
+              <CaptionText style={styles.totalLabel}>Spent</CaptionText>
+              <StrongText style={[styles.totalValue, { color: colors.expense }]}>
+                {formatMoney(totals.data?.expenseSum ?? 0)}
+              </StrongText>
+            </View>
+            <View style={styles.totalBlock}>
+              <CaptionText style={styles.totalLabel}>Earned</CaptionText>
+              <StrongText style={[styles.totalValue, { color: colors.income }]}>
+                {formatMoney(totals.data?.incomeSum ?? 0)}
+              </StrongText>
+            </View>
+            <View style={styles.totalBlock}>
+              <CaptionText style={styles.totalLabel}>Net</CaptionText>
+              <StrongText
+                style={[
+                  styles.totalValue,
+                  {
+                    color:
+                      (totals.data?.net ?? 0) >= 0
+                        ? colors.income
+                        : colors.expense,
+                  },
+                ]}
+              >
+                {formatMoney(totals.data?.net ?? 0)}
+              </StrongText>
+            </View>
+          </View>
+
+          <View style={styles.section}>
+            <TitleText style={styles.sectionTitle}>By category</TitleText>
+            <View style={styles.toggleRow}>
+              {(['expense', 'income'] as const).map((t) => {
+                const selected = pieType === t;
+                return (
+                  <Pressable
+                    key={t}
+                    onPress={() => setPieType(t)}
+                    style={[styles.toggle, selected && styles.toggleSelected]}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected }}
+                  >
+                    <CaptionText
+                      style={[
+                        styles.toggleText,
+                        selected && styles.toggleTextSelected,
+                      ]}
+                    >
+                      {t === 'expense' ? 'Expenses' : 'Income'}
+                    </CaptionText>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            <CategoryPieChart
+              data={categories.data ?? []}
+              emptyLabel={
+                pieType === 'expense'
+                  ? 'No expenses in this period.'
+                  : 'No income in this period.'
+              }
+            />
+
+            <CategoryBreakdownList
+              data={categories.data ?? []}
+              onSelect={(row) => {
+                router.push({
+                  pathname: '/stats/category',
+                  params: {
+                    category: row.category,
+                    type: row.type,
+                    start: period.start.toISOString(),
+                    end: period.end.toISOString(),
+                    periodLabel: period.label,
+                  },
+                });
+              }}
+            />
+          </View>
+
+          <View style={styles.section}>
+            <TitleText style={styles.sectionTitle}>Trend</TitleText>
+            <View style={styles.toggleRow}>
+              {(
+                [
+                  { value: 'expense', label: 'Expenses' },
+                  { value: 'income', label: 'Income' },
+                  { value: 'net', label: 'Net' },
+                ] as const
+              ).map((opt) => {
+                const selected = trendMetric === opt.value;
+                return (
+                  <Pressable
+                    key={opt.value}
+                    onPress={() => setTrendMetric(opt.value)}
+                    style={[styles.toggle, selected && styles.toggleSelected]}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected }}
+                  >
+                    <CaptionText
+                      style={[
+                        styles.toggleText,
+                        selected && styles.toggleTextSelected,
+                      ]}
+                    >
+                      {opt.label}
+                    </CaptionText>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            {trend.isLoading ? (
+              <ActivityIndicator color={colors.green[700]} />
+            ) : (
+              <TrendLineChart
+                data={trend.data ?? []}
+                emptyLabel="No trend data for this period."
+                strokeColor={
+                  trendMetric === 'income'
+                    ? colors.income
+                    : trendMetric === 'net'
+                      ? colors.green[400]
+                      : colors.expense
+                }
+              />
+            )}
+            <CaptionText style={styles.hint}>
+              Grouped by {bucket}
+              {trendMetric === 'expense'
+                ? ' · expenses'
+                : trendMetric === 'income'
+                  ? ' · income'
+                  : ' · net (income − expenses)'}
+            </CaptionText>
+          </View>
+        </>
+      )}
+    </ScrollView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.green[50],
+  },
+  content: {
+    paddingHorizontal: space.md,
+    paddingTop: space.md,
+    paddingBottom: space.xxl,
+    gap: space.lg,
+  },
+  centered: {
+    paddingVertical: space.xxl,
+    alignItems: 'center',
+    gap: space.sm,
+  },
+  emptyTitle: {
+    color: colors.green[950],
+    textAlign: 'center',
+  },
+  emptyBody: {
+    color: colors.inkMuted,
+    textAlign: 'center',
+    ...typography.body,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  secondary: {
+    marginTop: space.sm,
+    paddingHorizontal: space.md,
+    height: 40,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.green[700],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  secondaryPressed: {
+    backgroundColor: colors.surfaceMuted,
+  },
+  secondaryText: {
+    color: colors.green[700],
+    fontFamily: fonts.bodyStrong,
+  },
+  totals: {
+    flexDirection: 'row',
+    gap: space.sm,
+  },
+  totalBlock: {
+    flex: 1,
+    gap: space.xs,
+  },
+  totalLabel: {
+    color: colors.inkMuted,
+    textTransform: 'uppercase',
+  },
+  totalValue: {
+    ...typography.amount,
+    fontSize: 18,
+    lineHeight: 24,
+  },
+  section: {
+    gap: space.sm,
+  },
+  sectionTitle: {
+    color: colors.green[950],
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: space.sm,
+  },
+  toggle: {
+    paddingHorizontal: space.sm + 4,
+    paddingVertical: space.sm,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.green[200],
+    backgroundColor: colors.surface,
+    minHeight: 36,
+    justifyContent: 'center',
+  },
+  toggleSelected: {
+    borderColor: colors.green[700],
+    backgroundColor: colors.surface,
+  },
+  toggleText: {
+    color: colors.inkMuted,
+  },
+  toggleTextSelected: {
+    color: colors.green[700],
+    fontFamily: fonts.bodyStrong,
+  },
+  hint: {
+    color: colors.inkMuted,
+  },
+});

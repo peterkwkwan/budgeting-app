@@ -7,6 +7,7 @@ import { useFocusEffect } from 'expo-router';
 import { useCallback } from 'react';
 
 import { useAuth } from '@/lib/auth';
+import { statsKeys } from '@/lib/stats';
 import {
   createTransaction,
   getTransaction,
@@ -16,6 +17,11 @@ import {
   updateTransaction,
   type TransactionInput,
 } from '@/lib/transactions';
+
+function invalidateLedgerAndStats(queryClient: ReturnType<typeof useQueryClient>) {
+  void queryClient.invalidateQueries({ queryKey: transactionKeys.all });
+  void queryClient.invalidateQueries({ queryKey: statsKeys.all });
+}
 
 /** List active transactions; refetch on screen focus for multi-device sync. */
 export function useTransactionList() {
@@ -54,7 +60,7 @@ export function useCreateTransaction() {
       return createTransaction(user.id, input);
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: transactionKeys.all });
+      invalidateLedgerAndStats(queryClient);
     },
   });
 }
@@ -65,7 +71,7 @@ export function useUpdateTransaction(id: string) {
   return useMutation({
     mutationFn: (input: TransactionInput) => updateTransaction(id, input),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: transactionKeys.all });
+      invalidateLedgerAndStats(queryClient);
     },
   });
 }
@@ -76,7 +82,7 @@ export function useSoftDeleteTransaction() {
   return useMutation({
     mutationFn: (id: string) => softDeleteTransaction(id),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: transactionKeys.all });
+      invalidateLedgerAndStats(queryClient);
     },
   });
 }
