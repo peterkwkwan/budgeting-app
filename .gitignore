@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+
+# Env / secrets — never commit real keys
+.env
+.env.*
+!.env.example
+!**/.env.example
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Logs
+*.log
+npm-debug.*
+
+# Expo / EAS
+.expo/
+dist/
+web-build/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision

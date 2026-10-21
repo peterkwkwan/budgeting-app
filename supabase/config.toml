@@ -1,0 +1,16 @@
+# Minimal Supabase config stub for local CLI usage.
+# Founder: run `npx supabase init` / link a project when ready.
+# See root README for Google OAuth + migration steps.
+
+project_id = "fudget"
+
+[api]
+enabled = true
+
+[db]
+major_version = 15
+
+[auth]
+enabled = true
+site_url = "fudget://auth/callback"
+additional_redirect_urls = ["fudget://auth/callback", "exp://127.0.0.1:8081"]
