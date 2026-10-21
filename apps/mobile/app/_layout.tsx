@@ -5,16 +5,15 @@ import {
   DMSans_700Bold,
 } from '@expo-google-fonts/dm-sans';
 import { Fraunces_600SemiBold } from '@expo-google-fonts/fraunces';
-import { DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
-import { Stack, useRouter, useSegments } from 'expo-router';
+import { DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect, type ReactNode } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { useEffect } from 'react';
 import 'react-native-reanimated';
 
 import { colors } from '@/constants/theme';
 import { AuthProvider, useAuth } from '@/lib/auth';
+import { AppQueryProvider } from '@/lib/query';
 
 export { ErrorBoundary } from 'expo-router';
 
@@ -33,52 +32,38 @@ const FudgetNavTheme = {
   },
 };
 
-function AuthGate({
-  children,
-  fontsReady,
-}: {
-  children: ReactNode;
-  fontsReady: boolean;
-}) {
-  const { session, loading } = useAuth();
-  const segments = useSegments();
-  const router = useRouter();
-  const ready = fontsReady && !loading;
+/** Keep native splash up until fonts + auth session are ready. */
+function SplashController({ fontsReady }: { fontsReady: boolean }) {
+  const { loading } = useAuth();
 
   useEffect(() => {
-    if (loading) return;
-
-    const inAuthGroup = segments[0] === '(auth)';
-
-    if (!session && !inAuthGroup) {
-      router.replace('/(auth)/login');
-    } else if (session && inAuthGroup) {
-      router.replace('/(tabs)');
+    if (fontsReady && !loading) {
+      void SplashScreen.hideAsync();
     }
-  }, [session, loading, segments, router]);
+  }, [fontsReady, loading]);
 
-  useEffect(() => {
-    if (ready) {
-      SplashScreen.hideAsync();
-    }
-  }, [ready]);
+  return null;
+}
 
-  if (!ready) {
-    return (
-      <View
-        style={{
-          flex: 1,
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: colors.green[50],
-        }}
-      >
-        <ActivityIndicator size="large" color={colors.green[700]} />
-      </View>
-    );
-  }
+/**
+ * Always mount the root Stack on first render. AuthGate used to swap the
+ * Stack for a spinner, which left screens (e.g. Ledger) calling useRouter()
+ * outside NavigationContainer.
+ */
+function RootNavigator() {
+  const { session } = useAuth();
 
-  return <>{children}</>;
+  return (
+    <Stack>
+      <Stack.Protected guard={!!session}>
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="transaction" options={{ headerShown: false }} />
+      </Stack.Protected>
+      <Stack.Protected guard={!session}>
+        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+      </Stack.Protected>
+    </Stack>
+  );
 }
 
 export default function RootLayout() {
@@ -93,15 +78,13 @@ export default function RootLayout() {
   const fontsReady = fontsLoaded || fontError != null;
 
   return (
-    <AuthProvider>
-      <ThemeProvider value={FudgetNavTheme}>
-        <AuthGate fontsReady={fontsReady}>
-          <Stack>
-            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          </Stack>
-        </AuthGate>
-      </ThemeProvider>
-    </AuthProvider>
+    <AppQueryProvider>
+      <AuthProvider>
+        <ThemeProvider value={FudgetNavTheme}>
+          <SplashController fontsReady={fontsReady} />
+          <RootNavigator />
+        </ThemeProvider>
+      </AuthProvider>
+    </AppQueryProvider>
   );
 }

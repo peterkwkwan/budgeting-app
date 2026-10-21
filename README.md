@@ -1,6 +1,6 @@
 # Fudget
 
-Android-first couple budgeting app by **Kool Krib** (Expo + Supabase). App display name: **Fudget**. Milestone **M0** scaffolds the repo, Google sign-in wiring, and a `profiles` schema. Later milestones add ledger, stats, recurring, partner aggregates, and voice.
+Android-first couple budgeting app by **Kool Krib** (Expo + Supabase). App display name: **Fudget**. **M0** scaffolds Expo + Google sign-in + `profiles`. **M1** adds the ledger (`transactions` CRUD, soft-delete, multi-device sync). Later: stats, recurring, partner aggregates, voice.
 
 ## Repo layout
 
@@ -49,7 +49,7 @@ Profiles in `apps/mobile/eas.json`:
 | `preview`     | Internal APK for testers                     |
 | `production`  | Play App Bundle (internal track submit later)|
 
-## Apply the M0 migration
+## Apply SQL migrations
 
 With the [Supabase CLI](https://supabase.com/docs/guides/cli) linked to your project:
 
@@ -58,8 +58,14 @@ npx supabase db push
 # or: npx supabase migration up
 ```
 
-Migration: `supabase/migrations/20261017150000_profiles.sql`  
-Creates `public.profiles` (`id`, `display_name`, `timezone`, timestamps), RLS (own row only), `updated_at` trigger, and an `auth.users` insert trigger. The app also **upserts** the profile on first login and sets the device IANA timezone via `expo-localization`.
+| Migration | What it does |
+|-----------|----------------|
+| `supabase/migrations/20261017150000_profiles.sql` | `public.profiles` + RLS + `updated_at` + auth insert trigger |
+| `supabase/migrations/20261021020000_transactions.sql` | **M1** `public.transactions` + own-row RLS + soft-delete + indexes |
+
+**Founder step (M1):** after pulling this branch, run the new transactions migration in Supabase (same flow as profiles). Until it is applied, ledger screens will error on load/save.
+
+Creates ledger columns: `amount`, `type` (`expense`\|`income`), fixed `category`, optional `note` (≤500), `currency` (USD), `occurred_at`, `deleted_at`, timestamps, `user_id`. Default app queries filter `deleted_at is null`. Soft-delete updates `deleted_at` (no hard delete from the client).
 
 ## Founder action checklist (Google + Supabase)
 
@@ -90,14 +96,14 @@ Do these once so sign-in works end-to-end on a physical Android device or emulat
      - Expo AuthSession redirect (printed at runtime / from `makeRedirectUri`), e.g. `exp://192.168.x.x:8081/--/auth/callback` during local dev  
      - After Dev Client: the same custom scheme `fudget://auth/callback`
 
-6. **Run the profiles migration** (see above).
+6. **Run migrations** — profiles (M0) then transactions (M1); see above.
 
 7. **Build a Dev Client** when you leave Expo Go (required before voice STT).
 
 8. **Smoke test**  
-   Open the app → Continue with Google → land on Home with email, display name, and timezone.
+   Open the app → Continue with Google → **Ledger** tab (empty or list) → **Add** a transaction → edit / soft-delete. **Account** tab shows email, display name, timezone. Pull-to-refresh or leave/return to the Ledger tab to confirm sync.
 
-Transactions, recurring series, and partner tables are intentionally **not** in M0.
+Recurring series and partner tables land in later milestones (not in M1).
 
 ## Scripts
 
