@@ -49,6 +49,8 @@ Profiles in `apps/mobile/eas.json`:
 | `preview`     | Internal APK for testers                     |
 | `production`  | Play App Bundle (internal track submit later)|
 
+**Dev Client Android note (M2):** the `development` profile builds **arm64-v8a only** (physical Pixel / most Android devices) and uses the `large` EAS resource class so Gradle/CMake does not OOM while compiling Skia, worklets, and screens. It will not install on classic x86_64 emulators unless you temporarily set `ORG_GRADLE_PROJECT_reactNativeArchitectures=x86_64` for a one-off build.
+
 ## Apply SQL migrations
 
 With the [Supabase CLI](https://supabase.com/docs/guides/cli) linked to your project:
