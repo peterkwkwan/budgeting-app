@@ -9,12 +9,13 @@ import {
 
 import { CaptionText, TitleText } from '@/components/StyledText';
 import { TransactionRow } from '@/components/TransactionRow';
+import { UpcomingRepeatsBar } from '@/components/UpcomingRepeatsBar';
 import { colors, fonts, radius, space, typography } from '@/constants/theme';
 import { useTransactionList } from '@/hooks/useTransactions';
 
 export default function LedgerScreen() {
   const router = useRouter();
-  const { data, isLoading, isError, error, refetch, isRefetching } =
+  const { data, upcoming, isLoading, isError, error, refetch, isRefetching } =
     useTransactionList();
 
   return (
@@ -43,6 +44,14 @@ export default function LedgerScreen() {
         <FlatList
           data={data ?? []}
           keyExtractor={(item) => item.id}
+          ListHeaderComponent={
+            upcoming ? (
+              <UpcomingRepeatsBar
+                summary={upcoming}
+                onPress={() => router.push('/recurring')}
+              />
+            ) : undefined
+          }
           renderItem={({ item }) => (
             <TransactionRow
               transaction={item}
@@ -52,25 +61,35 @@ export default function LedgerScreen() {
           refreshing={isRefetching}
           onRefresh={() => void refetch()}
           contentContainerStyle={
-            (data?.length ?? 0) === 0 ? styles.emptyList : styles.list
+            (data?.length ?? 0) === 0 && !upcoming
+              ? styles.emptyList
+              : styles.list
           }
           ListEmptyComponent={
-            <View style={styles.empty}>
-              <TitleText style={styles.emptyTitle}>No transactions yet</TitleText>
-              <CaptionText style={styles.emptyBody}>
-                Add your first expense or income. It syncs to the cloud for every
-                device on this account.
-              </CaptionText>
-            </View>
+            upcoming ? (
+              <View style={styles.emptyBelowBar}>
+                <CaptionText style={styles.emptyBody}>
+                  No ledger entries for today or earlier. Upcoming repeats for
+                  this month are listed above.
+                </CaptionText>
+              </View>
+            ) : (
+              <View style={styles.empty}>
+                <TitleText style={styles.emptyTitle}>
+                  No transactions yet
+                </TitleText>
+                <CaptionText style={styles.emptyBody}>
+                  Add your first expense or income. It syncs to the cloud for
+                  every device on this account.
+                </CaptionText>
+              </View>
+            )
           }
         />
       )}
 
       <Pressable
-        style={({ pressed }) => [
-          styles.fab,
-          pressed && styles.fabPressed,
-        ]}
+        style={({ pressed }) => [styles.fab, pressed && styles.fabPressed]}
         onPress={() => router.push('/transaction/new')}
         accessibilityRole="button"
         accessibilityLabel="Add transaction"
@@ -93,6 +112,10 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: 'center',
     paddingBottom: 96,
+  },
+  emptyBelowBar: {
+    paddingHorizontal: space.xl,
+    paddingTop: space.lg,
   },
   centered: {
     flex: 1,

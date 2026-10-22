@@ -16,6 +16,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 
 import { colors } from '@/constants/theme';
+import { useCatchUpRecurring } from '@/hooks/useCatchUpRecurring';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { AppQueryProvider } from '@/lib/query';
 
@@ -56,6 +57,8 @@ function SplashController({ fontsReady }: { fontsReady: boolean }) {
  */
 function RootNavigator() {
   const { session } = useAuth();
+  // Fill missing recurring ledger rows when signed in / returning to app.
+  useCatchUpRecurring();
 
   return (
     <Stack>
@@ -63,6 +66,7 @@ function RootNavigator() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="transaction" options={{ headerShown: false }} />
         <Stack.Screen name="stats" options={{ headerShown: false }} />
+        <Stack.Screen name="recurring" options={{ headerShown: false }} />
       </Stack.Protected>
       <Stack.Protected guard={!session}>
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />

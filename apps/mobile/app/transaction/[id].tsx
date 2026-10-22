@@ -3,19 +3,22 @@ import { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Pressable,
   StyleSheet,
   View,
 } from 'react-native';
 
-import { CaptionText, TitleText } from '@/components/StyledText';
-import { TransactionForm } from '@/components/TransactionForm';
-import { colors, space } from '@/constants/theme';
+import { CaptionText, StrongText, TitleText } from '@/components/StyledText';
+import {
+  TransactionForm,
+  type TransactionFormSubmit,
+} from '@/components/TransactionForm';
+import { colors, radius, space } from '@/constants/theme';
 import {
   useSoftDeleteTransaction,
   useTransaction,
   useUpdateTransaction,
 } from '@/hooks/useTransactions';
-import type { TransactionInput } from '@/lib/transactions';
 
 export default function EditTransactionScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -25,11 +28,17 @@ export default function EditTransactionScreen() {
   const softDelete = useSoftDeleteTransaction();
   const [formError, setFormError] = useState<string | null>(null);
 
-  async function onSubmit(input: TransactionInput) {
+  async function onSubmit(input: TransactionFormSubmit) {
     if (!id) return;
     setFormError(null);
     try {
-      await update.mutateAsync(input);
+      await update.mutateAsync({
+        amount: input.amount,
+        type: input.type,
+        category: input.category,
+        note: input.note,
+        occurred_at: input.occurred_at,
+      });
       router.back();
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Could not update.');
@@ -87,6 +96,26 @@ export default function EditTransactionScreen() {
   return (
     <View style={styles.container}>
       <Stack.Screen options={{ title: 'Edit transaction' }} />
+      {data.recurring_series_id ? (
+        <Pressable
+          style={({ pressed }) => [
+            styles.seriesLink,
+            pressed && styles.seriesLinkPressed,
+          ]}
+          onPress={() =>
+            router.push(`/recurring/${data.recurring_series_id}`)
+          }
+          accessibilityRole="button"
+          accessibilityLabel="Edit or stop this recurring rule"
+        >
+          <StrongText style={styles.seriesLinkTitle}>
+            Part of a recurring rule
+          </StrongText>
+          <CaptionText style={styles.seriesLinkMeta}>
+            Edit future entries or stop the series
+          </CaptionText>
+        </Pressable>
+      ) : null}
       <TransactionForm
         initial={{
           amount: String(data.amount),
@@ -110,6 +139,25 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.green[50],
+  },
+  seriesLink: {
+    marginHorizontal: space.md,
+    marginTop: space.md,
+    padding: space.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.green[200],
+    backgroundColor: colors.surfaceMuted,
+    gap: 2,
+  },
+  seriesLinkPressed: {
+    backgroundColor: colors.green[200],
+  },
+  seriesLinkTitle: {
+    color: colors.green[700],
+  },
+  seriesLinkMeta: {
+    color: colors.inkMuted,
   },
   centered: {
     flex: 1,
