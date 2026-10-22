@@ -2,6 +2,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { CaptionText, StrongText } from '@/components/StyledText';
 import { colors, fonts, radius, space, typography } from '@/constants/theme';
+import { formatUsd } from '@/lib/money';
 import type { UpcomingRepeatsSummary } from '@/lib/transactions';
 
 type Props = {
@@ -9,17 +10,13 @@ type Props = {
   onPress: () => void;
 };
 
-function formatMoney(n: number): string {
-  return `$${n.toFixed(2)}`;
-}
-
 export function UpcomingRepeatsBar({ summary, onPress }: Props) {
   const parts: string[] = [];
   if (summary.expenseSum > 0) {
-    parts.push(`−${formatMoney(summary.expenseSum)} expenses`);
+    parts.push(`−${formatUsd(summary.expenseSum)} expenses`);
   }
   if (summary.incomeSum > 0) {
-    parts.push(`+${formatMoney(summary.incomeSum)} income`);
+    parts.push(`+${formatUsd(summary.incomeSum)} income`);
   }
   const totalsLine =
     parts.length > 0

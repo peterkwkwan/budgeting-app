@@ -4,6 +4,7 @@ import { CaptionText, StrongText } from '@/components/StyledText';
 import type { TransactionType } from '@/constants/categories';
 import { colorForCategory } from '@/constants/chartColors';
 import { colors, radius, space, typography } from '@/constants/theme';
+import { formatUsd } from '@/lib/money';
 import type { CategoryTotal } from '@/lib/stats';
 
 type Props = {
@@ -12,10 +13,6 @@ type Props = {
   /** Active Stats type — drives green (income) vs rust (expense) swatches. */
   type: TransactionType;
 };
-
-function formatMoney(n: number): string {
-  return `$${n.toFixed(2)}`;
-}
 
 export function CategoryBreakdownList({ data, onSelect, type }: Props) {
   if (data.length === 0) {
@@ -34,7 +31,7 @@ export function CategoryBreakdownList({ data, onSelect, type }: Props) {
             onPress={() => onSelect(row)}
             style={({ pressed }) => [styles.row, pressed && styles.pressed]}
             accessibilityRole="button"
-            accessibilityLabel={`${row.category}, ${formatMoney(row.sum)}, ${pct} percent. Open transactions.`}
+            accessibilityLabel={`${row.category}, ${formatUsd(row.sum)}, ${pct} percent. Open transactions.`}
           >
             <View
               style={[
@@ -48,7 +45,7 @@ export function CategoryBreakdownList({ data, onSelect, type }: Props) {
                 {row.count} {row.count === 1 ? 'entry' : 'entries'} · {pct}%
               </CaptionText>
             </View>
-            <StrongText style={styles.amount}>{formatMoney(row.sum)}</StrongText>
+            <StrongText style={styles.amount}>{formatUsd(row.sum)}</StrongText>
           </Pressable>
         );
       })}
