@@ -1,6 +1,6 @@
 # Fudget
 
-Android-first couple budgeting app by **Kool Krib** (Expo + Supabase). App display name: **Fudget**. **M0** scaffolds Expo + Google sign-in + `profiles`. **M1** adds the ledger (`transactions` CRUD, soft-delete, multi-device sync). **M2** adds personal stats (pie + trend, default = this month). **M3** adds recurring rules (Google-aligned presets + Custom ends) with rolling ~90-day materialization. Later: partner aggregates, voice.
+Android-first couple budgeting app by **Kool Krib** (Expo + Supabase). App display name: **Fudget**. **M0** scaffolds Expo + Google sign-in + `profiles`. **M1** adds the ledger (`transactions` CRUD, soft-delete, multi-device sync). **M2** adds personal stats (pie + trend, default = this month). **M3** adds recurring rules (Google-aligned presets + Custom ends) with rolling ~90-day materialization. **M4** adds pair invite-code link + server-computed aggregate stats. Later: voice.
 
 ## Repo layout
 
@@ -70,8 +70,11 @@ npx supabase db push
 | `supabase/migrations/20261022090000_stats_recurring_today.sql` | **M3** stats: recurring only on/before local today; one-offs may be future |
 | `supabase/migrations/20261022093000_stop_series_hard_delete.sql` | **M3** stop-series hard-deletes rule + future instances; cleans inactive ghosts |
 | `supabase/migrations/20261022120000_recurring_ends.sql` | **M3** `ends_on` + `ends_after_count` (Never / On date / After N) |
+| `supabase/migrations/20261022140000_partner_links.sql` | **M4** `partner_links` + invite/accept/unlink RPCs + `stats_aggregate_*` (aggregates only) |
 
 **Founder step (M3):** after pulling this branch, run the recurring migrations, deploy Edge Functions, set `RECURRING_CRON_SECRET`, and schedule hourly cron (see below). Until migrations + functions are live, Add → Repeat / catch-up will error. Recurring is **not** a bottom tab — create via Add transaction → Repeat; manage via Upcoming repeats or Account → Recurring rules.
+
+**Founder step (M4):** apply `20261022140000_partner_links.sql` (`npx supabase db push`). No new Edge Functions — invite/accept/unlink and aggregate stats are Postgres RPCs under RLS. Until applied, Account → Partner and Stats → Pair will error. **EAS rebuild: no** (JS + SQL only; Share uses built-in React Native API).
 
 Ledger columns (M1+): `amount`, `type` (`expense`\|`income`), fixed `category`, optional `note` (≤500), `currency` (USD), `occurred_at`, `deleted_at`, timestamps, `user_id`. M3 adds `recurring_series_id` + `occurrence_key` for auto-generated rows. Default app queries filter `deleted_at is null`. Soft-delete updates `deleted_at` (no hard delete from the client). Soft-deleted recurring instances are **not** regenerated.
 
@@ -127,16 +130,17 @@ Do these once so sign-in works end-to-end on a physical Android device or emulat
      - Expo AuthSession redirect (printed at runtime / from `makeRedirectUri`), e.g. `exp://192.168.x.x:8081/--/auth/callback` during local dev  
      - After Dev Client: the same custom scheme `fudget://auth/callback`
 
-6. **Run migrations** — profiles (M0), transactions (M1), personal stats (M2), recurring (M3); see above.
+6. **Run migrations** — profiles (M0), transactions (M1), personal stats (M2), recurring (M3), partner links (M4); see above.
 
-7. **Deploy M3 Edge Functions + cron** — see “M3 Edge Functions + cron” above.
+7. **Deploy M3 Edge Functions + cron** — see “M3 Edge Functions + cron” above. M4 needs **no** new Edge Functions (RPCs only).
 
-8. **Build a Dev Client** when you leave Expo Go (required before voice STT in M5). M3 adds **no new native modules** — existing Dev Client / Expo Go reload is enough.
+8. **Build a Dev Client** when you leave Expo Go (required before voice STT in M5). M3/M4 add **no new native modules** — existing Dev Client / Expo Go reload is enough.
 
 9. **Smoke test**  
-   Open the app → Continue with Google → **Ledger** tab → **Add** → set **Repeat** (e.g. weekdays) → Save → confirm ledger rows (· Recurring) and **Upcoming repeats** bar → tap bar to manage rules (edit future / stop series). One-off Add without Repeat still works. **Stats** tab: default **This month**, etc. **Account** → Recurring rules also opens manage. Soft-delete one instance; stop series from the rule screen. Bottom tabs are Ledger / Stats / Account only.
+   Open the app → Continue with Google → **Ledger** tab → **Add** → set **Repeat** (e.g. weekdays) → Save → confirm ledger rows (· Recurring) and **Upcoming repeats** bar → tap bar to manage rules (edit future / stop series). One-off Add without Repeat still works. **Stats** tab: default **This month**, etc. **Account** → Recurring rules also opens manage. Soft-delete one instance; stop series from the rule screen. Bottom tabs are Ledger / Stats / Account only.  
+   **M4:** Account → Partner → Create code on device A; Enter code on device B → both show paired. Stats → **Pair** shows combined category totals (no drill-down). Unlink → Pair scope gone immediately. Confirm clients never list partner transaction rows.
 
-Partner aggregates land in M4; voice in M5.
+Voice lands in M5.
 
 ## Scripts
 

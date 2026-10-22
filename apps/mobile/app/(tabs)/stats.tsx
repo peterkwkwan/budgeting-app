@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -17,7 +17,13 @@ import { CaptionText, StrongText, TitleText } from '@/components/StyledText';
 import type { TransactionType } from '@/constants/categories';
 import { trendStrokeForMetric } from '@/constants/chartColors';
 import { colors, fonts, radius, space, typography } from '@/constants/theme';
-import { usePersonalStats, usePersonalTrend } from '@/hooks/useStats';
+import { usePartnerLink } from '@/hooks/usePartner';
+import {
+  useAggregateStats,
+  usePersonalStats,
+  usePersonalTrend,
+  type StatsScope,
+} from '@/hooks/useStats';
 import { useAuth } from '@/lib/auth';
 import { formatUsd } from '@/lib/money';
 import {
@@ -35,7 +41,10 @@ export default function StatsScreen() {
   const router = useRouter();
   const { profile } = useAuth();
   const timeZone = profile?.timezone || 'UTC';
+  const partnerLink = usePartnerLink();
+  const isPaired = partnerLink.data?.status === 'active';
 
+  const [scope, setScope] = useState<StatsScope>('personal');
   const [preset, setPreset] = useState<PeriodPreset>('month');
   const [customStart, setCustomStart] = useState(() => {
     const d = new Date();
@@ -44,6 +53,13 @@ export default function StatsScreen() {
   const [customEnd, setCustomEnd] = useState(() => new Date());
   const [pieType, setPieType] = useState<TransactionType>('expense');
   const [trendMetric, setTrendMetric] = useState<StatsMetric>('expense');
+
+  // Unlink → Pair scope disappears immediately; fall back to personal.
+  useEffect(() => {
+    if (!isPaired && scope === 'pair') {
+      setScope('personal');
+    }
+  }, [isPaired, scope]);
 
   const period = useMemo(
     () =>
@@ -56,22 +72,38 @@ export default function StatsScreen() {
     [preset, timeZone, customStart, customEnd]
   );
 
-  const { totals, categories, bucket } = usePersonalStats(period, pieType);
-  const trend = usePersonalTrend(period, trendMetric, bucket);
+  const personal = usePersonalStats(period, pieType);
+  const aggregate = useAggregateStats(period, pieType, isPaired && scope === 'pair');
+  const trend = usePersonalTrend(period, trendMetric, personal.bucket);
+
+  const showPair = scope === 'pair' && isPaired;
+  const totals = showPair ? aggregate.totals : personal.totals;
+  const categories = showPair ? aggregate.categories : personal.categories;
 
   const refreshing =
-    totals.isRefetching || categories.isRefetching || trend.isRefetching;
-  const loading = totals.isLoading || categories.isLoading;
+    totals.isRefetching ||
+    categories.isRefetching ||
+    (!showPair && trend.isRefetching) ||
+    partnerLink.isRefetching;
+  const loading =
+    partnerLink.isLoading ||
+    totals.isLoading ||
+    categories.isLoading;
   const error =
     (totals.error instanceof Error && totals.error.message) ||
     (categories.error instanceof Error && categories.error.message) ||
-    (trend.error instanceof Error && trend.error.message) ||
+    (!showPair &&
+      trend.error instanceof Error &&
+      trend.error.message) ||
     null;
 
   const onRefresh = () => {
+    void partnerLink.refetch();
     void totals.refetch();
     void categories.refetch();
-    void trend.refetch();
+    if (!showPair) {
+      void trend.refetch();
+    }
   };
 
   return (
@@ -86,6 +118,45 @@ export default function StatsScreen() {
         />
       }
     >
+      {isPaired ? (
+        <View style={styles.scopeRow}>
+          {(
+            [
+              { value: 'personal', label: 'Personal' },
+              { value: 'pair', label: 'Pair' },
+            ] as const
+          ).map((opt) => {
+            const selected = scope === opt.value;
+            return (
+              <Pressable
+                key={opt.value}
+                onPress={() => setScope(opt.value)}
+                style={[styles.scopeChip, selected && styles.scopeChipSelected]}
+                accessibilityRole="button"
+                accessibilityState={{ selected }}
+                accessibilityLabel={`${opt.label} stats`}
+              >
+                <CaptionText
+                  style={[
+                    styles.scopeText,
+                    selected && styles.scopeTextSelected,
+                  ]}
+                >
+                  {opt.label}
+                </CaptionText>
+              </Pressable>
+            );
+          })}
+        </View>
+      ) : null}
+
+      {showPair ? (
+        <CaptionText style={styles.pairHint}>
+          Combined totals with {partnerLink.data?.partnerDisplayName ?? 'partner'}.
+          Category sums only — no individual transactions.
+        </CaptionText>
+      ) : null}
+
       <PeriodSelector
         preset={preset}
         label={period.label}
@@ -94,7 +165,6 @@ export default function StatsScreen() {
         onPresetChange={setPreset}
         onCustomStartChange={(date) => {
           setCustomStart(date);
-          // Safety clamp if picker constraints are ignored on a platform.
           setCustomEnd((end) => (date.getTime() > end.getTime() ? date : end));
         }}
         onCustomEndChange={(date) => {
@@ -195,71 +265,77 @@ export default function StatsScreen() {
             <CategoryBreakdownList
               data={categories.data ?? []}
               type={pieType}
-              onSelect={(row) => {
-                router.push({
-                  pathname: '/stats/category',
-                  params: {
-                    category: row.category,
-                    type: row.type,
-                    start: period.start.toISOString(),
-                    end: period.end.toISOString(),
-                    periodLabel: period.label,
-                  },
-                });
-              }}
+              onSelect={
+                showPair
+                  ? undefined
+                  : (row) => {
+                      router.push({
+                        pathname: '/stats/category',
+                        params: {
+                          category: row.category,
+                          type: row.type,
+                          start: period.start.toISOString(),
+                          end: period.end.toISOString(),
+                          periodLabel: period.label,
+                        },
+                      });
+                    }
+              }
             />
           </View>
 
-          <View style={styles.section}>
-            <TitleText style={styles.sectionTitle}>Trend</TitleText>
-            <View style={styles.toggleRow}>
-              {(
-                [
-                  { value: 'expense', label: 'Expenses' },
-                  { value: 'income', label: 'Income' },
-                  { value: 'net', label: 'Net' },
-                ] as const
-              ).map((opt) => {
-                const selected = trendMetric === opt.value;
-                return (
-                  <Pressable
-                    key={opt.value}
-                    onPress={() => setTrendMetric(opt.value)}
-                    style={[styles.toggle, selected && styles.toggleSelected]}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected }}
-                  >
-                    <CaptionText
-                      style={[
-                        styles.toggleText,
-                        selected && styles.toggleTextSelected,
-                      ]}
+          {!showPair ? (
+            <View style={styles.section}>
+              <TitleText style={styles.sectionTitle}>Trend</TitleText>
+              <View style={styles.toggleRow}>
+                {(
+                  [
+                    { value: 'expense', label: 'Expenses' },
+                    { value: 'income', label: 'Income' },
+                    { value: 'net', label: 'Net' },
+                  ] as const
+                ).map((opt) => {
+                  const selected = trendMetric === opt.value;
+                  return (
+                    <Pressable
+                      key={opt.value}
+                      onPress={() => setTrendMetric(opt.value)}
+                      style={[styles.toggle, selected && styles.toggleSelected]}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected }}
                     >
-                      {opt.label}
-                    </CaptionText>
-                  </Pressable>
-                );
-              })}
-            </View>
+                      <CaptionText
+                        style={[
+                          styles.toggleText,
+                          selected && styles.toggleTextSelected,
+                        ]}
+                      >
+                        {opt.label}
+                      </CaptionText>
+                    </Pressable>
+                  );
+                })}
+              </View>
 
-            {trend.isLoading ? (
-              <ActivityIndicator color={colors.green[700]} />
-            ) : (
-              <TrendLineChart
-                data={trend.data ?? []}
-                emptyLabel="No trend data for this period."
-                strokeColor={trendStrokeForMetric(trendMetric)}
-              />
-            )}
-            <CaptionText style={styles.hint}>
-              Grouped by {bucket}
-              {trendMetric === 'expense'
-                ? ' · expenses'
-                : trendMetric === 'income'
-                  ? ' · income'
-                  : ' · net (income − expenses)'}
-            </CaptionText>
-          </View>
+              {trend.isLoading ? (
+                <ActivityIndicator color={colors.green[700]} />
+              ) : (
+                <TrendLineChart
+                  data={trend.data ?? []}
+                  emptyLabel="No trend data for this period."
+                  strokeColor={trendStrokeForMetric(trendMetric)}
+                />
+              )}
+              <CaptionText style={styles.hint}>
+                Grouped by {personal.bucket}
+                {trendMetric === 'expense'
+                  ? ' · expenses'
+                  : trendMetric === 'income'
+                    ? ' · income'
+                    : ' · net (income − expenses)'}
+              </CaptionText>
+            </View>
+          ) : null}
         </>
       )}
     </ScrollView>
@@ -276,6 +352,35 @@ const styles = StyleSheet.create({
     paddingTop: space.md,
     paddingBottom: space.xxl,
     gap: space.lg,
+  },
+  scopeRow: {
+    flexDirection: 'row',
+    gap: space.sm,
+  },
+  scopeChip: {
+    flex: 1,
+    height: 40,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.green[200],
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  scopeChipSelected: {
+    borderColor: colors.green[700],
+    backgroundColor: colors.surface,
+  },
+  scopeText: {
+    color: colors.inkMuted,
+  },
+  scopeTextSelected: {
+    color: colors.green[700],
+    fontFamily: fonts.bodyStrong,
+  },
+  pairHint: {
+    color: colors.inkMuted,
+    marginTop: -space.sm,
   },
   centered: {
     paddingVertical: space.xxl,

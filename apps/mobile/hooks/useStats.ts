@@ -8,6 +8,8 @@ import type { PeriodBounds, TrendBucket } from '@/lib/periods';
 import { trendBucketForPeriod } from '@/lib/periods';
 import { deviceTimezone } from '@/lib/profile';
 import {
+  fetchAggregateCategoryTotals,
+  fetchAggregateTotals,
   fetchPersonalCategoryTotals,
   fetchPersonalTotals,
   fetchPersonalTrend,
@@ -15,6 +17,8 @@ import {
   statsKeys,
   type StatsMetric,
 } from '@/lib/stats';
+
+export type StatsScope = 'personal' | 'pair';
 
 export function usePersonalStats(period: PeriodBounds, pieType: TransactionType) {
   const queryClient = useQueryClient();
@@ -39,6 +43,42 @@ export function usePersonalStats(period: PeriodBounds, pieType: TransactionType)
   );
 
   return { totals, categories, bucket, startIso, endIso };
+}
+
+/**
+ * Pair aggregate stats. Only enable when actively linked.
+ * Never fetches partner transaction rows — RPCs return sums/counts only.
+ */
+export function useAggregateStats(
+  period: PeriodBounds,
+  pieType: TransactionType,
+  enabled: boolean
+) {
+  const queryClient = useQueryClient();
+  const startIso = period.start.toISOString();
+  const endIso = period.end.toISOString();
+
+  const totals = useQuery({
+    queryKey: statsKeys.aggregateTotals(startIso, endIso),
+    queryFn: () => fetchAggregateTotals(period.start, period.end),
+    enabled,
+  });
+
+  const categories = useQuery({
+    queryKey: statsKeys.aggregateCategory(pieType, startIso, endIso),
+    queryFn: () =>
+      fetchAggregateCategoryTotals(pieType, period.start, period.end),
+    enabled,
+  });
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!enabled) return;
+      void queryClient.invalidateQueries({ queryKey: statsKeys.aggregate() });
+    }, [queryClient, enabled])
+  );
+
+  return { totals, categories, startIso, endIso };
 }
 
 export function usePersonalTrend(
