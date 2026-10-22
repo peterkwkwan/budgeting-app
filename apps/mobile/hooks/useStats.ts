@@ -3,8 +3,10 @@ import { useFocusEffect } from 'expo-router';
 import { useCallback } from 'react';
 
 import type { TransactionType } from '@/constants/categories';
+import { useAuth } from '@/lib/auth';
 import type { PeriodBounds, TrendBucket } from '@/lib/periods';
 import { trendBucketForPeriod } from '@/lib/periods';
+import { deviceTimezone } from '@/lib/profile';
 import {
   fetchPersonalCategoryTotals,
   fetchPersonalTotals,
@@ -61,6 +63,8 @@ export function useCategoryDrilldown(params: {
   end: Date;
   enabled?: boolean;
 }) {
+  const { profile } = useAuth();
+  const timeZone = profile?.timezone || deviceTimezone();
   const startIso = params.start.toISOString();
   const endIso = params.end.toISOString();
 
@@ -69,7 +73,8 @@ export function useCategoryDrilldown(params: {
       params.type,
       params.category,
       startIso,
-      endIso
+      endIso,
+      timeZone
     ),
     queryFn: () =>
       listCategoryTransactions({
@@ -77,6 +82,7 @@ export function useCategoryDrilldown(params: {
         category: params.category,
         start: params.start,
         end: params.end,
+        timeZone,
       }),
     enabled: params.enabled !== false && Boolean(params.category),
   });

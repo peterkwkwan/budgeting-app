@@ -1,5 +1,10 @@
 import type { TransactionCategory, TransactionType } from '@/constants/categories';
 import { isValidCategory } from '@/constants/categories';
+import {
+  currentMonthBounds,
+  isOnOrBeforeLocalToday,
+  localDateKey,
+} from '@/lib/dates';
 
 import { supabase } from './supabase';
 
@@ -79,6 +84,108 @@ export async function listTransactions(): Promise<Transaction[]> {
   }
 
   return (data ?? []).map((row) => mapRow(row as Record<string, unknown>));
+}
+
+/**
+ * Ledger list: one-offs always; recurring only when local calendar date <= today.
+ * Future generated instances stay in DB (90d horizon) but are hidden here.
+ */
+export function filterLedgerVisible(
+  rows: Transaction[],
+  timeZone: string,
+  now: Date = new Date()
+): Transaction[] {
+  return rows.filter((t) => {
+    if (!t.recurring_series_id) return true;
+    return isOnOrBeforeLocalToday(t.occurred_at, timeZone, now);
+  });
+}
+
+export type UpcomingRepeatsSummary = {
+  items: Transaction[];
+  count: number;
+  expenseSum: number;
+  incomeSum: number;
+  /** Short label list, e.g. "Rent and Bills, Salary". */
+  namesLabel: string;
+  /** Date span in local TZ, e.g. "Oct 24 – Oct 31". */
+  datesLabel: string;
+};
+
+/**
+ * Current-month recurring instances with local date after today (still generated).
+ */
+export function summarizeUpcomingRepeatsThisMonth(
+  rows: Transaction[],
+  timeZone: string,
+  now: Date = new Date()
+): UpcomingRepeatsSummary | null {
+  const { start, end } = currentMonthBounds(timeZone, now);
+  const startMs = start.getTime();
+  const endMs = end.getTime();
+  const todayKey = localDateKey(now, timeZone);
+
+  const items = rows
+    .filter((t) => {
+      if (!t.recurring_series_id) return false;
+      const occurred = new Date(t.occurred_at);
+      if (Number.isNaN(occurred.getTime())) return false;
+      const ms = occurred.getTime();
+      if (ms < startMs || ms >= endMs) return false;
+      const key = localDateKey(t.occurred_at, timeZone);
+      return Boolean(key && todayKey && key > todayKey);
+    })
+    .sort(
+      (a, b) =>
+        new Date(a.occurred_at).getTime() - new Date(b.occurred_at).getTime()
+    );
+
+  if (items.length === 0) return null;
+
+  let expenseSum = 0;
+  let incomeSum = 0;
+  const nameOrder: string[] = [];
+  const seen = new Set<string>();
+  for (const t of items) {
+    if (t.type === 'expense') expenseSum += t.amount;
+    else incomeSum += t.amount;
+    if (!seen.has(t.category)) {
+      seen.add(t.category);
+      nameOrder.push(t.category);
+    }
+  }
+
+  const namesLabel =
+    nameOrder.length <= 2
+      ? nameOrder.join(', ')
+      : `${nameOrder.slice(0, 2).join(', ')} +${nameOrder.length - 2}`;
+
+  const first = localDateKey(items[0].occurred_at, timeZone);
+  const last = localDateKey(items[items.length - 1].occurred_at, timeZone);
+  const fmt = (key: string) => {
+    const [y, m, d] = key.split('-').map(Number);
+    const probe = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+    return probe.toLocaleDateString(undefined, {
+      timeZone,
+      month: 'short',
+      day: 'numeric',
+    });
+  };
+  const datesLabel =
+    first && last
+      ? first === last
+        ? fmt(first)
+        : `${fmt(first)} – ${fmt(last)}`
+      : '';
+
+  return {
+    items,
+    count: items.length,
+    expenseSum,
+    incomeSum,
+    namesLabel,
+    datesLabel,
+  };
 }
 
 export async function getTransaction(id: string): Promise<Transaction | null> {

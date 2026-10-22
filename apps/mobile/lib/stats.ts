@@ -1,4 +1,5 @@
 import type { TransactionType } from '@/constants/categories';
+import { isOnOrBeforeLocalToday } from '@/lib/dates';
 import type { TrendBucket } from '@/lib/periods';
 import { listTransactions, type Transaction } from '@/lib/transactions';
 
@@ -108,17 +109,17 @@ export async function fetchPersonalTrend(
 }
 
 /**
- * Drill-down: own matching transactions only (RLS). Soft-deleted excluded by list filter.
- * Future-dated rows are excluded to match stats RPC rules.
+ * Drill-down: own matching transactions only (RLS). Soft-deleted excluded by list.
+ * Recurring: only on/before local today. One-offs: include even if future.
  */
 export async function listCategoryTransactions(params: {
   type: TransactionType;
   category: string;
   start: Date;
   end: Date;
+  timeZone: string;
 }): Promise<Transaction[]> {
   const all = await listTransactions();
-  const now = Date.now();
   const startMs = params.start.getTime();
   const endMs = params.end.getTime();
 
@@ -128,7 +129,9 @@ export async function listCategoryTransactions(params: {
     const occurred = new Date(t.occurred_at).getTime();
     if (Number.isNaN(occurred)) return false;
     if (occurred < startMs || occurred >= endMs) return false;
-    if (occurred > now) return false;
+    if (t.recurring_series_id) {
+      return isOnOrBeforeLocalToday(t.occurred_at, params.timeZone);
+    }
     return true;
   });
 }
@@ -150,7 +153,8 @@ export const statsKeys = {
     type: TransactionType,
     category: string,
     startIso: string,
-    endIso: string
+    endIso: string,
+    timeZone?: string
   ) =>
     [
       ...statsKeys.personal(),
@@ -159,5 +163,6 @@ export const statsKeys = {
       category,
       startIso,
       endIso,
+      timeZone ?? '',
     ] as const,
 };

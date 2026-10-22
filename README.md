@@ -67,6 +67,7 @@ npx supabase db push
 | `supabase/migrations/20261021130000_personal_stats.sql` | **M2** personal stats RPCs (`stats_personal_*`) under RLS; own rows only |
 | `supabase/migrations/20261022070000_recurring_series.sql` | **M3** `recurring_series` + txn `occurrence_key` + edit-future / stop-series RPCs |
 | `supabase/migrations/20261022083000_recurring_byweekday.sql` | **M3** optional `byweekday` mask (weekdays / weekends presets) |
+| `supabase/migrations/20261022090000_stats_recurring_today.sql` | **M3** stats: recurring only on/before local today; one-offs may be future |
 
 **Founder step (M3):** after pulling this branch, run the recurring migration, deploy Edge Functions, set `RECURRING_CRON_SECRET`, and schedule hourly cron (see below). Until migration + functions are live, the Recurring tab and app-open catch-up will error.
 
