@@ -49,7 +49,7 @@ Profiles in `apps/mobile/eas.json`:
 | `preview`     | Internal APK for testers                     |
 | `production`  | Play App Bundle (internal track submit later)|
 
-**Dev Client Android note (M2):** the `development` profile builds **arm64-v8a only** (physical Pixel / most Android devices) and caps Gradle workers so Skia/worklets/screens CMake is less likely to OOM on free-tier EAS. It will not install on classic x86_64 emulators unless you temporarily set `ORG_GRADLE_PROJECT_reactNativeArchitectures=x86_64` for a one-off build.
+**Dev Client Android note (M2):** the `development` profile builds **arm64-v8a only** (physical Pixel / most Android devices) and caps Gradle workers for free-tier EAS. Stats charts are View-only (no Skia). It will not install on classic x86_64 emulators unless you temporarily set `ORG_GRADLE_PROJECT_reactNativeArchitectures=x86_64` for a one-off build.
 
 ## Apply SQL migrations
 
@@ -101,7 +101,7 @@ Do these once so sign-in works end-to-end on a physical Android device or emulat
 
 6. **Run migrations** — profiles (M0), transactions (M1), personal stats (M2); see above.
 
-7. **Build a Dev Client** when you leave Expo Go (required for Skia charts in M2 and later for voice STT).
+7. **Build a Dev Client** when you leave Expo Go (required before voice STT in M5; M2 stats are View-only and do not add native chart libs).
 
 8. **Smoke test**  
    Open the app → Continue with Google → **Ledger** tab (empty or list) → **Add** a transaction → edit / soft-delete. **Stats** tab: default **This month**, switch Week/Year/Custom, toggle expense/income pie, open a category drill-down, switch trend Expenses/Income/Net. **Account** tab shows email, display name, timezone. Pull-to-refresh or leave/return to confirm sync.
