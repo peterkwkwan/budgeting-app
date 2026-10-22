@@ -57,7 +57,6 @@ type EditProps = {
   onSubmit: (input: RecurringSeriesUpdateInput) => void;
   onStop?: () => void;
   stopBusy?: boolean;
-  seriesActive?: boolean;
 };
 
 type Props = CreateProps | EditProps;
@@ -133,7 +132,6 @@ export function RecurringForm(props: Props) {
   const categories = categoriesForType(type);
   const displayError = localError ?? error;
   const stopBusy = !isCreate && props.stopBusy ? props.stopBusy : false;
-  const seriesActive = !isCreate ? props.seriesActive !== false : true;
 
   return (
     <ScrollView
@@ -305,7 +303,7 @@ export function RecurringForm(props: Props) {
         )}
       </Pressable>
 
-      {!isCreate && seriesActive && props.onStop ? (
+      {!isCreate && props.onStop ? (
         <Pressable
           style={({ pressed }) => [
             styles.secondary,
@@ -323,13 +321,6 @@ export function RecurringForm(props: Props) {
             <Text style={styles.secondaryText}>Stop series</Text>
           )}
         </Pressable>
-      ) : null}
-
-      {!isCreate && !seriesActive ? (
-        <CaptionText style={styles.stopped}>
-          This series is stopped. Future entries were removed from the ledger;
-          past ones remain.
-        </CaptionText>
       ) : null}
     </ScrollView>
   );
@@ -354,10 +345,6 @@ const styles = StyleSheet.create({
   hint: {
     color: colors.inkMuted,
     marginTop: space.xs,
-  },
-  stopped: {
-    color: colors.warning,
-    marginTop: space.sm,
   },
   segment: {
     flexDirection: 'row',

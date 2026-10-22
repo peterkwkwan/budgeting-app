@@ -68,6 +68,7 @@ npx supabase db push
 | `supabase/migrations/20261022070000_recurring_series.sql` | **M3** `recurring_series` + txn `occurrence_key` + edit-future / stop-series RPCs |
 | `supabase/migrations/20261022083000_recurring_byweekday.sql` | **M3** optional `byweekday` mask (weekdays / weekends presets) |
 | `supabase/migrations/20261022090000_stats_recurring_today.sql` | **M3** stats: recurring only on/before local today; one-offs may be future |
+| `supabase/migrations/20261022093000_stop_series_hard_delete.sql` | **M3** stop-series hard-deletes rule + future instances; cleans inactive ghosts |
 
 **Founder step (M3):** after pulling this branch, run the recurring migrations, deploy Edge Functions, set `RECURRING_CRON_SECRET`, and schedule hourly cron (see below). Until migrations + functions are live, Add → Repeat / catch-up will error. Recurring is **not** a bottom tab — create via Add transaction → Repeat; manage via Upcoming repeats or Account → Recurring rules.
 

@@ -40,7 +40,7 @@ export default function EditRecurringScreen() {
     if (!id) return;
     Alert.alert(
       'Stop this series?',
-      'Future ledger entries from this rule will be removed. Past entries stay.',
+      'The rule will be removed. Future ledger entries go away. Past entries stay in your ledger.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -90,7 +90,6 @@ export default function EditRecurringScreen() {
       <RecurringForm
         mode="edit"
         timezone={data.timezone}
-        seriesActive={data.active}
         initial={{
           amount: String(data.amount),
           type: data.type,
@@ -104,7 +103,7 @@ export default function EditRecurringScreen() {
         stopBusy={stop.isPending}
         error={formError}
         onSubmit={(input) => void onSubmit(input)}
-        onStop={data.active ? confirmStop : undefined}
+        onStop={confirmStop}
       />
     </View>
   );

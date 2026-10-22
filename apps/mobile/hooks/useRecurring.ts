@@ -13,7 +13,6 @@ import {
   getRecurringSeries,
   listRecurringSeries,
   recurringKeys,
-  softDeleteRecurringSeries,
   stopRecurringSeries,
   updateRecurringSeriesFuture,
   type RecurringSeriesInput,
@@ -93,17 +92,6 @@ export function useStopRecurringSeries() {
 
   return useMutation({
     mutationFn: (id: string) => stopRecurringSeries(id),
-    onSuccess: () => {
-      invalidateAll(queryClient);
-    },
-  });
-}
-
-export function useSoftDeleteRecurringSeries() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (id: string) => softDeleteRecurringSeries(id),
     onSuccess: () => {
       invalidateAll(queryClient);
     },

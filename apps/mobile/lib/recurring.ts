@@ -142,13 +142,13 @@ export function cadenceLabel(cadence: RecurringCadence): string {
   }
 }
 
-/** Active (non–soft-deleted) rules for the signed-in user. */
+/** Active rules only (stopped series are hard-deleted and never listed). */
 export async function listRecurringSeries(): Promise<RecurringSeries[]> {
   const { data, error } = await supabase
     .from('recurring_series')
     .select('*')
+    .eq('active', true)
     .is('deleted_at', null)
-    .order('active', { ascending: false })
     .order('updated_at', { ascending: false });
 
   if (error) {
@@ -165,6 +165,7 @@ export async function getRecurringSeries(
     .from('recurring_series')
     .select('*')
     .eq('id', id)
+    .eq('active', true)
     .is('deleted_at', null)
     .maybeSingle();
 
@@ -238,24 +239,14 @@ export async function updateRecurringSeriesFuture(
   }
 }
 
-/** Stop series: deactivate + soft-delete future instances only. */
+/**
+ * Stop series: hard-delete the rule + future instances (after local today).
+ * Past/today ledger rows remain. Rule disappears from manage lists.
+ */
 export async function stopRecurringSeries(id: string): Promise<void> {
   const { error } = await supabase.rpc('stop_recurring_series', {
     p_series_id: id,
   });
-
-  if (error) {
-    throw new Error(error.message);
-  }
-}
-
-/** Soft-delete the rule itself (hidden from lists). Does not touch past instances. */
-export async function softDeleteRecurringSeries(id: string): Promise<void> {
-  const { error } = await supabase
-    .from('recurring_series')
-    .update({ deleted_at: new Date().toISOString(), active: false })
-    .eq('id', id)
-    .is('deleted_at', null);
 
   if (error) {
     throw new Error(error.message);

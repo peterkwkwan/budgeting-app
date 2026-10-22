@@ -34,8 +34,7 @@ export function RecurringRow({ series, onPress }: Props) {
           </CaptionText>
         ) : null}
         <CaptionText style={styles.meta}>
-          {seriesRepeatLabel(series.cadence, series.byweekday)}
-          {series.active ? '' : ' · Stopped'} ·{' '}
+          {seriesRepeatLabel(series.cadence, series.byweekday)} ·{' '}
           {series.type === 'income' ? 'Income' : 'Expense'}
         </CaptionText>
       </View>

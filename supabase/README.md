@@ -7,6 +7,7 @@
   - M3: `20261022070000_recurring_series.sql` (`recurring_series`, occurrence keys, edit-future / stop-series RPCs)
   - M3: `20261022083000_recurring_byweekday.sql` (optional `byweekday` for weekdays / weekends)
   - M3: `20261022090000_stats_recurring_today.sql` (stats: recurring ≤ local today)
+  - M3: `20261022093000_stop_series_hard_delete.sql` (stop = hard-delete rule + future instances)
 - `functions/`
   - `generate-recurring` — cron; all users; `RECURRING_CRON_SECRET`
   - `catch-up-recurring` — callable with user JWT; app-open catch-up
