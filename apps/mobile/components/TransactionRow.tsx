@@ -4,12 +4,13 @@ import { CaptionText, StrongText } from '@/components/StyledText';
 import { colors, space, typography } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import { formatDisplayDate } from '@/lib/dates';
+import { formatUsd } from '@/lib/money';
 import { deviceTimezone } from '@/lib/profile';
 import type { Transaction } from '@/lib/transactions';
 
 function formatAmount(txn: Transaction): string {
   const sign = txn.type === 'expense' ? '−' : '+';
-  return `${sign}$${txn.amount.toFixed(2)}`;
+  return `${sign}${formatUsd(txn.amount)}`;
 }
 
 type Props = {

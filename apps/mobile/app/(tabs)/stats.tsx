@@ -19,6 +19,7 @@ import { trendStrokeForMetric } from '@/constants/chartColors';
 import { colors, fonts, radius, space, typography } from '@/constants/theme';
 import { usePersonalStats, usePersonalTrend } from '@/hooks/useStats';
 import { useAuth } from '@/lib/auth';
+import { formatUsd } from '@/lib/money';
 import {
   resolvePeriodBounds,
   type PeriodPreset,
@@ -27,7 +28,7 @@ import type { StatsMetric } from '@/lib/stats';
 
 function formatMoney(n: number): string {
   const sign = n < 0 ? '−' : '';
-  return `${sign}$${Math.abs(n).toFixed(2)}`;
+  return `${sign}${formatUsd(n)}`;
 }
 
 export default function StatsScreen() {

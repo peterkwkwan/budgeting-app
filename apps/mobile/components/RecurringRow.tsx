@@ -3,12 +3,12 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { CaptionText, StrongText } from '@/components/StyledText';
 import { colors, space, typography } from '@/constants/theme';
 import { seriesRepeatLabel } from '@/constants/repeatPresets';
+import { formatUsd } from '@/lib/money';
 import type { RecurringSeries } from '@/lib/recurring';
-
 
 function formatAmount(series: RecurringSeries): string {
   const sign = series.type === 'expense' ? '−' : '+';
-  return `${sign}$${series.amount.toFixed(2)}`;
+  return `${sign}${formatUsd(series.amount)}`;
 }
 
 type Props = {
