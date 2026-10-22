@@ -13,7 +13,7 @@ type Props = {
 const SIZE = 200;
 const INNER_RATIO = 0.56;
 /** Radial wedges — View-only donut (no Skia / SVG). */
-const WEDGES = 72;
+const WEDGES = 90;
 
 export function CategoryPieChart({ data, emptyLabel }: Props) {
   if (data.length === 0) {
@@ -40,9 +40,14 @@ export function CategoryPieChart({ data, emptyLabel }: Props) {
   };
 
   const outerR = SIZE / 2;
-  const barHeight = outerR * (1 - INNER_RATIO);
-  const barWidth = Math.max(3.5, (Math.PI * SIZE) / WEDGES + 0.75);
-  const pivot = outerR - barHeight / 2;
+  // Full spoke from rim to center; hole View masks the inner disk into a donut.
+  const spokeHeight = outerR;
+  // Chord width at the rim + overlap so wedges leave no gaps.
+  const barWidth = 2 * outerR * Math.tan(Math.PI / WEDGES) + 1.5;
+  // RN applies transforms left-to-right; default origin is the view center.
+  // Spoke center is at y = spokeHeight/2; circle center is spokeHeight below top
+  // (= outerR). Delta from view-center → circle-center = outerR/2.
+  const pivot = outerR / 2;
 
   return (
     <View style={styles.wrap} accessibilityLabel="Category breakdown chart">
@@ -57,15 +62,14 @@ export function CategoryPieChart({ data, emptyLabel }: Props) {
                 styles.wedge,
                 {
                   width: barWidth,
-                  height: barHeight,
+                  height: spokeHeight,
                   left: outerR - barWidth / 2,
                   top: 0,
                   backgroundColor: colorAt(t),
-                  // RN transforms apply right-to-left: move pivot to center, rotate, restore.
                   transform: [
-                    { translateY: -pivot },
-                    { rotate: `${deg}deg` },
                     { translateY: pivot },
+                    { rotate: `${deg}deg` },
+                    { translateY: -pivot },
                   ],
                 },
               ]}
@@ -90,12 +94,10 @@ const styles = StyleSheet.create({
     height: SIZE,
     borderRadius: SIZE / 2,
     overflow: 'hidden',
-    backgroundColor: colors.green[200],
+    backgroundColor: colors.green[50],
   },
   wedge: {
     position: 'absolute',
-    borderTopLeftRadius: 2,
-    borderTopRightRadius: 2,
   },
   hole: {
     position: 'absolute',
