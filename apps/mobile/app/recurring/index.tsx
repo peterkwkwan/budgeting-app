@@ -50,8 +50,9 @@ export default function RecurringManageScreen() {
           keyExtractor={(item) => item.id}
           ListHeaderComponent={
             <CaptionText style={styles.hint}>
-              To add a new repeat, use Ledger → Add → Repeat. Tap a rule below to
-              edit future entries or stop the series.
+              To add a new repeat, use Ledger → Add → Repeat (presets or Custom
+              with an end date). Tap a rule to edit ends / amounts or stop the
+              series. Ledger rows are written about 90 days ahead.
             </CaptionText>
           }
           renderItem={({ item }) => (
@@ -69,8 +70,9 @@ export default function RecurringManageScreen() {
             <View style={styles.empty}>
               <TitleText style={styles.emptyTitle}>No recurring rules</TitleText>
               <CaptionText style={styles.emptyBody}>
-                From Ledger, tap Add and choose Repeat beside the date. Fudget
-                fills matching ledger entries for the next 90 days.
+                From Ledger, tap Add and choose Repeat beside the date. Matching
+                entries are written about 90 days ahead (or until the series
+                ends).
               </CaptionText>
               <Pressable
                 style={({ pressed }) => [

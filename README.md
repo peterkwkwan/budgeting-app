@@ -1,6 +1,6 @@
 # Fudget
 
-Android-first couple budgeting app by **Kool Krib** (Expo + Supabase). App display name: **Fudget**. **M0** scaffolds Expo + Google sign-in + `profiles`. **M1** adds the ledger (`transactions` CRUD, soft-delete, multi-device sync). **M2** adds personal stats (pie + trend, default = this month). **M3** adds recurring rules (D/W/M/Y) with rolling 90-day auto-generation. Later: partner aggregates, voice.
+Android-first couple budgeting app by **Kool Krib** (Expo + Supabase). App display name: **Fudget**. **M0** scaffolds Expo + Google sign-in + `profiles`. **M1** adds the ledger (`transactions` CRUD, soft-delete, multi-device sync). **M2** adds personal stats (pie + trend, default = this month). **M3** adds recurring rules (Google-aligned presets + Custom ends) with rolling ~90-day materialization. Later: partner aggregates, voice.
 
 ## Repo layout
 
@@ -69,6 +69,7 @@ npx supabase db push
 | `supabase/migrations/20261022083000_recurring_byweekday.sql` | **M3** optional `byweekday` mask (weekdays / weekends presets) |
 | `supabase/migrations/20261022090000_stats_recurring_today.sql` | **M3** stats: recurring only on/before local today; one-offs may be future |
 | `supabase/migrations/20261022093000_stop_series_hard_delete.sql` | **M3** stop-series hard-deletes rule + future instances; cleans inactive ghosts |
+| `supabase/migrations/20261022120000_recurring_ends.sql` | **M3** `ends_on` + `ends_after_count` (Never / On date / After N) |
 
 **Founder step (M3):** after pulling this branch, run the recurring migrations, deploy Edge Functions, set `RECURRING_CRON_SECRET`, and schedule hourly cron (see below). Until migrations + functions are live, Add → Repeat / catch-up will error. Recurring is **not** a bottom tab — create via Add transaction → Repeat; manage via Upcoming repeats or Account → Recurring rules.
 

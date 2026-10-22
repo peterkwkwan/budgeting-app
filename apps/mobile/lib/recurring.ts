@@ -1,5 +1,6 @@
 import type { TransactionCategory, TransactionType } from '@/constants/categories';
 import { isValidCategory } from '@/constants/categories';
+import type { EndsMode, RepeatRule, Weekday } from '@/constants/repeatPresets';
 
 import { supabase } from './supabase';
 
@@ -20,11 +21,13 @@ export type RecurringSeries = {
   category: TransactionCategory;
   note: string | null;
   cadence: RecurringCadence;
-  /** 0=Sun … 6=Sat; null = no weekday filter. */
   byweekday: number[] | null;
   anchor_at: string;
   timezone: string;
   active: boolean;
+  /** Inclusive YYYY-MM-DD or null. */
+  ends_on: string | null;
+  ends_after_count: number | null;
   deleted_at: string | null;
   created_at: string;
   updated_at: string;
@@ -39,6 +42,9 @@ export type RecurringSeriesInput = {
   byweekday?: number[] | null;
   anchor_at: string;
   timezone: string;
+  endsMode?: EndsMode;
+  endsOn?: string | null;
+  endsAfterCount?: number | null;
 };
 
 export type RecurringSeriesUpdateInput = {
@@ -46,6 +52,9 @@ export type RecurringSeriesUpdateInput = {
   type: TransactionType;
   category: string;
   note?: string | null;
+  endsMode?: EndsMode;
+  endsOn?: string | null;
+  endsAfterCount?: number | null;
 };
 
 function mapByweekday(raw: unknown): number[] | null {
@@ -54,6 +63,13 @@ function mapByweekday(raw: unknown): number[] | null {
     .map((n) => Number(n))
     .filter((n) => Number.isInteger(n) && n >= 0 && n <= 6);
   return days.length > 0 ? days : null;
+}
+
+function mapEndsOn(raw: unknown): string | null {
+  if (raw == null) return null;
+  const s = String(raw);
+  const m = /^(\d{4}-\d{2}-\d{2})/.exec(s);
+  return m ? m[1] : null;
 }
 
 function mapRow(row: Record<string, unknown>): RecurringSeries {
@@ -69,10 +85,36 @@ function mapRow(row: Record<string, unknown>): RecurringSeries {
     anchor_at: String(row.anchor_at),
     timezone: String(row.timezone ?? 'UTC'),
     active: Boolean(row.active),
+    ends_on: mapEndsOn(row.ends_on),
+    ends_after_count:
+      row.ends_after_count == null ? null : Number(row.ends_after_count),
     deleted_at: (row.deleted_at as string | null) ?? null,
     created_at: String(row.created_at),
     updated_at: String(row.updated_at),
   };
+}
+
+function normalizeEnds(input: {
+  endsMode?: EndsMode;
+  endsOn?: string | null;
+  endsAfterCount?: number | null;
+}): { ends_on: string | null; ends_after_count: number | null } | { error: string } {
+  const mode = input.endsMode ?? 'never';
+  if (mode === 'never') {
+    return { ends_on: null, ends_after_count: null };
+  }
+  if (mode === 'on_date') {
+    const on = input.endsOn?.trim() || null;
+    if (!on || !/^\d{4}-\d{2}-\d{2}/.test(on)) {
+      return { error: 'Pick an end date.' };
+    }
+    return { ends_on: on.slice(0, 10), ends_after_count: null };
+  }
+  const n = input.endsAfterCount;
+  if (n == null || !Number.isInteger(n) || n < 1) {
+    return { error: 'Ends after must be at least 1 occurrence.' };
+  }
+  return { ends_on: null, ends_after_count: n };
 }
 
 function validateCreate(input: RecurringSeriesInput): string | null {
@@ -92,13 +134,13 @@ function validateCreate(input: RecurringSeriesInput): string | null {
     if (
       !Array.isArray(input.byweekday) ||
       input.byweekday.length === 0 ||
-      input.byweekday.some(
-        (d) => !Number.isInteger(d) || d < 0 || d > 6
-      )
+      input.byweekday.some((d) => !Number.isInteger(d) || d < 0 || d > 6)
     ) {
       return 'Weekday filter must be days 0–6.';
     }
   }
+  const ends = normalizeEnds(input);
+  if ('error' in ends) return ends.error;
   const note = input.note?.trim() ?? '';
   if (note.length > 500) {
     return 'Note must be 500 characters or fewer.';
@@ -122,6 +164,10 @@ function validateUpdate(input: RecurringSeriesUpdateInput): string | null {
   if (!isValidCategory(input.type, input.category)) {
     return 'Category does not match the selected type.';
   }
+  if (input.endsMode != null) {
+    const ends = normalizeEnds(input);
+    if ('error' in ends) return ends.error;
+  }
   const note = input.note?.trim() ?? '';
   if (note.length > 500) {
     return 'Note must be 500 characters or fewer.';
@@ -138,8 +184,21 @@ export function cadenceLabel(cadence: RecurringCadence): string {
     case 'monthly':
       return 'Monthly';
     case 'yearly':
-      return 'Yearly';
+      return 'Annually';
   }
+}
+
+export function repeatRuleFromSeries(series: RecurringSeries): RepeatRule {
+  let endsMode: EndsMode = 'never';
+  if (series.ends_on) endsMode = 'on_date';
+  else if (series.ends_after_count) endsMode = 'after_count';
+  return {
+    cadence: series.cadence,
+    byweekday: (series.byweekday as Weekday[] | null) ?? null,
+    endsMode,
+    endsOn: series.ends_on,
+    endsAfterCount: series.ends_after_count,
+  };
 }
 
 /** Active rules only (stopped series are hard-deleted and never listed). */
@@ -186,9 +245,12 @@ export async function createRecurringSeries(
   }
 
   const note = input.note?.trim() ? input.note.trim() : null;
-
   const byweekday =
     input.byweekday && input.byweekday.length > 0 ? input.byweekday : null;
+  const ends = normalizeEnds(input);
+  if ('error' in ends) {
+    throw new Error(ends.error);
+  }
 
   const { data, error } = await supabase
     .from('recurring_series')
@@ -203,6 +265,8 @@ export async function createRecurringSeries(
       anchor_at: input.anchor_at,
       timezone: input.timezone,
       active: true,
+      ends_on: ends.ends_on,
+      ends_after_count: ends.ends_after_count,
     })
     .select('*')
     .single();
@@ -214,7 +278,7 @@ export async function createRecurringSeries(
   return mapRow(data as Record<string, unknown>);
 }
 
-/** Updates series + future ledger instances only (RPC). Past instances unchanged. */
+/** Updates series amount fields + optional ends; future ledger instances for amount only via RPC. */
 export async function updateRecurringSeriesFuture(
   id: string,
   input: RecurringSeriesUpdateInput
@@ -226,7 +290,7 @@ export async function updateRecurringSeriesFuture(
 
   const note = input.note?.trim() ? input.note.trim() : null;
 
-  const { error } = await supabase.rpc('update_recurring_series_future', {
+  const { error: rpcError } = await supabase.rpc('update_recurring_series_future', {
     p_series_id: id,
     p_amount: input.amount,
     p_type: input.type,
@@ -234,8 +298,27 @@ export async function updateRecurringSeriesFuture(
     p_note: note,
   });
 
-  if (error) {
-    throw new Error(error.message);
+  if (rpcError) {
+    throw new Error(rpcError.message);
+  }
+
+  if (input.endsMode != null) {
+    const ends = normalizeEnds(input);
+    if ('error' in ends) {
+      throw new Error(ends.error);
+    }
+    const { error } = await supabase
+      .from('recurring_series')
+      .update({
+        ends_on: ends.ends_on,
+        ends_after_count: ends.ends_after_count,
+      })
+      .eq('id', id)
+      .eq('active', true)
+      .is('deleted_at', null);
+    if (error) {
+      throw new Error(error.message);
+    }
   }
 }
 
@@ -255,7 +338,7 @@ export async function stopRecurringSeries(id: string): Promise<void> {
 
 /**
  * Ask the server to fill missing instances for this user (rolling 90d).
- * Safe to call on app open; idempotent.
+ * Safe to call on app open; idempotent. Respects series end conditions.
  */
 export async function catchUpRecurring(): Promise<{
   ok: boolean;

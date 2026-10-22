@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
   const { data, error } = await admin
     .from('recurring_series')
     .select(
-      'id, user_id, amount, type, category, note, cadence, byweekday, anchor_at, timezone, active'
+      'id, user_id, amount, type, category, note, cadence, byweekday, anchor_at, timezone, active, ends_on, ends_after_count'
     )
     .eq('user_id', user.id)
     .eq('active', true)

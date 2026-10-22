@@ -21,13 +21,12 @@ import {
   type TransactionType,
 } from '@/constants/categories';
 import {
-  presetById,
-  REPEAT_PRESETS,
+  buildRepeatPresetOptions,
   shortRepeatLabel,
-  type RepeatPreset,
-  type RepeatPresetId,
+  type RepeatRule,
 } from '@/constants/repeatPresets';
 import { colors, fonts, radius, space, typography } from '@/constants/theme';
+import { RepeatCustomSheet } from '@/components/RepeatCustomSheet';
 import { useAuth } from '@/lib/auth';
 import { formatDisplayDate } from '@/lib/dates';
 import { deviceTimezone } from '@/lib/profile';
@@ -41,9 +40,9 @@ export type TransactionFormValues = {
   occurredAt: Date;
 };
 
-/** One-off txn fields plus optional repeat mapping for Add Transaction. */
+/** One-off txn fields plus optional repeat rule for Add Transaction. */
 export type TransactionFormSubmit = TransactionInput & {
-  repeat: RepeatPreset | null;
+  repeat: RepeatRule | null;
 };
 
 type Props = {
@@ -76,13 +75,13 @@ export function TransactionForm({
   const [note, setNote] = useState(initial?.note ?? '');
   const [occurredAt, setOccurredAt] = useState(initial?.occurredAt ?? new Date());
   const [showPicker, setShowPicker] = useState(false);
-  const [repeatId, setRepeatId] = useState<RepeatPresetId>('none');
+  const [repeatRule, setRepeatRule] = useState<RepeatRule | null>(null);
   const [showRepeatSheet, setShowRepeatSheet] = useState(false);
+  const [showCustomSheet, setShowCustomSheet] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
   const { profile } = useAuth();
   const timeZone = profile?.timezone || deviceTimezone();
-
-  const repeatPreset = presetById(repeatId);
+  const presetOptions = buildRepeatPresetOptions(occurredAt, timeZone);
 
   function setTypeAndCategory(next: TransactionType) {
     setType(next);
@@ -113,15 +112,13 @@ export function TransactionForm({
       return;
     }
 
-    const preset = allowRepeat ? presetById(repeatId) : presetById('none');
-
     onSubmit({
       amount: Math.round(parsed * 100) / 100,
       type,
       category,
       note: note.trim() || null,
       occurred_at: occurredAt.toISOString(),
-      repeat: preset.cadence ? preset : null,
+      repeat: allowRepeat ? repeatRule : null,
     });
   }
 
@@ -212,7 +209,7 @@ export function TransactionForm({
             <Pressable
               style={[
                 styles.input,
-                repeatId !== 'none' && styles.repeatActive,
+                repeatRule != null && styles.repeatActive,
               ]}
               onPress={() => setShowRepeatSheet(true)}
               accessibilityRole="button"
@@ -221,11 +218,11 @@ export function TransactionForm({
               <Text
                 style={[
                   styles.dateText,
-                  repeatId !== 'none' && styles.repeatActiveText,
+                  repeatRule != null && styles.repeatActiveText,
                 ]}
                 numberOfLines={1}
               >
-                {shortRepeatLabel(repeatPreset)}
+                {shortRepeatLabel(repeatRule)}
               </Text>
             </Pressable>
           </View>
@@ -244,10 +241,10 @@ export function TransactionForm({
           <StrongText style={{ color: colors.green[700] }}>Done</StrongText>
         </Pressable>
       ) : null}
-      {allowRepeat && repeatId !== 'none' ? (
+      {allowRepeat && repeatRule ? (
         <CaptionText style={styles.hint}>
-          Saves as a recurring rule. Fudget adds matching ledger entries for the
-          next 90 days.
+          Saves as a recurring rule. Matching ledger entries are written about
+          90 days ahead (or sooner if the series ends).
         </CaptionText>
       ) : null}
 
@@ -326,8 +323,18 @@ export function TransactionForm({
               How often should this show up in your ledger?
             </CaptionText>
             <ScrollView style={styles.sheetList}>
-              {REPEAT_PRESETS.map((preset) => {
-                const selected = repeatId === preset.id;
+              {presetOptions.map((preset) => {
+                const selected =
+                  preset.id === 'none'
+                    ? repeatRule == null
+                    : preset.id === 'custom'
+                      ? false
+                      : preset.rule !== null &&
+                        preset.rule !== 'custom' &&
+                        repeatRule?.cadence === preset.rule.cadence &&
+                        JSON.stringify(repeatRule.byweekday ?? null) ===
+                          JSON.stringify(preset.rule.byweekday ?? null) &&
+                        repeatRule.endsMode === 'never';
                 return (
                   <Pressable
                     key={preset.id}
@@ -336,7 +343,12 @@ export function TransactionForm({
                       selected && styles.sheetRowSelected,
                     ]}
                     onPress={() => {
-                      setRepeatId(preset.id);
+                      if (preset.rule === 'custom') {
+                        setShowRepeatSheet(false);
+                        setShowCustomSheet(true);
+                        return;
+                      }
+                      setRepeatRule(preset.rule);
                       setShowRepeatSheet(false);
                     }}
                     accessibilityRole="button"
@@ -365,6 +377,18 @@ export function TransactionForm({
           </Pressable>
         </Pressable>
       </Modal>
+
+      <RepeatCustomSheet
+        visible={showCustomSheet}
+        startDate={occurredAt}
+        timeZone={timeZone}
+        initial={repeatRule}
+        onCancel={() => setShowCustomSheet(false)}
+        onSave={(rule) => {
+          setRepeatRule(rule);
+          setShowCustomSheet(false);
+        }}
+      />
     </ScrollView>
   );
 }

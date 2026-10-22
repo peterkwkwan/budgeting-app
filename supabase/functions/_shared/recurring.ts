@@ -1,7 +1,8 @@
 /**
  * Shared recurring generation for generate-recurring (cron) and
  * catch-up-recurring (callable). Rolling window: [now-90d, now+90d]
- * clipped by series.anchor_at. Idempotent via occurrence_key.
+ * clipped by series.anchor_at and end conditions (ends_on / ends_after_count).
+ * Idempotent via occurrence_key.
  */
 
 export type Cadence = 'daily' | 'weekly' | 'monthly' | 'yearly';
@@ -14,11 +15,14 @@ export type RecurringSeriesRow = {
   category: string;
   note: string | null;
   cadence: Cadence;
-  /** 0=Sun … 6=Sat; null = no weekday filter. */
+  /** 0=Sun … 6=Sat; null = no weekday filter (weekly defaults to anchor weekday). */
   byweekday: number[] | null;
   anchor_at: string;
   timezone: string;
   active: boolean;
+  /** Inclusive end as YYYY-MM-DD (date column) or null. */
+  ends_on: string | null;
+  ends_after_count: number | null;
 };
 
 export type GeneratedOccurrence = {
@@ -35,6 +39,8 @@ export type GeneratedOccurrence = {
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 export const HORIZON_DAYS = 90;
+/** Safety cap when walking from anchor for ends_after_count. */
+const MAX_OCCURRENCES = 800;
 
 type Ymd = { year: number; month: number; day: number };
 
@@ -48,7 +54,6 @@ function pad2(n: number): string {
   return String(n).padStart(2, '0');
 }
 
-/** Calendar parts of an instant in a given IANA timezone. */
 export function getZonedParts(date: Date, timeZone: string): ZonedParts {
   const fmt = new Intl.DateTimeFormat('en-US', {
     timeZone,
@@ -73,10 +78,6 @@ export function getZonedParts(date: Date, timeZone: string): ZonedParts {
   };
 }
 
-/**
- * Convert a wall-clock datetime in `timeZone` to a UTC Date.
- * Uses a short iterative offset correction (handles DST).
- */
 export function zonedTimeToUtc(
   parts: {
     year: number;
@@ -140,7 +141,21 @@ function maxYmd(a: Ymd, b: Ymd): Ymd {
   return compareYmd(a, b) >= 0 ? a : b;
 }
 
-/** Weekday 0=Sun .. 6=Sat for a civil date (UTC noon trick). */
+function minYmd(a: Ymd, b: Ymd): Ymd {
+  return compareYmd(a, b) <= 0 ? a : b;
+}
+
+function parseEndsOn(raw: string | null | undefined): Ymd | null {
+  if (!raw) return null;
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(raw));
+  if (!m) return null;
+  return {
+    year: Number(m[1]),
+    month: Number(m[2]),
+    day: Number(m[3]),
+  };
+}
+
 function weekdayOfYmd(y: Ymd): number {
   return new Date(Date.UTC(y.year, y.month - 1, y.day, 12, 0, 0)).getUTCDay();
 }
@@ -175,7 +190,6 @@ function occurrenceInMonth(
   };
 }
 
-/** Normalize DB/JSON weekday arrays; returns null when empty / unset. */
 function normalizeByweekday(
   raw: number[] | null | undefined
 ): Set<number> | null {
@@ -188,10 +202,75 @@ function normalizeByweekday(
   return set.size > 0 ? set : null;
 }
 
+/** All occurrence civil dates from anchor through upper (inclusive), cadence-aware. */
+function enumerateFromAnchor(
+  series: RecurringSeriesRow,
+  anchorYmd: Ymd,
+  upper: Ymd,
+  anchorDayOfMonth: number,
+  anchorMonth: number
+): Ymd[] {
+  const weekdayMask = normalizeByweekday(series.byweekday);
+  const dates: Ymd[] = [];
+
+  if (series.cadence === 'daily') {
+    let cur = { ...anchorYmd };
+    let n = 0;
+    while (compareYmd(cur, upper) <= 0 && n < MAX_OCCURRENCES) {
+      if (!weekdayMask || weekdayMask.has(weekdayOfYmd(cur))) {
+        dates.push({ ...cur });
+        n += 1;
+      }
+      cur = addDaysYmd(cur, 1);
+    }
+  } else if (series.cadence === 'weekly') {
+    const days =
+      weekdayMask ?? new Set([weekdayOfYmd(anchorYmd)]);
+    let cur = { ...anchorYmd };
+    let n = 0;
+    while (compareYmd(cur, upper) <= 0 && n < MAX_OCCURRENCES) {
+      if (days.has(weekdayOfYmd(cur))) {
+        dates.push({ ...cur });
+        n += 1;
+      }
+      cur = addDaysYmd(cur, 1);
+    }
+  } else if (series.cadence === 'monthly') {
+    let y = anchorYmd.year;
+    let m = anchorYmd.month;
+    for (let i = 0; i < MAX_OCCURRENCES; i++) {
+      const cand = occurrenceInMonth(y, m, anchorDayOfMonth);
+      if (compareYmd(cand, anchorYmd) >= 0 && compareYmd(cand, upper) <= 0) {
+        dates.push(cand);
+      }
+      if (compareYmd(cand, upper) > 0 || (y > upper.year || (y === upper.year && m >= upper.month))) {
+        if (y > upper.year || (y === upper.year && m > upper.month)) break;
+        if (y === upper.year && m === upper.month && compareYmd(cand, upper) > 0) break;
+      }
+      const next = addMonths(y, m, 1);
+      y = next.year;
+      m = next.month;
+      if (y > upper.year + 1) break;
+    }
+  } else if (series.cadence === 'yearly') {
+    for (
+      let y = anchorYmd.year;
+      y <= upper.year && dates.length < MAX_OCCURRENCES;
+      y++
+    ) {
+      const cand = occurrenceInMonth(y, anchorMonth, anchorDayOfMonth);
+      if (compareYmd(cand, anchorYmd) >= 0 && compareYmd(cand, upper) <= 0) {
+        dates.push(cand);
+      }
+    }
+  }
+
+  return dates;
+}
+
 /**
  * Enumerate occurrence local dates for a series inside the rolling window,
- * then map to timestamptz using the anchor's time-of-day in series TZ.
- * Optional byweekday (0=Sun..6=Sat) filters daily series (weekdays / weekends).
+ * respecting ends_on and ends_after_count.
  */
 export function enumerateOccurrences(
   series: RecurringSeriesRow,
@@ -219,19 +298,41 @@ export function enumerateOccurrences(
     tz
   );
 
+  const endsOn = parseEndsOn(series.ends_on);
+  let upper: Ymd = {
+    year: windowEnd.year,
+    month: windowEnd.month,
+    day: windowEnd.day,
+  };
+  if (endsOn) {
+    upper = minYmd(upper, endsOn);
+  }
+
   const lower = maxYmd(anchorYmd, {
     year: windowStart.year,
     month: windowStart.month,
     day: windowStart.day,
   });
-  const upper: Ymd = {
-    year: windowEnd.year,
-    month: windowEnd.month,
-    day: windowEnd.day,
-  };
 
   if (compareYmd(lower, upper) > 0) {
     return [];
+  }
+
+  // Walk from anchor through upper so ends_after_count indexes correctly.
+  let all = enumerateFromAnchor(
+    series,
+    anchorYmd,
+    upper,
+    anchorParts.day,
+    anchorParts.month
+  );
+
+  const afterCount =
+    series.ends_after_count != null && Number(series.ends_after_count) >= 1
+      ? Number(series.ends_after_count)
+      : null;
+  if (afterCount != null) {
+    all = all.slice(0, afterCount);
   }
 
   const tod = {
@@ -240,64 +341,10 @@ export function enumerateOccurrences(
     second: anchorParts.second,
   };
 
-  const dates: Ymd[] = [];
-
-  const weekdayMask = normalizeByweekday(series.byweekday);
-
-  if (series.cadence === 'daily') {
-    let cur = { ...lower };
-    while (compareYmd(cur, upper) <= 0) {
-      if (
-        !weekdayMask ||
-        weekdayMask.has(weekdayOfYmd(cur))
-      ) {
-        dates.push({ ...cur });
-      }
-      cur = addDaysYmd(cur, 1);
-    }
-  } else if (series.cadence === 'weekly') {
-    const targetDow = weekdayOfYmd(anchorYmd);
-    let cur = { ...lower };
-    while (weekdayOfYmd(cur) !== targetDow) {
-      cur = addDaysYmd(cur, 1);
-      if (compareYmd(cur, upper) > 0) break;
-    }
-    while (compareYmd(cur, upper) <= 0) {
-      dates.push({ ...cur });
-      cur = addDaysYmd(cur, 7);
-    }
-  } else if (series.cadence === 'monthly') {
-    let y = lower.year;
-    let m = lower.month;
-    // Walk months until past upper
-    for (let i = 0; i < 240; i++) {
-      const cand = occurrenceInMonth(y, m, anchorParts.day);
-      if (compareYmd(cand, lower) >= 0 && compareYmd(cand, upper) <= 0) {
-        dates.push(cand);
-      }
-      if (y > upper.year || (y === upper.year && m >= upper.month)) {
-        break;
-      }
-      const next = addMonths(y, m, 1);
-      y = next.year;
-      m = next.month;
-    }
-  } else if (series.cadence === 'yearly') {
-    for (
-      let y = Math.max(anchorYmd.year, lower.year);
-      y <= upper.year;
-      y++
-    ) {
-      const cand = occurrenceInMonth(y, anchorParts.month, anchorParts.day);
-      if (compareYmd(cand, lower) >= 0 && compareYmd(cand, upper) <= 0) {
-        dates.push(cand);
-      }
-    }
-  }
-
   const seen = new Set<string>();
   const out: GeneratedOccurrence[] = [];
-  for (const d of dates) {
+  for (const d of all) {
+    if (compareYmd(d, lower) < 0 || compareYmd(d, upper) > 0) continue;
     const key = ymdKey(d);
     if (seen.has(key)) continue;
     seen.add(key);
@@ -324,11 +371,6 @@ export type GenerateResult = {
   errors: string[];
 };
 
-/**
- * Upsert missing occurrences for each series.
- * ignoreDuplicates keeps soft-deleted occurrence keys from regenerating
- * (unique index includes soft-deleted rows).
- */
 export async function generateForSeriesList(
   // deno-lint-ignore no-explicit-any
   client: any,

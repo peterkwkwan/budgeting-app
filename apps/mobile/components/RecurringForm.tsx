@@ -20,6 +20,10 @@ import {
   type TransactionType,
 } from '@/constants/categories';
 import { colors, fonts, radius, space, typography } from '@/constants/theme';
+import {
+  endsSummary,
+  type EndsMode,
+} from '@/constants/repeatPresets';
 import { formatDisplayDate } from '@/lib/dates';
 import {
   cadenceLabel,
@@ -36,6 +40,9 @@ export type RecurringFormValues = {
   note: string;
   cadence: RecurringCadence;
   anchorAt: Date;
+  endsMode?: EndsMode;
+  endsOn?: string | null;
+  endsAfterCount?: number | null;
 };
 
 type CreateProps = {
@@ -77,6 +84,13 @@ export function RecurringForm(props: Props) {
   );
   const [anchorAt, setAnchorAt] = useState(initial?.anchorAt ?? new Date());
   const [showPicker, setShowPicker] = useState(false);
+  const [endsMode, setEndsMode] = useState<EndsMode>(
+    initial?.endsMode ?? 'never'
+  );
+  const [endsOn, setEndsOn] = useState(initial?.endsOn ?? '');
+  const [endsAfterCount, setEndsAfterCount] = useState(
+    String(initial?.endsAfterCount ?? 12)
+  );
   const [localError, setLocalError] = useState<string | null>(null);
 
   function setTypeAndCategory(next: TransactionType) {
@@ -110,6 +124,15 @@ export function RecurringForm(props: Props) {
 
     const rounded = Math.round(parsed * 100) / 100;
 
+    const endsPayload = {
+      endsMode,
+      endsOn: endsMode === 'on_date' ? endsOn.trim() || null : null,
+      endsAfterCount:
+        endsMode === 'after_count'
+          ? Number.parseInt(endsAfterCount.trim(), 10)
+          : null,
+    };
+
     if (isCreate) {
       props.onSubmit({
         amount: rounded,
@@ -119,6 +142,7 @@ export function RecurringForm(props: Props) {
         cadence,
         anchor_at: anchorAt.toISOString(),
         timezone,
+        ...endsPayload,
       });
     } else {
       props.onSubmit({
@@ -126,6 +150,7 @@ export function RecurringForm(props: Props) {
         type,
         category,
         note: note.trim() || null,
+        ...endsPayload,
       });
     }
   }
@@ -253,18 +278,85 @@ export function RecurringForm(props: Props) {
             </Pressable>
           ) : null}
           <CaptionText style={styles.hint}>
-            Fudget creates matching ledger entries for the next 90 days in{' '}
-            {timezone}. Past dates already on the ledger stay as they are when
-            you edit later.
+            Matching ledger entries are written about 90 days ahead in{' '}
+            {timezone} (or sooner if the series ends). Prefer Add transaction →
+            Repeat for Google-style presets.
           </CaptionText>
         </>
       ) : (
         <CaptionText style={styles.hint}>
-          Saving updates this rule and future ledger entries only. Past entries
+          Saving updates this rule and future ledger amounts only. Past entries
           stay the same. Repeats:{' '}
-          {cadenceLabel(initial?.cadence ?? 'monthly')} · timezone {timezone}.
+          {cadenceLabel(initial?.cadence ?? 'monthly')} · {timezone}.
         </CaptionText>
       )}
+
+      {!isCreate ? (
+        <>
+          <CaptionText style={styles.label}>Ends</CaptionText>
+          <View style={styles.chips}>
+            {(
+              [
+                { id: 'never' as const, label: 'Never' },
+                { id: 'on_date' as const, label: 'On a date' },
+                { id: 'after_count' as const, label: 'After N times' },
+              ] as const
+            ).map((opt) => {
+              const selected = endsMode === opt.id;
+              return (
+                <Pressable
+                  key={opt.id}
+                  style={[styles.chip, selected && styles.chipSelected]}
+                  onPress={() => setEndsMode(opt.id)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected }}
+                >
+                  <Text
+                    style={[
+                      styles.chipText,
+                      selected && styles.chipTextSelected,
+                    ]}
+                  >
+                    {opt.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          {endsMode === 'on_date' ? (
+            <TextInput
+              style={styles.input}
+              value={endsOn}
+              onChangeText={setEndsOn}
+              placeholder="2026-12-31"
+              placeholderTextColor={colors.inkMuted}
+              autoCapitalize="none"
+              accessibilityLabel="End date YYYY-MM-DD"
+            />
+          ) : null}
+          {endsMode === 'after_count' ? (
+            <TextInput
+              style={styles.input}
+              value={endsAfterCount}
+              onChangeText={setEndsAfterCount}
+              keyboardType="number-pad"
+              placeholder="12"
+              placeholderTextColor={colors.inkMuted}
+              accessibilityLabel="Number of occurrences"
+            />
+          ) : null}
+          <CaptionText style={styles.hint}>
+            {endsSummary({
+              endsOn: endsMode === 'on_date' ? endsOn : null,
+              endsAfterCount:
+                endsMode === 'after_count'
+                  ? Number.parseInt(endsAfterCount, 10) || null
+                  : null,
+            })}
+            . Horizon still caps pre-written rows at about 90 days.
+          </CaptionText>
+        </>
+      ) : null}
 
       <CaptionText style={styles.label}>Note (optional)</CaptionText>
       <TextInput

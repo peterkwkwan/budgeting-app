@@ -5,6 +5,7 @@ import { colors, space, typography } from '@/constants/theme';
 import { seriesRepeatLabel } from '@/constants/repeatPresets';
 import type { RecurringSeries } from '@/lib/recurring';
 
+
 function formatAmount(series: RecurringSeries): string {
   const sign = series.type === 'expense' ? '−' : '+';
   return `${sign}$${series.amount.toFixed(2)}`;
@@ -24,7 +25,7 @@ export function RecurringRow({ series, onPress }: Props) {
       onPress={onPress}
       style={({ pressed }) => [styles.row, pressed && styles.pressed]}
       accessibilityRole="button"
-      accessibilityLabel={`${series.category}, ${seriesRepeatLabel(series.cadence, series.byweekday)}, ${formatAmount(series)}`}
+      accessibilityLabel={`${series.category}, ${seriesRepeatLabel(series.cadence, series.byweekday, series.ends_on, series.ends_after_count)}, ${formatAmount(series)}`}
     >
       <View style={styles.left}>
         <StrongText style={styles.category}>{series.category}</StrongText>
@@ -34,8 +35,13 @@ export function RecurringRow({ series, onPress }: Props) {
           </CaptionText>
         ) : null}
         <CaptionText style={styles.meta}>
-          {seriesRepeatLabel(series.cadence, series.byweekday)} ·{' '}
-          {series.type === 'income' ? 'Income' : 'Expense'}
+          {seriesRepeatLabel(
+            series.cadence,
+            series.byweekday,
+            series.ends_on,
+            series.ends_after_count
+          )}{' '}
+          · {series.type === 'income' ? 'Income' : 'Expense'}
         </CaptionText>
       </View>
       <StrongText style={[styles.amount, { color: amountColor }]}>

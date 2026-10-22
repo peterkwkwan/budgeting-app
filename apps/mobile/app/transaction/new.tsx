@@ -34,6 +34,9 @@ export default function NewTransactionScreen() {
           byweekday: input.repeat.byweekday,
           anchor_at: input.occurred_at,
           timezone,
+          endsMode: input.repeat.endsMode,
+          endsOn: input.repeat.endsOn,
+          endsAfterCount: input.repeat.endsAfterCount,
         });
       } else {
         await createTxn.mutateAsync({

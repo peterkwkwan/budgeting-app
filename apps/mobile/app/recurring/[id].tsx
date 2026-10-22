@@ -15,6 +15,7 @@ import {
   useStopRecurringSeries,
   useUpdateRecurringSeries,
 } from '@/hooks/useRecurring';
+import { repeatRuleFromSeries } from '@/lib/recurring';
 import type { RecurringSeriesUpdateInput } from '@/lib/recurring';
 
 export default function EditRecurringScreen() {
@@ -97,6 +98,14 @@ export default function EditRecurringScreen() {
           note: data.note ?? '',
           cadence: data.cadence,
           anchorAt: new Date(data.anchor_at),
+          ...(() => {
+            const r = repeatRuleFromSeries(data);
+            return {
+              endsMode: r.endsMode,
+              endsOn: r.endsOn,
+              endsAfterCount: r.endsAfterCount,
+            };
+          })(),
         }}
         submitLabel="Save changes"
         busy={update.isPending}
