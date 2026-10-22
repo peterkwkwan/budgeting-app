@@ -8,14 +8,16 @@ import {
 } from 'react-native';
 
 import { CaptionText, TitleText } from '@/components/StyledText';
-import { TransactionForm } from '@/components/TransactionForm';
+import {
+  TransactionForm,
+  type TransactionFormSubmit,
+} from '@/components/TransactionForm';
 import { colors, space } from '@/constants/theme';
 import {
   useSoftDeleteTransaction,
   useTransaction,
   useUpdateTransaction,
 } from '@/hooks/useTransactions';
-import type { TransactionInput } from '@/lib/transactions';
 
 export default function EditTransactionScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -25,11 +27,17 @@ export default function EditTransactionScreen() {
   const softDelete = useSoftDeleteTransaction();
   const [formError, setFormError] = useState<string | null>(null);
 
-  async function onSubmit(input: TransactionInput) {
+  async function onSubmit(input: TransactionFormSubmit) {
     if (!id) return;
     setFormError(null);
     try {
-      await update.mutateAsync(input);
+      await update.mutateAsync({
+        amount: input.amount,
+        type: input.type,
+        category: input.category,
+        note: input.note,
+        occurred_at: input.occurred_at,
+      });
       router.back();
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Could not update.');

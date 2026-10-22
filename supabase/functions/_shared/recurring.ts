@@ -14,6 +14,8 @@ export type RecurringSeriesRow = {
   category: string;
   note: string | null;
   cadence: Cadence;
+  /** 0=Sun … 6=Sat; null = no weekday filter. */
+  byweekday: number[] | null;
   anchor_at: string;
   timezone: string;
   active: boolean;
@@ -173,9 +175,23 @@ function occurrenceInMonth(
   };
 }
 
+/** Normalize DB/JSON weekday arrays; returns null when empty / unset. */
+function normalizeByweekday(
+  raw: number[] | null | undefined
+): Set<number> | null {
+  if (!raw || !Array.isArray(raw) || raw.length === 0) return null;
+  const set = new Set<number>();
+  for (const n of raw) {
+    const v = Number(n);
+    if (Number.isInteger(v) && v >= 0 && v <= 6) set.add(v);
+  }
+  return set.size > 0 ? set : null;
+}
+
 /**
  * Enumerate occurrence local dates for a series inside the rolling window,
  * then map to timestamptz using the anchor's time-of-day in series TZ.
+ * Optional byweekday (0=Sun..6=Sat) filters daily series (weekdays / weekends).
  */
 export function enumerateOccurrences(
   series: RecurringSeriesRow,
@@ -226,10 +242,17 @@ export function enumerateOccurrences(
 
   const dates: Ymd[] = [];
 
+  const weekdayMask = normalizeByweekday(series.byweekday);
+
   if (series.cadence === 'daily') {
     let cur = { ...lower };
     while (compareYmd(cur, upper) <= 0) {
-      dates.push({ ...cur });
+      if (
+        !weekdayMask ||
+        weekdayMask.has(weekdayOfYmd(cur))
+      ) {
+        dates.push({ ...cur });
+      }
       cur = addDaysYmd(cur, 1);
     }
   } else if (series.cadence === 'weekly') {

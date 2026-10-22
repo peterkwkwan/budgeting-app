@@ -20,6 +20,8 @@ export type RecurringSeries = {
   category: TransactionCategory;
   note: string | null;
   cadence: RecurringCadence;
+  /** 0=Sun … 6=Sat; null = no weekday filter. */
+  byweekday: number[] | null;
   anchor_at: string;
   timezone: string;
   active: boolean;
@@ -34,6 +36,7 @@ export type RecurringSeriesInput = {
   category: string;
   note?: string | null;
   cadence: RecurringCadence;
+  byweekday?: number[] | null;
   anchor_at: string;
   timezone: string;
 };
@@ -45,6 +48,14 @@ export type RecurringSeriesUpdateInput = {
   note?: string | null;
 };
 
+function mapByweekday(raw: unknown): number[] | null {
+  if (!Array.isArray(raw) || raw.length === 0) return null;
+  const days = raw
+    .map((n) => Number(n))
+    .filter((n) => Number.isInteger(n) && n >= 0 && n <= 6);
+  return days.length > 0 ? days : null;
+}
+
 function mapRow(row: Record<string, unknown>): RecurringSeries {
   return {
     id: String(row.id),
@@ -54,6 +65,7 @@ function mapRow(row: Record<string, unknown>): RecurringSeries {
     category: row.category as TransactionCategory,
     note: (row.note as string | null) ?? null,
     cadence: row.cadence as RecurringCadence,
+    byweekday: mapByweekday(row.byweekday),
     anchor_at: String(row.anchor_at),
     timezone: String(row.timezone ?? 'UTC'),
     active: Boolean(row.active),
@@ -75,6 +87,17 @@ function validateCreate(input: RecurringSeriesInput): string | null {
   }
   if (!RECURRING_CADENCES.includes(input.cadence)) {
     return 'Pick daily, weekly, monthly, or yearly.';
+  }
+  if (input.byweekday != null) {
+    if (
+      !Array.isArray(input.byweekday) ||
+      input.byweekday.length === 0 ||
+      input.byweekday.some(
+        (d) => !Number.isInteger(d) || d < 0 || d > 6
+      )
+    ) {
+      return 'Weekday filter must be days 0–6.';
+    }
   }
   const note = input.note?.trim() ?? '';
   if (note.length > 500) {
@@ -163,6 +186,9 @@ export async function createRecurringSeries(
 
   const note = input.note?.trim() ? input.note.trim() : null;
 
+  const byweekday =
+    input.byweekday && input.byweekday.length > 0 ? input.byweekday : null;
+
   const { data, error } = await supabase
     .from('recurring_series')
     .insert({
@@ -172,6 +198,7 @@ export async function createRecurringSeries(
       category: input.category,
       note,
       cadence: input.cadence,
+      byweekday,
       anchor_at: input.anchor_at,
       timezone: input.timezone,
       active: true,

@@ -5,6 +5,7 @@
   - M1: `20261021020000_transactions.sql` (ledger + soft-delete + own-row RLS)
   - M2: `20261021130000_personal_stats.sql` (personal stats RPCs)
   - M3: `20261022070000_recurring_series.sql` (`recurring_series`, occurrence keys, edit-future / stop-series RPCs)
+  - M3: `20261022083000_recurring_byweekday.sql` (optional `byweekday` for weekdays / weekends)
 - `functions/`
   - `generate-recurring` — cron; all users; `RECURRING_CRON_SECRET`
   - `catch-up-recurring` — callable with user JWT; app-open catch-up

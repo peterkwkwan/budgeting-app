@@ -4,6 +4,7 @@ import DateTimePicker, {
 import { useState } from 'react';
 import {
   ActivityIndicator,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -12,13 +13,20 @@ import {
   View,
 } from 'react-native';
 
-import { CaptionText, StrongText } from '@/components/StyledText';
+import { CaptionText, StrongText, TitleText } from '@/components/StyledText';
 import { Text } from '@/components/Themed';
 import {
   categoriesForType,
   defaultCategory,
   type TransactionType,
 } from '@/constants/categories';
+import {
+  presetById,
+  REPEAT_PRESETS,
+  shortRepeatLabel,
+  type RepeatPreset,
+  type RepeatPresetId,
+} from '@/constants/repeatPresets';
 import { colors, fonts, radius, space, typography } from '@/constants/theme';
 import type { TransactionInput } from '@/lib/transactions';
 
@@ -30,12 +38,19 @@ export type TransactionFormValues = {
   occurredAt: Date;
 };
 
+/** One-off txn fields plus optional repeat mapping for Add Transaction. */
+export type TransactionFormSubmit = TransactionInput & {
+  repeat: RepeatPreset | null;
+};
+
 type Props = {
   initial?: Partial<TransactionFormValues>;
   submitLabel: string;
   busy?: boolean;
   error?: string | null;
-  onSubmit: (input: TransactionInput) => void;
+  /** When true, show Repeat beside Date (Add Transaction only). */
+  allowRepeat?: boolean;
+  onSubmit: (input: TransactionFormSubmit) => void;
   onDelete?: () => void;
   deleteBusy?: boolean;
 };
@@ -45,6 +60,7 @@ export function TransactionForm({
   submitLabel,
   busy = false,
   error = null,
+  allowRepeat = false,
   onSubmit,
   onDelete,
   deleteBusy = false,
@@ -57,7 +73,11 @@ export function TransactionForm({
   const [note, setNote] = useState(initial?.note ?? '');
   const [occurredAt, setOccurredAt] = useState(initial?.occurredAt ?? new Date());
   const [showPicker, setShowPicker] = useState(false);
+  const [repeatId, setRepeatId] = useState<RepeatPresetId>('none');
+  const [showRepeatSheet, setShowRepeatSheet] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
+
+  const repeatPreset = presetById(repeatId);
 
   function setTypeAndCategory(next: TransactionType) {
     setType(next);
@@ -88,12 +108,15 @@ export function TransactionForm({
       return;
     }
 
+    const preset = allowRepeat ? presetById(repeatId) : presetById('none');
+
     onSubmit({
       amount: Math.round(parsed * 100) / 100,
       type,
       category,
       note: note.trim() || null,
       occurred_at: occurredAt.toISOString(),
+      repeat: preset.cadence ? preset : null,
     });
   }
 
@@ -164,21 +187,49 @@ export function TransactionForm({
         })}
       </View>
 
-      <CaptionText style={styles.label}>Date</CaptionText>
-      <Pressable
-        style={styles.input}
-        onPress={() => setShowPicker(true)}
-        accessibilityRole="button"
-        accessibilityLabel="Choose date"
-      >
-        <Text style={styles.dateText}>
-          {occurredAt.toLocaleDateString(undefined, {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-          })}
-        </Text>
-      </Pressable>
+      <View style={styles.dateRepeatRow}>
+        <View style={allowRepeat ? styles.dateCol : styles.dateColFull}>
+          <CaptionText style={styles.labelTight}>Date</CaptionText>
+          <Pressable
+            style={styles.input}
+            onPress={() => setShowPicker(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Choose date"
+          >
+            <Text style={styles.dateText}>
+              {occurredAt.toLocaleDateString(undefined, {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+              })}
+            </Text>
+          </Pressable>
+        </View>
+        {allowRepeat ? (
+          <View style={styles.repeatCol}>
+            <CaptionText style={styles.labelTight}>Repeat</CaptionText>
+            <Pressable
+              style={[
+                styles.input,
+                repeatId !== 'none' && styles.repeatActive,
+              ]}
+              onPress={() => setShowRepeatSheet(true)}
+              accessibilityRole="button"
+              accessibilityLabel="Choose how often this repeats"
+            >
+              <Text
+                style={[
+                  styles.dateText,
+                  repeatId !== 'none' && styles.repeatActiveText,
+                ]}
+                numberOfLines={1}
+              >
+                {shortRepeatLabel(repeatPreset)}
+              </Text>
+            </Pressable>
+          </View>
+        ) : null}
+      </View>
       {showPicker ? (
         <DateTimePicker
           value={occurredAt}
@@ -191,6 +242,12 @@ export function TransactionForm({
         <Pressable onPress={() => setShowPicker(false)} style={styles.doneDate}>
           <StrongText style={{ color: colors.green[700] }}>Done</StrongText>
         </Pressable>
+      ) : null}
+      {allowRepeat && repeatId !== 'none' ? (
+        <CaptionText style={styles.hint}>
+          Saves as a recurring rule. Fudget adds matching ledger entries for the
+          next 90 days.
+        </CaptionText>
       ) : null}
 
       <CaptionText style={styles.label}>Note (optional)</CaptionText>
@@ -246,6 +303,67 @@ export function TransactionForm({
           )}
         </Pressable>
       ) : null}
+
+      <Modal
+        visible={showRepeatSheet}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowRepeatSheet(false)}
+      >
+        <Pressable
+          style={styles.sheetScrim}
+          onPress={() => setShowRepeatSheet(false)}
+          accessibilityLabel="Dismiss repeat options"
+        >
+          <Pressable
+            style={styles.sheet}
+            onPress={(e) => e.stopPropagation()}
+            accessibilityViewIsModal
+          >
+            <TitleText style={styles.sheetTitle}>Repeat</TitleText>
+            <CaptionText style={styles.sheetSubtitle}>
+              How often should this show up in your ledger?
+            </CaptionText>
+            <ScrollView style={styles.sheetList}>
+              {REPEAT_PRESETS.map((preset) => {
+                const selected = repeatId === preset.id;
+                return (
+                  <Pressable
+                    key={preset.id}
+                    style={[
+                      styles.sheetRow,
+                      selected && styles.sheetRowSelected,
+                    ]}
+                    onPress={() => {
+                      setRepeatId(preset.id);
+                      setShowRepeatSheet(false);
+                    }}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected }}
+                  >
+                    <StrongText
+                      style={[
+                        styles.sheetRowText,
+                        selected && styles.sheetRowTextSelected,
+                      ]}
+                    >
+                      {preset.label}
+                    </StrongText>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+            <Pressable
+              style={styles.sheetCancel}
+              onPress={() => setShowRepeatSheet(false)}
+              accessibilityRole="button"
+              accessibilityLabel="Cancel"
+            >
+              <StrongText style={{ color: colors.green[700] }}>Cancel</StrongText>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </ScrollView>
   );
 }
@@ -265,6 +383,28 @@ const styles = StyleSheet.create({
     marginTop: space.sm,
     color: colors.inkMuted,
     textTransform: 'uppercase',
+  },
+  labelTight: {
+    color: colors.inkMuted,
+    textTransform: 'uppercase',
+    marginBottom: space.xs,
+  },
+  hint: {
+    color: colors.inkMuted,
+  },
+  dateRepeatRow: {
+    flexDirection: 'row',
+    gap: space.sm,
+    alignItems: 'flex-start',
+  },
+  dateCol: {
+    flex: 1.2,
+  },
+  dateColFull: {
+    flex: 1,
+  },
+  repeatCol: {
+    flex: 1,
   },
   segment: {
     flexDirection: 'row',
@@ -299,6 +439,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     ...typography.body,
     color: colors.ink,
+  },
+  repeatActive: {
+    borderColor: colors.green[700],
+    backgroundColor: colors.green[200],
+  },
+  repeatActiveText: {
+    color: colors.green[950],
+    fontFamily: fonts.bodyStrong,
   },
   dateText: {
     ...typography.body,
@@ -384,5 +532,57 @@ const styles = StyleSheet.create({
   error: {
     ...typography.caption,
     color: colors.danger,
+  },
+  sheetScrim: {
+    flex: 1,
+    backgroundColor: colors.overlay,
+    justifyContent: 'flex-end',
+  },
+  sheet: {
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: radius.lg,
+    borderTopRightRadius: radius.lg,
+    paddingHorizontal: space.md,
+    paddingTop: space.lg,
+    paddingBottom: space.xl,
+    maxHeight: '70%',
+    borderWidth: 1,
+    borderColor: colors.green[200],
+  },
+  sheetTitle: {
+    color: colors.green[950],
+  },
+  sheetSubtitle: {
+    color: colors.inkMuted,
+    marginTop: space.xs,
+    marginBottom: space.md,
+  },
+  sheetList: {
+    maxHeight: 360,
+  },
+  sheetRow: {
+    minHeight: 48,
+    paddingVertical: space.sm + 2,
+    paddingHorizontal: space.sm,
+    borderRadius: radius.md,
+    justifyContent: 'center',
+  },
+  sheetRowSelected: {
+    backgroundColor: colors.green[50],
+  },
+  sheetRowText: {
+    color: colors.ink,
+  },
+  sheetRowTextSelected: {
+    color: colors.green[700],
+  },
+  sheetCancel: {
+    marginTop: space.md,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.green[700],
   },
 });
