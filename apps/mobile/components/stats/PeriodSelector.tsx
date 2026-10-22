@@ -21,6 +21,10 @@ type Props = {
   onCustomEndChange: (date: Date) => void;
 };
 
+function startOfDay(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
 export function PeriodSelector({
   preset,
   label,
@@ -32,6 +36,10 @@ export function PeriodSelector({
 }: Props) {
   const [picking, setPicking] = useState<'start' | 'end' | null>(null);
 
+  const today = startOfDay(new Date());
+  const fromDay = startOfDay(customStart);
+  const toDay = startOfDay(customEnd);
+
   const onPickerChange = (event: DateTimePickerEvent, date?: Date) => {
     if (Platform.OS === 'android') {
       setPicking(null);
@@ -39,15 +47,26 @@ export function PeriodSelector({
     if (event.type === 'dismissed' || !date) {
       return;
     }
+
+    const picked = startOfDay(date);
+
     if (picking === 'start') {
-      onCustomStartChange(date);
+      // Pick always takes; if From moves past To, bump To up to From.
+      onCustomStartChange(picked);
+      if (picked.getTime() > toDay.getTime()) {
+        onCustomEndChange(picked);
+      }
     } else if (picking === 'end') {
-      onCustomEndChange(date);
-    }
-    if (Platform.OS === 'ios') {
-      // keep open until user switches
+      // Pick always takes; if To moves before From, bump From down to To.
+      onCustomEndChange(picked);
+      if (picked.getTime() < fromDay.getTime()) {
+        onCustomStartChange(picked);
+      }
     }
   };
+
+  const fromMaximum = toDay.getTime() < today.getTime() ? toDay : today;
+  const toMinimum = fromDay;
 
   return (
     <View style={styles.wrap}>
@@ -107,11 +126,12 @@ export function PeriodSelector({
 
       {picking ? (
         <DateTimePicker
-          value={picking === 'start' ? customStart : customEnd}
+          value={picking === 'start' ? fromDay : toDay}
           mode="date"
           display={Platform.OS === 'ios' ? 'spinner' : 'default'}
           onChange={onPickerChange}
-          maximumDate={new Date()}
+          minimumDate={picking === 'end' ? toMinimum : undefined}
+          maximumDate={picking === 'start' ? fromMaximum : today}
         />
       ) : null}
       {picking && Platform.OS === 'ios' ? (
