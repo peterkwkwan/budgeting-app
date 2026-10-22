@@ -233,7 +233,7 @@ export function RecurringForm(props: Props) {
             accessibilityLabel="Choose start date"
           >
             <Text style={styles.dateText}>
-              {formatDisplayDate(anchorAt, timezone, 'short')}
+              {formatDisplayDate(anchorAt, timezone)}
             </Text>
           </Pressable>
           {showPicker ? (

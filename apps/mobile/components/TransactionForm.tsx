@@ -202,7 +202,7 @@ export function TransactionForm({
             accessibilityLabel="Choose date"
           >
             <Text style={styles.dateText}>
-              {formatDisplayDate(occurredAt, timeZone, 'short')}
+              {formatDisplayDate(occurredAt, timeZone)}
             </Text>
           </Pressable>
         </View>

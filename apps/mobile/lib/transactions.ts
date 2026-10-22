@@ -163,8 +163,8 @@ export function summarizeUpcomingRepeatsThisMonth(
 
   const first = items[0].occurred_at;
   const last = items[items.length - 1].occurred_at;
-  const firstLabel = formatDisplayDate(first, timeZone, 'short');
-  const lastLabel = formatDisplayDate(last, timeZone, 'short');
+  const firstLabel = formatDisplayDate(first, timeZone);
+  const lastLabel = formatDisplayDate(last, timeZone);
   const datesLabel =
     firstLabel === lastLabel ? firstLabel : `${firstLabel} – ${lastLabel}`;
 

@@ -49,13 +49,12 @@ export function localDateKey(
 }
 
 /**
- * Ledger / form date label with weekday, in account timezone.
- * Short weekday for tight meta lines: e.g. `Mon, Oct 22, 2026`.
+ * Ledger / form date label in account timezone.
+ * Full weekday + month, day only — e.g. `Monday, October 22` (no year).
  */
 export function formatDisplayDate(
   isoOrDate: string | Date,
-  timeZone: string,
-  weekday: 'short' | 'long' = 'short'
+  timeZone: string
 ): string {
   const d = typeof isoOrDate === 'string' ? new Date(isoOrDate) : isoOrDate;
   if (Number.isNaN(d.getTime())) {
@@ -63,10 +62,9 @@ export function formatDisplayDate(
   }
   const opts: Intl.DateTimeFormatOptions = {
     timeZone,
-    weekday,
-    month: 'short',
+    weekday: 'long',
+    month: 'long',
     day: 'numeric',
-    year: 'numeric',
   };
   try {
     return d.toLocaleDateString(undefined, opts);

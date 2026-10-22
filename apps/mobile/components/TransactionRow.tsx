@@ -22,7 +22,7 @@ export function TransactionRow({ transaction, onPress }: Props) {
   const timeZone = profile?.timezone || deviceTimezone();
   const amountColor =
     transaction.type === 'income' ? colors.income : colors.expense;
-  const dateLabel = formatDisplayDate(transaction.occurred_at, timeZone, 'short');
+  const dateLabel = formatDisplayDate(transaction.occurred_at, timeZone);
 
   return (
     <Pressable
