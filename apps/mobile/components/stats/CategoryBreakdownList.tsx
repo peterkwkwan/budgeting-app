@@ -9,7 +9,8 @@ import type { CategoryTotal } from '@/lib/stats';
 
 type Props = {
   data: CategoryTotal[];
-  onSelect: (row: CategoryTotal) => void;
+  /** When omitted, rows are display-only (e.g. pair aggregates — no txn drill-down). */
+  onSelect?: (row: CategoryTotal) => void;
   /** Active Stats type — drives green (income) vs rust (expense) swatches. */
   type: TransactionType;
 };
@@ -20,19 +21,17 @@ export function CategoryBreakdownList({ data, onSelect, type }: Props) {
   }
 
   const total = data.reduce((acc, row) => acc + row.sum, 0) || 1;
+  const selectable = typeof onSelect === 'function';
 
   return (
     <View style={styles.list}>
       {data.map((row, index) => {
         const pct = Math.round((row.sum / total) * 100);
-        return (
-          <Pressable
-            key={row.category}
-            onPress={() => onSelect(row)}
-            style={({ pressed }) => [styles.row, pressed && styles.pressed]}
-            accessibilityRole="button"
-            accessibilityLabel={`${row.category}, ${formatUsd(row.sum)}, ${pct} percent. Open transactions.`}
-          >
+        const label = `${row.category}, ${formatUsd(row.sum)}, ${pct} percent${
+          selectable ? '. Open transactions.' : '.'
+        }`;
+        const body = (
+          <>
             <View
               style={[
                 styles.swatch,
@@ -46,6 +45,30 @@ export function CategoryBreakdownList({ data, onSelect, type }: Props) {
               </CaptionText>
             </View>
             <StrongText style={styles.amount}>{formatUsd(row.sum)}</StrongText>
+          </>
+        );
+
+        if (!selectable) {
+          return (
+            <View
+              key={row.category}
+              style={styles.row}
+              accessibilityLabel={label}
+            >
+              {body}
+            </View>
+          );
+        }
+
+        return (
+          <Pressable
+            key={row.category}
+            onPress={() => onSelect(row)}
+            style={({ pressed }) => [styles.row, pressed && styles.pressed]}
+            accessibilityRole="button"
+            accessibilityLabel={label}
+          >
+            {body}
           </Pressable>
         );
       })}

@@ -108,6 +108,57 @@ export async function fetchPersonalTrend(
   }));
 }
 
+/** Pair category totals — server aggregates only; never partner txn rows. */
+export async function fetchAggregateCategoryTotals(
+  type: TransactionType,
+  start: Date,
+  end: Date
+): Promise<CategoryTotal[]> {
+  const { data, error } = await supabase.rpc('stats_aggregate_by_category', {
+    p_type: type,
+    p_start: start.toISOString(),
+    p_end: end.toISOString(),
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return ((data ?? []) as Record<string, unknown>[]).map((row) =>
+    mapCategoryRow(row)
+  );
+}
+
+/** Pair period totals — aggregates only. */
+export async function fetchAggregateTotals(
+  start: Date,
+  end: Date
+): Promise<PeriodTotals> {
+  const { data, error } = await supabase.rpc('stats_aggregate_totals', {
+    p_start: start.toISOString(),
+    p_end: end.toISOString(),
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const row = (Array.isArray(data) ? data[0] : data) as
+    | Record<string, unknown>
+    | undefined;
+
+  const expenseSum = Number(row?.expense_sum ?? 0);
+  const incomeSum = Number(row?.income_sum ?? 0);
+
+  return {
+    expenseSum,
+    incomeSum,
+    expenseCount: Number(row?.expense_count ?? 0),
+    incomeCount: Number(row?.income_count ?? 0),
+    net: incomeSum - expenseSum,
+  };
+}
+
 /**
  * Drill-down: own matching transactions only (RLS). Soft-deleted excluded by list.
  * Recurring: only on/before local today. One-offs: include even if future.
@@ -139,6 +190,7 @@ export async function listCategoryTransactions(params: {
 export const statsKeys = {
   all: ['stats'] as const,
   personal: () => [...statsKeys.all, 'personal'] as const,
+  aggregate: () => [...statsKeys.all, 'aggregate'] as const,
   category: (type: TransactionType, startIso: string, endIso: string) =>
     [...statsKeys.personal(), 'category', type, startIso, endIso] as const,
   totals: (startIso: string, endIso: string) =>
@@ -149,6 +201,14 @@ export const statsKeys = {
     endIso: string,
     bucket: TrendBucket
   ) => [...statsKeys.personal(), 'trend', metric, startIso, endIso, bucket] as const,
+  aggregateCategory: (
+    type: TransactionType,
+    startIso: string,
+    endIso: string
+  ) =>
+    [...statsKeys.aggregate(), 'category', type, startIso, endIso] as const,
+  aggregateTotals: (startIso: string, endIso: string) =>
+    [...statsKeys.aggregate(), 'totals', startIso, endIso] as const,
   drilldown: (
     type: TransactionType,
     category: string,

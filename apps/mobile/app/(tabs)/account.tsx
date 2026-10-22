@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router';
-import { Pressable, StyleSheet } from 'react-native';
+import { Pressable, ScrollView, StyleSheet } from 'react-native';
 
+import { PartnerSection } from '@/components/PartnerSection';
 import { CaptionText, StrongText, TitleText } from '@/components/StyledText';
 import { Text, View } from '@/components/Themed';
 import { colors, fonts, radius, space, typography } from '@/constants/theme';
@@ -11,7 +12,11 @@ export default function AccountScreen() {
   const { user, profile, signOut } = useAuth();
 
   return (
-    <View style={styles.container} lightColor={colors.green[50]} darkColor={colors.green[950]}>
+    <ScrollView
+      style={styles.scroll}
+      contentContainerStyle={styles.container}
+      keyboardShouldPersistTaps="handled"
+    >
       <TitleText style={styles.title}>Account</TitleText>
 
       <View style={styles.block} lightColor={colors.surfaceMuted} darkColor="#1a2a1f">
@@ -40,10 +45,13 @@ export default function AccountScreen() {
         </CaptionText>
       </Pressable>
 
+      <PartnerSection />
+
       <Text style={styles.note} lightColor={colors.inkMuted} darkColor={colors.green[200]}>
         Ledger data syncs from Supabase while online. Soft-deleted rows stay in
         the cloud but leave this device’s list. Recurring rules auto-add
         matching ledger entries about 90 days ahead (or until a series ends).
+        Partner stats are combined totals only — never each other’s rows.
       </Text>
 
       <Pressable
@@ -56,16 +64,20 @@ export default function AccountScreen() {
           Sign out
         </Text>
       </Pressable>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  scroll: {
     flex: 1,
+    backgroundColor: colors.green[50],
+  },
+  container: {
     paddingHorizontal: space.md,
     paddingVertical: space.lg,
     gap: space.md,
+    paddingBottom: space.xxl,
   },
   title: {
     color: colors.green[950],
@@ -108,7 +120,7 @@ const styles = StyleSheet.create({
     color: colors.inkMuted,
   },
   button: {
-    marginTop: 'auto',
+    marginTop: space.md,
     backgroundColor: colors.green[700],
     height: 48,
     borderRadius: radius.md,
