@@ -44,6 +44,12 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="recurring"
+        options={{
+          title: 'Recurring',
+        }}
+      />
+      <Tabs.Screen
         name="account"
         options={{
           title: 'Account',

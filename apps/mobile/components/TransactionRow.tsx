@@ -45,6 +45,7 @@ export function TransactionRow({ transaction, onPress }: Props) {
         <CaptionText style={styles.meta}>
           {formatOccurredAt(transaction.occurred_at)} ·{' '}
           {transaction.type === 'income' ? 'Income' : 'Expense'}
+          {transaction.recurring_series_id ? ' · Recurring' : ''}
         </CaptionText>
       </View>
       <StrongText style={[styles.amount, { color: amountColor }]}>

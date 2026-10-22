@@ -25,7 +25,8 @@ export default function AccountScreen() {
 
       <Text style={styles.note} lightColor={colors.inkMuted} darkColor={colors.green[200]}>
         Ledger data syncs from Supabase while online. Soft-deleted rows stay in
-        the cloud but leave this device’s list.
+        the cloud but leave this device’s list. Recurring rules auto-add
+        matching ledger entries for the next 90 days.
       </Text>
 
       <Pressable

@@ -1,6 +1,6 @@
 # Fudget
 
-Android-first couple budgeting app by **Kool Krib** (Expo + Supabase). App display name: **Fudget**. **M0** scaffolds Expo + Google sign-in + `profiles`. **M1** adds the ledger (`transactions` CRUD, soft-delete, multi-device sync). **M2** adds personal stats (pie + trend, default = this month). Later: recurring, partner aggregates, voice.
+Android-first couple budgeting app by **Kool Krib** (Expo + Supabase). App display name: **Fudget**. **M0** scaffolds Expo + Google sign-in + `profiles`. **M1** adds the ledger (`transactions` CRUD, soft-delete, multi-device sync). **M2** adds personal stats (pie + trend, default = this month). **M3** adds recurring rules (D/W/M/Y) with rolling 90-day auto-generation. Later: partner aggregates, voice.
 
 ## Repo layout
 
@@ -8,7 +8,7 @@ Android-first couple budgeting app by **Kool Krib** (Expo + Supabase). App displ
 apps/mobile/          # Expo Router (TypeScript) Android app
 supabase/
   migrations/         # SQL schema + RLS
-  functions/          # Edge Functions (stub for later milestones)
+  functions/          # Edge Functions (recurring generate + catch-up)
 ```
 
 ## Prerequisites
@@ -65,10 +65,34 @@ npx supabase db push
 | `supabase/migrations/20261017150000_profiles.sql` | `public.profiles` + RLS + `updated_at` + auth insert trigger |
 | `supabase/migrations/20261021020000_transactions.sql` | **M1** `public.transactions` + own-row RLS + soft-delete + indexes |
 | `supabase/migrations/20261021130000_personal_stats.sql` | **M2** personal stats RPCs (`stats_personal_*`) under RLS; own rows only |
+| `supabase/migrations/20261022070000_recurring_series.sql` | **M3** `recurring_series` + txn `occurrence_key` + edit-future / stop-series RPCs |
 
-**Founder step (M2):** after pulling this branch, run the personal stats migration in Supabase. Until it is applied, the Stats tab will error on load.
+**Founder step (M3):** after pulling this branch, run the recurring migration, deploy Edge Functions, set `RECURRING_CRON_SECRET`, and schedule hourly cron (see below). Until migration + functions are live, the Recurring tab and app-open catch-up will error.
 
-Creates ledger columns: `amount`, `type` (`expense`\|`income`), fixed `category`, optional `note` (≤500), `currency` (USD), `occurred_at`, `deleted_at`, timestamps, `user_id`. Default app queries filter `deleted_at is null`. Soft-delete updates `deleted_at` (no hard delete from the client).
+Ledger columns (M1+): `amount`, `type` (`expense`\|`income`), fixed `category`, optional `note` (≤500), `currency` (USD), `occurred_at`, `deleted_at`, timestamps, `user_id`. M3 adds `recurring_series_id` + `occurrence_key` for auto-generated rows. Default app queries filter `deleted_at is null`. Soft-delete updates `deleted_at` (no hard delete from the client). Soft-deleted recurring instances are **not** regenerated.
+
+### M3 Edge Functions + cron
+
+| Function | Trigger | Purpose |
+|----------|---------|---------|
+| `generate-recurring` | Cron (hourly recommended) | All active series → ensure instances for rolling 90d (also backfills up to 90d) |
+| `catch-up-recurring` | App open / after create | Same logic scoped to the signed-in user |
+
+```fish
+# From repo root, linked to your Supabase project:
+npx supabase db push
+npx supabase secrets set RECURRING_CRON_SECRET="$(openssl rand -hex 32)"
+npx supabase functions deploy generate-recurring
+npx supabase functions deploy catch-up-recurring
+```
+
+Schedule cron (Dashboard → Edge Functions → `generate-recurring` → Schedules, or Database → Cron):
+
+- Schedule: `0 * * * *` (hourly)
+- HTTP POST to the function URL
+- Header: `Authorization: Bearer <RECURRING_CRON_SECRET>` (same value as the secret)
+
+`generate-recurring` has `verify_jwt = false` and checks the cron secret itself. `catch-up-recurring` requires a user JWT (`verify_jwt = true`).
 
 ## Founder action checklist (Google + Supabase)
 
@@ -99,14 +123,16 @@ Do these once so sign-in works end-to-end on a physical Android device or emulat
      - Expo AuthSession redirect (printed at runtime / from `makeRedirectUri`), e.g. `exp://192.168.x.x:8081/--/auth/callback` during local dev  
      - After Dev Client: the same custom scheme `fudget://auth/callback`
 
-6. **Run migrations** — profiles (M0), transactions (M1), personal stats (M2); see above.
+6. **Run migrations** — profiles (M0), transactions (M1), personal stats (M2), recurring (M3); see above.
 
-7. **Build a Dev Client** when you leave Expo Go (required before voice STT in M5; M2 stats are View-only and do not add native chart libs).
+7. **Deploy M3 Edge Functions + cron** — see “M3 Edge Functions + cron” above.
 
-8. **Smoke test**  
-   Open the app → Continue with Google → **Ledger** tab (empty or list) → **Add** a transaction → edit / soft-delete. **Stats** tab: default **This month**, switch Week/Year/Custom, toggle expense/income pie, open a category drill-down, switch trend Expenses/Income/Net. **Account** tab shows email, display name, timezone. Pull-to-refresh or leave/return to confirm sync.
+8. **Build a Dev Client** when you leave Expo Go (required before voice STT in M5). M3 adds **no new native modules** — existing Dev Client / Expo Go reload is enough.
 
-Recurring series and partner tables land in later milestones (not in M2).
+9. **Smoke test**  
+   Open the app → Continue with Google → **Ledger** tab (empty or list) → **Add** a transaction → edit / soft-delete. **Stats** tab: default **This month**, switch Week/Year/Custom, toggle expense/income pie, open a category drill-down, switch trend Expenses/Income/Net. **Recurring** tab: add expense + income rules (daily/weekly/monthly/yearly) → confirm ledger rows appear (· Recurring) → edit series (future only) → soft-delete one instance → stop series (future gone, past remain). **Account** tab shows email, display name, timezone. Pull-to-refresh or leave/return to confirm sync.
+
+Partner aggregates land in M4; voice in M5.
 
 ## Scripts
 

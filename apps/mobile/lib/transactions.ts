@@ -12,6 +12,8 @@ export type Transaction = {
   note: string | null;
   currency: string;
   occurred_at: string;
+  recurring_series_id: string | null;
+  occurrence_key: string | null;
   deleted_at: string | null;
   created_at: string;
   updated_at: string;
@@ -35,6 +37,8 @@ function mapRow(row: Record<string, unknown>): Transaction {
     note: (row.note as string | null) ?? null,
     currency: String(row.currency ?? 'USD'),
     occurred_at: String(row.occurred_at),
+    recurring_series_id: (row.recurring_series_id as string | null) ?? null,
+    occurrence_key: (row.occurrence_key as string | null) ?? null,
     deleted_at: (row.deleted_at as string | null) ?? null,
     created_at: String(row.created_at),
     updated_at: String(row.updated_at),

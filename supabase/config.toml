@@ -14,3 +14,11 @@ major_version = 15
 enabled = true
 site_url = "fudget://auth/callback"
 additional_redirect_urls = ["fudget://auth/callback", "exp://127.0.0.1:8081"]
+
+# Cron calls with RECURRING_CRON_SECRET (not a user JWT).
+[functions.generate-recurring]
+verify_jwt = false
+
+# App-open catch-up; requires user JWT.
+[functions.catch-up-recurring]
+verify_jwt = true

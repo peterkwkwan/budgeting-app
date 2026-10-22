@@ -3,8 +3,22 @@
 - `migrations/` — SQL schema + RLS
   - M0: `20261017150000_profiles.sql`
   - M1: `20261021020000_transactions.sql` (ledger + soft-delete + own-row RLS)
-- `functions/` — Edge Functions stub (recurring / partner in later milestones)
+  - M2: `20261021130000_personal_stats.sql` (personal stats RPCs)
+  - M3: `20261022070000_recurring_series.sql` (`recurring_series`, occurrence keys, edit-future / stop-series RPCs)
+- `functions/`
+  - `generate-recurring` — cron; all users; `RECURRING_CRON_SECRET`
+  - `catch-up-recurring` — callable with user JWT; app-open catch-up
+  - `_shared/` — occurrence math + CORS helpers
 
 Apply migrations with the Supabase CLI after linking your project (see root README).
 
-**Founder (M1):** run `npx supabase db push` (or paste/run the new SQL in the Supabase SQL editor) so `public.transactions` exists before testing the Ledger tab.
+**Founder (M3):**
+
+```fish
+npx supabase db push
+npx supabase secrets set RECURRING_CRON_SECRET="$(openssl rand -hex 32)"
+npx supabase functions deploy generate-recurring
+npx supabase functions deploy catch-up-recurring
+```
+
+Then schedule hourly POST to `generate-recurring` with `Authorization: Bearer <RECURRING_CRON_SECRET>`.
