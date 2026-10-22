@@ -20,6 +20,7 @@ import {
   type TransactionType,
 } from '@/constants/categories';
 import { colors, fonts, radius, space, typography } from '@/constants/theme';
+import { formatDisplayDate } from '@/lib/dates';
 import {
   cadenceLabel,
   RECURRING_CADENCES,
@@ -232,11 +233,7 @@ export function RecurringForm(props: Props) {
             accessibilityLabel="Choose start date"
           >
             <Text style={styles.dateText}>
-              {anchorAt.toLocaleDateString(undefined, {
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric',
-              })}
+              {formatDisplayDate(anchorAt, timezone, 'short')}
             </Text>
           </Pressable>
           {showPicker ? (

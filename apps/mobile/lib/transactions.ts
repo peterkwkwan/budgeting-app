@@ -2,6 +2,7 @@ import type { TransactionCategory, TransactionType } from '@/constants/categorie
 import { isValidCategory } from '@/constants/categories';
 import {
   currentMonthBounds,
+  formatDisplayDate,
   isOnOrBeforeLocalToday,
   localDateKey,
 } from '@/lib/dates';
@@ -160,23 +161,12 @@ export function summarizeUpcomingRepeatsThisMonth(
       ? nameOrder.join(', ')
       : `${nameOrder.slice(0, 2).join(', ')} +${nameOrder.length - 2}`;
 
-  const first = localDateKey(items[0].occurred_at, timeZone);
-  const last = localDateKey(items[items.length - 1].occurred_at, timeZone);
-  const fmt = (key: string) => {
-    const [y, m, d] = key.split('-').map(Number);
-    const probe = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
-    return probe.toLocaleDateString(undefined, {
-      timeZone,
-      month: 'short',
-      day: 'numeric',
-    });
-  };
+  const first = items[0].occurred_at;
+  const last = items[items.length - 1].occurred_at;
+  const firstLabel = formatDisplayDate(first, timeZone, 'short');
+  const lastLabel = formatDisplayDate(last, timeZone, 'short');
   const datesLabel =
-    first && last
-      ? first === last
-        ? fmt(first)
-        : `${fmt(first)} – ${fmt(last)}`
-      : '';
+    firstLabel === lastLabel ? firstLabel : `${firstLabel} – ${lastLabel}`;
 
   return {
     items,

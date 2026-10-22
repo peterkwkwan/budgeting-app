@@ -28,6 +28,9 @@ import {
   type RepeatPresetId,
 } from '@/constants/repeatPresets';
 import { colors, fonts, radius, space, typography } from '@/constants/theme';
+import { useAuth } from '@/lib/auth';
+import { formatDisplayDate } from '@/lib/dates';
+import { deviceTimezone } from '@/lib/profile';
 import type { TransactionInput } from '@/lib/transactions';
 
 export type TransactionFormValues = {
@@ -76,6 +79,8 @@ export function TransactionForm({
   const [repeatId, setRepeatId] = useState<RepeatPresetId>('none');
   const [showRepeatSheet, setShowRepeatSheet] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
+  const { profile } = useAuth();
+  const timeZone = profile?.timezone || deviceTimezone();
 
   const repeatPreset = presetById(repeatId);
 
@@ -197,11 +202,7 @@ export function TransactionForm({
             accessibilityLabel="Choose date"
           >
             <Text style={styles.dateText}>
-              {occurredAt.toLocaleDateString(undefined, {
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric',
-              })}
+              {formatDisplayDate(occurredAt, timeZone, 'short')}
             </Text>
           </Pressable>
         </View>

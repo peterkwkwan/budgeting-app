@@ -48,6 +48,34 @@ export function localDateKey(
   return ymdKey(zonedYmd(d, timeZone));
 }
 
+/**
+ * Ledger / form date label with weekday, in account timezone.
+ * Short weekday for tight meta lines: e.g. `Mon, Oct 22, 2026`.
+ */
+export function formatDisplayDate(
+  isoOrDate: string | Date,
+  timeZone: string,
+  weekday: 'short' | 'long' = 'short'
+): string {
+  const d = typeof isoOrDate === 'string' ? new Date(isoOrDate) : isoOrDate;
+  if (Number.isNaN(d.getTime())) {
+    return typeof isoOrDate === 'string' ? isoOrDate : '';
+  }
+  const opts: Intl.DateTimeFormatOptions = {
+    timeZone,
+    weekday,
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  };
+  try {
+    return d.toLocaleDateString(undefined, opts);
+  } catch {
+    const { timeZone: _ignored, ...fallback } = opts;
+    return d.toLocaleDateString(undefined, fallback);
+  }
+}
+
 /** True when the event’s local calendar day is on or before today’s local day. */
 export function isOnOrBeforeLocalToday(
   occurredAt: string,

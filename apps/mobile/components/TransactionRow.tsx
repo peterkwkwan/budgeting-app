@@ -2,21 +2,14 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { CaptionText, StrongText } from '@/components/StyledText';
 import { colors, space, typography } from '@/constants/theme';
+import { useAuth } from '@/lib/auth';
+import { formatDisplayDate } from '@/lib/dates';
+import { deviceTimezone } from '@/lib/profile';
 import type { Transaction } from '@/lib/transactions';
 
 function formatAmount(txn: Transaction): string {
   const sign = txn.type === 'expense' ? '−' : '+';
   return `${sign}$${txn.amount.toFixed(2)}`;
-}
-
-function formatOccurredAt(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
 }
 
 type Props = {
@@ -25,15 +18,18 @@ type Props = {
 };
 
 export function TransactionRow({ transaction, onPress }: Props) {
+  const { profile } = useAuth();
+  const timeZone = profile?.timezone || deviceTimezone();
   const amountColor =
     transaction.type === 'income' ? colors.income : colors.expense;
+  const dateLabel = formatDisplayDate(transaction.occurred_at, timeZone, 'short');
 
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [styles.row, pressed && styles.pressed]}
       accessibilityRole="button"
-      accessibilityLabel={`${transaction.category}, ${formatAmount(transaction)}`}
+      accessibilityLabel={`${transaction.category}, ${formatAmount(transaction)}, ${dateLabel}`}
     >
       <View style={styles.left}>
         <StrongText style={styles.category}>{transaction.category}</StrongText>
@@ -43,7 +39,7 @@ export function TransactionRow({ transaction, onPress }: Props) {
           </CaptionText>
         ) : null}
         <CaptionText style={styles.meta}>
-          {formatOccurredAt(transaction.occurred_at)} ·{' '}
+          {dateLabel} ·{' '}
           {transaction.type === 'income' ? 'Income' : 'Expense'}
           {transaction.recurring_series_id ? ' · Recurring' : ''}
         </CaptionText>
