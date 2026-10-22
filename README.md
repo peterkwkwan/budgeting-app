@@ -1,6 +1,6 @@
 # Fudget
 
-Android-first couple budgeting app by **Kool Krib** (Expo + Supabase). App display name: **Fudget**. **M0** scaffolds Expo + Google sign-in + `profiles`. **M1** adds the ledger (`transactions` CRUD, soft-delete, multi-device sync). Later: stats, recurring, partner aggregates, voice.
+Android-first couple budgeting app by **Kool Krib** (Expo + Supabase). App display name: **Fudget**. **M0** scaffolds Expo + Google sign-in + `profiles`. **M1** adds the ledger (`transactions` CRUD, soft-delete, multi-device sync). **M2** adds personal stats (pie + trend, default = this month). Later: recurring, partner aggregates, voice.
 
 ## Repo layout
 
@@ -49,6 +49,8 @@ Profiles in `apps/mobile/eas.json`:
 | `preview`     | Internal APK for testers                     |
 | `production`  | Play App Bundle (internal track submit later)|
 
+**Dev Client Android note (M2):** the `development` profile builds **arm64-v8a only** (physical Pixel / most Android devices) and caps Gradle workers for free-tier EAS. Stats charts are View-only (no Skia). It will not install on classic x86_64 emulators unless you temporarily set `ORG_GRADLE_PROJECT_reactNativeArchitectures=x86_64` for a one-off build.
+
 ## Apply SQL migrations
 
 With the [Supabase CLI](https://supabase.com/docs/guides/cli) linked to your project:
@@ -62,8 +64,9 @@ npx supabase db push
 |-----------|----------------|
 | `supabase/migrations/20261017150000_profiles.sql` | `public.profiles` + RLS + `updated_at` + auth insert trigger |
 | `supabase/migrations/20261021020000_transactions.sql` | **M1** `public.transactions` + own-row RLS + soft-delete + indexes |
+| `supabase/migrations/20261021130000_personal_stats.sql` | **M2** personal stats RPCs (`stats_personal_*`) under RLS; own rows only |
 
-**Founder step (M1):** after pulling this branch, run the new transactions migration in Supabase (same flow as profiles). Until it is applied, ledger screens will error on load/save.
+**Founder step (M2):** after pulling this branch, run the personal stats migration in Supabase. Until it is applied, the Stats tab will error on load.
 
 Creates ledger columns: `amount`, `type` (`expense`\|`income`), fixed `category`, optional `note` (≤500), `currency` (USD), `occurred_at`, `deleted_at`, timestamps, `user_id`. Default app queries filter `deleted_at is null`. Soft-delete updates `deleted_at` (no hard delete from the client).
 
@@ -96,14 +99,14 @@ Do these once so sign-in works end-to-end on a physical Android device or emulat
      - Expo AuthSession redirect (printed at runtime / from `makeRedirectUri`), e.g. `exp://192.168.x.x:8081/--/auth/callback` during local dev  
      - After Dev Client: the same custom scheme `fudget://auth/callback`
 
-6. **Run migrations** — profiles (M0) then transactions (M1); see above.
+6. **Run migrations** — profiles (M0), transactions (M1), personal stats (M2); see above.
 
-7. **Build a Dev Client** when you leave Expo Go (required before voice STT).
+7. **Build a Dev Client** when you leave Expo Go (required before voice STT in M5; M2 stats are View-only and do not add native chart libs).
 
 8. **Smoke test**  
-   Open the app → Continue with Google → **Ledger** tab (empty or list) → **Add** a transaction → edit / soft-delete. **Account** tab shows email, display name, timezone. Pull-to-refresh or leave/return to the Ledger tab to confirm sync.
+   Open the app → Continue with Google → **Ledger** tab (empty or list) → **Add** a transaction → edit / soft-delete. **Stats** tab: default **This month**, switch Week/Year/Custom, toggle expense/income pie, open a category drill-down, switch trend Expenses/Income/Net. **Account** tab shows email, display name, timezone. Pull-to-refresh or leave/return to confirm sync.
 
-Recurring series and partner tables land in later milestones (not in M1).
+Recurring series and partner tables land in later milestones (not in M2).
 
 ## Scripts
 
