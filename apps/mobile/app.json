@@ -56,6 +56,18 @@
           "resizeMode": "contain",
           "backgroundColor": "#0f1c14"
         }
+      ],
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Fudget uses the microphone so you can speak a transaction draft.",
+          "speechRecognitionPermission": "Fudget turns your speech into a draft you can check before saving.",
+          "androidSpeechServicePackages": [
+            "com.google.android.googlequicksearchbox",
+            "com.google.android.as",
+            "com.google.android.tts"
+          ]
+        }
       ]
     ],
     "experiments": {

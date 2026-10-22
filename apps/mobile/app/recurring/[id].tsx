@@ -3,13 +3,14 @@ import { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Pressable,
   StyleSheet,
   View,
 } from 'react-native';
 
-import { CaptionText, TitleText } from '@/components/StyledText';
+import { CaptionText, StrongText, TitleText } from '@/components/StyledText';
 import { RecurringForm } from '@/components/RecurringForm';
-import { colors, space } from '@/constants/theme';
+import { colors, radius, space } from '@/constants/theme';
 import {
   useRecurringSeries,
   useStopRecurringSeries,
@@ -79,8 +80,19 @@ export default function EditRecurringScreen() {
         <CaptionText style={{ color: colors.inkMuted, textAlign: 'center' }}>
           {error instanceof Error
             ? error.message
-            : 'This recurring rule may have been removed.'}
+            : 'This recurring rule may have been stopped or removed.'}
         </CaptionText>
+        <Pressable
+          style={({ pressed }) => [
+            styles.backBtn,
+            pressed && styles.backBtnPressed,
+          ]}
+          onPress={() => router.back()}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+        >
+          <StrongText style={{ color: colors.green[700] }}>Back</StrongText>
+        </Pressable>
       </View>
     );
   }
@@ -130,5 +142,18 @@ const styles = StyleSheet.create({
     padding: space.lg,
     gap: space.sm,
     backgroundColor: colors.green[50],
+  },
+  backBtn: {
+    marginTop: space.sm,
+    height: 40,
+    paddingHorizontal: space.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.green[700],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backBtnPressed: {
+    backgroundColor: colors.surfaceMuted,
   },
 });
