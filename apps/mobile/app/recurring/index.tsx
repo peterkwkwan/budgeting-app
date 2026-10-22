@@ -50,9 +50,7 @@ export default function RecurringManageScreen() {
           keyExtractor={(item) => item.id}
           ListHeaderComponent={
             <CaptionText style={styles.hint}>
-              To add a new repeat, use Ledger → Add → Repeat (presets or Custom
-              with an end date). Tap a rule to edit ends / amounts or stop the
-              series. Ledger rows are written about 90 days ahead.
+              Tap a rule to edit or stop the series.
             </CaptionText>
           }
           renderItem={({ item }) => (
