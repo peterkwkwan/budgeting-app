@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { CaptionText, StrongText } from '@/components/StyledText';
+import type { TransactionType } from '@/constants/categories';
 import { colorForCategory } from '@/constants/chartColors';
 import { colors, radius, space, typography } from '@/constants/theme';
 import type { CategoryTotal } from '@/lib/stats';
@@ -8,13 +9,15 @@ import type { CategoryTotal } from '@/lib/stats';
 type Props = {
   data: CategoryTotal[];
   onSelect: (row: CategoryTotal) => void;
+  /** Active Stats type — drives green (income) vs rust (expense) swatches. */
+  type: TransactionType;
 };
 
 function formatMoney(n: number): string {
   return `$${n.toFixed(2)}`;
 }
 
-export function CategoryBreakdownList({ data, onSelect }: Props) {
+export function CategoryBreakdownList({ data, onSelect, type }: Props) {
   if (data.length === 0) {
     return null;
   }
@@ -34,7 +37,10 @@ export function CategoryBreakdownList({ data, onSelect }: Props) {
             accessibilityLabel={`${row.category}, ${formatMoney(row.sum)}, ${pct} percent. Open transactions.`}
           >
             <View
-              style={[styles.swatch, { backgroundColor: colorForCategory(index) }]}
+              style={[
+                styles.swatch,
+                { backgroundColor: colorForCategory(index, type) },
+              ]}
             />
             <View style={styles.mid}>
               <StrongText style={styles.category}>{row.category}</StrongText>

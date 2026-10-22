@@ -15,6 +15,7 @@ import { PeriodSelector } from '@/components/stats/PeriodSelector';
 import { TrendLineChart } from '@/components/stats/TrendLineChart';
 import { CaptionText, StrongText, TitleText } from '@/components/StyledText';
 import type { TransactionType } from '@/constants/categories';
+import { trendStrokeForMetric } from '@/constants/chartColors';
 import { colors, fonts, radius, space, typography } from '@/constants/theme';
 import { usePersonalStats, usePersonalTrend } from '@/hooks/useStats';
 import { useAuth } from '@/lib/auth';
@@ -90,8 +91,17 @@ export default function StatsScreen() {
         customStart={customStart}
         customEnd={customEnd}
         onPresetChange={setPreset}
-        onCustomStartChange={setCustomStart}
-        onCustomEndChange={setCustomEnd}
+        onCustomStartChange={(date) => {
+          setCustomStart(date);
+          // Safety clamp if picker constraints are ignored on a platform.
+          setCustomEnd((end) => (date.getTime() > end.getTime() ? date : end));
+        }}
+        onCustomEndChange={(date) => {
+          setCustomEnd(date);
+          setCustomStart((start) =>
+            date.getTime() < start.getTime() ? date : start
+          );
+        }}
       />
 
       {loading ? (
@@ -173,6 +183,7 @@ export default function StatsScreen() {
 
             <CategoryPieChart
               data={categories.data ?? []}
+              type={pieType}
               emptyLabel={
                 pieType === 'expense'
                   ? 'No expenses in this period.'
@@ -182,6 +193,7 @@ export default function StatsScreen() {
 
             <CategoryBreakdownList
               data={categories.data ?? []}
+              type={pieType}
               onSelect={(row) => {
                 router.push({
                   pathname: '/stats/category',
@@ -235,13 +247,7 @@ export default function StatsScreen() {
               <TrendLineChart
                 data={trend.data ?? []}
                 emptyLabel="No trend data for this period."
-                strokeColor={
-                  trendMetric === 'income'
-                    ? colors.income
-                    : trendMetric === 'net'
-                      ? colors.green[400]
-                      : colors.expense
-                }
+                strokeColor={trendStrokeForMetric(trendMetric)}
               />
             )}
             <CaptionText style={styles.hint}>

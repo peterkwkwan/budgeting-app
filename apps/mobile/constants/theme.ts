@@ -10,6 +10,14 @@ export const colors = {
     200: '#b2e0d4',
     50: '#e0f7f1',
   },
+  /** Warm rust scale for expense charts (spend). */
+  rust: {
+    950: '#7c2d12',
+    700: '#9a3412',
+    500: '#c2410c',
+    400: '#ea580c',
+    200: '#fdba74',
+  },
   ink: '#0a1f14',
   inkMuted: '#3d5c4a',
   inkInverse: '#ffffff',
@@ -17,9 +25,12 @@ export const colors = {
   surfaceMuted: '#f3faf7',
   danger: '#b42318',
   warning: '#b54708',
+  /** Ledger / totals amount color for income (aligns with green.700). */
   income: '#007a33',
+  /** Ledger / totals amount color for expense (aligns with rust.700). */
   expense: '#9a3412',
   overlay: 'rgba(10, 31, 20, 0.45)',
+  /** @deprecated Use colors.rust[500] — kept for any stray imports. */
   chartWarm: '#c2410c',
 } as const;
 

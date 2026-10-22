@@ -1,6 +1,7 @@
 import { StyleSheet, View } from 'react-native';
 
 import { CaptionText } from '@/components/StyledText';
+import type { TransactionType } from '@/constants/categories';
 import { colorForCategory } from '@/constants/chartColors';
 import { colors, space } from '@/constants/theme';
 import type { CategoryTotal } from '@/lib/stats';
@@ -8,6 +9,8 @@ import type { CategoryTotal } from '@/lib/stats';
 type Props = {
   data: CategoryTotal[];
   emptyLabel: string;
+  /** Active Stats type — drives green (income) vs rust (expense) wedges. */
+  type: TransactionType;
 };
 
 const SIZE = 200;
@@ -15,7 +18,7 @@ const INNER_RATIO = 0.56;
 /** Radial wedges — View-only donut (no Skia / SVG). */
 const WEDGES = 90;
 
-export function CategoryPieChart({ data, emptyLabel }: Props) {
+export function CategoryPieChart({ data, emptyLabel, type }: Props) {
   if (data.length === 0) {
     return (
       <View style={styles.empty}>
@@ -29,7 +32,7 @@ export function CategoryPieChart({ data, emptyLabel }: Props) {
   let cumulative = 0;
   data.forEach((row, index) => {
     cumulative += row.sum / total;
-    stops.push({ end: cumulative, color: colorForCategory(index) });
+    stops.push({ end: cumulative, color: colorForCategory(index, type) });
   });
 
   const colorAt = (t: number): string => {
