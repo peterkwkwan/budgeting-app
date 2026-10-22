@@ -48,7 +48,7 @@ export default function LedgerScreen() {
             upcoming ? (
               <UpcomingRepeatsBar
                 summary={upcoming}
-                onPress={() => router.push('/(tabs)/recurring')}
+                onPress={() => router.push('/recurring')}
               />
             ) : undefined
           }

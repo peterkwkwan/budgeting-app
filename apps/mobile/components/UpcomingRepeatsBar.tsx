@@ -31,7 +31,7 @@ export function UpcomingRepeatsBar({ summary, onPress }: Props) {
       onPress={onPress}
       style={({ pressed }) => [styles.bar, pressed && styles.pressed]}
       accessibilityRole="button"
-      accessibilityLabel={`Upcoming repeats this month. ${summary.namesLabel}. ${totalsLine}. Open recurring rules.`}
+      accessibilityLabel={`Upcoming repeats this month. ${summary.namesLabel}. ${totalsLine}. Manage recurring rules.`}
     >
       <View style={styles.textCol}>
         <StrongText style={styles.title}>Upcoming repeats</StrongText>
@@ -43,7 +43,7 @@ export function UpcomingRepeatsBar({ summary, onPress }: Props) {
           {summary.count} this month · {totalsLine}
         </CaptionText>
       </View>
-      <CaptionText style={styles.chevron}>Recurring</CaptionText>
+      <CaptionText style={styles.chevron}>Manage</CaptionText>
     </Pressable>
   );
 }

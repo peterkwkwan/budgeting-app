@@ -69,7 +69,7 @@ npx supabase db push
 | `supabase/migrations/20261022083000_recurring_byweekday.sql` | **M3** optional `byweekday` mask (weekdays / weekends presets) |
 | `supabase/migrations/20261022090000_stats_recurring_today.sql` | **M3** stats: recurring only on/before local today; one-offs may be future |
 
-**Founder step (M3):** after pulling this branch, run the recurring migration, deploy Edge Functions, set `RECURRING_CRON_SECRET`, and schedule hourly cron (see below). Until migration + functions are live, the Recurring tab and app-open catch-up will error.
+**Founder step (M3):** after pulling this branch, run the recurring migrations, deploy Edge Functions, set `RECURRING_CRON_SECRET`, and schedule hourly cron (see below). Until migrations + functions are live, Add → Repeat / catch-up will error. Recurring is **not** a bottom tab — create via Add transaction → Repeat; manage via Upcoming repeats or Account → Recurring rules.
 
 Ledger columns (M1+): `amount`, `type` (`expense`\|`income`), fixed `category`, optional `note` (≤500), `currency` (USD), `occurred_at`, `deleted_at`, timestamps, `user_id`. M3 adds `recurring_series_id` + `occurrence_key` for auto-generated rows. Default app queries filter `deleted_at is null`. Soft-delete updates `deleted_at` (no hard delete from the client). Soft-deleted recurring instances are **not** regenerated.
 
@@ -132,7 +132,7 @@ Do these once so sign-in works end-to-end on a physical Android device or emulat
 8. **Build a Dev Client** when you leave Expo Go (required before voice STT in M5). M3 adds **no new native modules** — existing Dev Client / Expo Go reload is enough.
 
 9. **Smoke test**  
-   Open the app → Continue with Google → **Ledger** tab (empty or list) → **Add** a transaction → edit / soft-delete. **Stats** tab: default **This month**, switch Week/Year/Custom, toggle expense/income pie, open a category drill-down, switch trend Expenses/Income/Net. **Recurring** tab: add expense + income rules (daily/weekly/monthly/yearly) → confirm ledger rows appear (· Recurring) → edit series (future only) → soft-delete one instance → stop series (future gone, past remain). **Account** tab shows email, display name, timezone. Pull-to-refresh or leave/return to confirm sync.
+   Open the app → Continue with Google → **Ledger** tab → **Add** → set **Repeat** (e.g. weekdays) → Save → confirm ledger rows (· Recurring) and **Upcoming repeats** bar → tap bar to manage rules (edit future / stop series). One-off Add without Repeat still works. **Stats** tab: default **This month**, etc. **Account** → Recurring rules also opens manage. Soft-delete one instance; stop series from the rule screen. Bottom tabs are Ledger / Stats / Account only.
 
 Partner aggregates land in M4; voice in M5.
 

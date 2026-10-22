@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import {
   ActivityIndicator,
   FlatList,
@@ -12,13 +12,18 @@ import { RecurringRow } from '@/components/RecurringRow';
 import { colors, fonts, radius, space, typography } from '@/constants/theme';
 import { useRecurringList } from '@/hooks/useRecurring';
 
-export default function RecurringListScreen() {
+/**
+ * Manage recurring rules (stack screen — not a bottom tab).
+ * Create new rules via Ledger → Add → Repeat.
+ */
+export default function RecurringManageScreen() {
   const router = useRouter();
   const { data, isLoading, isError, error, refetch, isRefetching } =
     useRecurringList();
 
   return (
     <View style={styles.container}>
+      <Stack.Screen options={{ title: 'Recurring rules' }} />
       {isLoading ? (
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={colors.green[700]} />
@@ -43,6 +48,12 @@ export default function RecurringListScreen() {
         <FlatList
           data={data ?? []}
           keyExtractor={(item) => item.id}
+          ListHeaderComponent={
+            <CaptionText style={styles.hint}>
+              To add a new repeat, use Ledger → Add → Repeat. Tap a rule below to
+              edit future entries or stop the series.
+            </CaptionText>
+          }
           renderItem={({ item }) => (
             <RecurringRow
               series={item}
@@ -58,22 +69,24 @@ export default function RecurringListScreen() {
             <View style={styles.empty}>
               <TitleText style={styles.emptyTitle}>No recurring rules</TitleText>
               <CaptionText style={styles.emptyBody}>
-                Set up rent, salary, or other repeats. Fudget adds matching
-                ledger entries for the next 90 days automatically.
+                From Ledger, tap Add and choose Repeat beside the date. Fudget
+                fills matching ledger entries for the next 90 days.
               </CaptionText>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.secondary,
+                  pressed && styles.secondaryPressed,
+                ]}
+                onPress={() => router.push('/transaction/new')}
+              >
+                <CaptionText style={styles.secondaryText}>
+                  Add transaction
+                </CaptionText>
+              </Pressable>
             </View>
           }
         />
       )}
-
-      <Pressable
-        style={({ pressed }) => [styles.fab, pressed && styles.fabPressed]}
-        onPress={() => router.push('/recurring/new')}
-        accessibilityRole="button"
-        accessibilityLabel="Add recurring rule"
-      >
-        <TitleText style={styles.fabText}>Add</TitleText>
-      </Pressable>
     </View>
   );
 }
@@ -83,13 +96,19 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.green[50],
   },
+  hint: {
+    paddingHorizontal: space.md,
+    paddingTop: space.md,
+    paddingBottom: space.sm,
+    color: colors.inkMuted,
+  },
   list: {
-    paddingBottom: 96,
+    paddingBottom: space.xxl,
   },
   emptyList: {
     flexGrow: 1,
     justifyContent: 'center',
-    paddingBottom: 96,
+    paddingBottom: space.xxl,
   },
   centered: {
     flex: 1,
@@ -130,27 +149,5 @@ const styles = StyleSheet.create({
   secondaryText: {
     color: colors.green[700],
     fontFamily: fonts.bodyStrong,
-  },
-  fab: {
-    position: 'absolute',
-    right: space.md,
-    bottom: space.lg,
-    minWidth: 88,
-    height: 48,
-    paddingHorizontal: space.md,
-    borderRadius: radius.md,
-    backgroundColor: colors.green[700],
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  fabPressed: {
-    backgroundColor: colors.green[950],
-    transform: [{ scale: 0.98 }],
-  },
-  fabText: {
-    color: colors.inkInverse,
-    fontFamily: fonts.bodyStrong,
-    fontSize: 16,
-    lineHeight: 24,
   },
 });

@@ -3,16 +3,17 @@ import { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Pressable,
   StyleSheet,
   View,
 } from 'react-native';
 
-import { CaptionText, TitleText } from '@/components/StyledText';
+import { CaptionText, StrongText, TitleText } from '@/components/StyledText';
 import {
   TransactionForm,
   type TransactionFormSubmit,
 } from '@/components/TransactionForm';
-import { colors, space } from '@/constants/theme';
+import { colors, radius, space } from '@/constants/theme';
 import {
   useSoftDeleteTransaction,
   useTransaction,
@@ -95,6 +96,26 @@ export default function EditTransactionScreen() {
   return (
     <View style={styles.container}>
       <Stack.Screen options={{ title: 'Edit transaction' }} />
+      {data.recurring_series_id ? (
+        <Pressable
+          style={({ pressed }) => [
+            styles.seriesLink,
+            pressed && styles.seriesLinkPressed,
+          ]}
+          onPress={() =>
+            router.push(`/recurring/${data.recurring_series_id}`)
+          }
+          accessibilityRole="button"
+          accessibilityLabel="Edit or stop this recurring rule"
+        >
+          <StrongText style={styles.seriesLinkTitle}>
+            Part of a recurring rule
+          </StrongText>
+          <CaptionText style={styles.seriesLinkMeta}>
+            Edit future entries or stop the series
+          </CaptionText>
+        </Pressable>
+      ) : null}
       <TransactionForm
         initial={{
           amount: String(data.amount),
@@ -118,6 +139,25 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.green[50],
+  },
+  seriesLink: {
+    marginHorizontal: space.md,
+    marginTop: space.md,
+    padding: space.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.green[200],
+    backgroundColor: colors.surfaceMuted,
+    gap: 2,
+  },
+  seriesLinkPressed: {
+    backgroundColor: colors.green[200],
+  },
+  seriesLinkTitle: {
+    color: colors.green[700],
+  },
+  seriesLinkMeta: {
+    color: colors.inkMuted,
   },
   centered: {
     flex: 1,

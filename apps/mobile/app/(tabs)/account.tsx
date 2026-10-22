@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import { Pressable, StyleSheet } from 'react-native';
 
 import { CaptionText, StrongText, TitleText } from '@/components/StyledText';
@@ -6,6 +7,7 @@ import { colors, fonts, radius, space, typography } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 
 export default function AccountScreen() {
+  const router = useRouter();
   const { user, profile, signOut } = useAuth();
 
   return (
@@ -22,6 +24,21 @@ export default function AccountScreen() {
         <CaptionText style={styles.label}>Timezone</CaptionText>
         <StrongText style={styles.value}>{profile?.timezone ?? '—'}</StrongText>
       </View>
+
+      <Pressable
+        style={({ pressed }) => [
+          styles.linkRow,
+          pressed && styles.linkRowPressed,
+        ]}
+        onPress={() => router.push('/recurring')}
+        accessibilityRole="button"
+        accessibilityLabel="Manage recurring rules"
+      >
+        <StrongText style={styles.linkTitle}>Recurring rules</StrongText>
+        <CaptionText style={styles.linkMeta}>
+          Edit or stop series · add new ones from Ledger → Add → Repeat
+        </CaptionText>
+      </Pressable>
 
       <Text style={styles.note} lightColor={colors.inkMuted} darkColor={colors.green[200]}>
         Ledger data syncs from Supabase while online. Soft-deleted rows stay in
@@ -72,6 +89,23 @@ const styles = StyleSheet.create({
     ...typography.body,
     fontSize: 14,
     lineHeight: 20,
+  },
+  linkRow: {
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.green[200],
+    backgroundColor: colors.surface,
+    padding: space.md,
+    gap: space.xs,
+  },
+  linkRowPressed: {
+    backgroundColor: colors.surfaceMuted,
+  },
+  linkTitle: {
+    color: colors.green[700],
+  },
+  linkMeta: {
+    color: colors.inkMuted,
   },
   button: {
     marginTop: 'auto',
