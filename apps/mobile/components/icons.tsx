@@ -222,6 +222,90 @@ export function MicIcon({ color, size = 22, style }: IconProps) {
   );
 }
 
+/** Trash can for selection-mode bulk delete. */
+export function TrashIcon({ color, size = 22, style }: IconProps) {
+  const stroke = Math.max(1.5, size * 0.08);
+  return (
+    <View style={[{ width: size, height: size }, style]}>
+      <View
+        style={{
+          position: 'absolute',
+          left: size * 0.22,
+          right: size * 0.22,
+          top: size * 0.28,
+          bottom: size * 0.12,
+          borderWidth: stroke,
+          borderTopWidth: 0,
+          borderBottomLeftRadius: size * 0.08,
+          borderBottomRightRadius: size * 0.08,
+          borderColor: color,
+        }}
+      />
+      <View
+        style={{
+          position: 'absolute',
+          left: size * 0.18,
+          right: size * 0.18,
+          top: size * 0.22,
+          height: stroke,
+          borderRadius: stroke,
+          backgroundColor: color,
+        }}
+      />
+      <View
+        style={{
+          position: 'absolute',
+          left: size * 0.36,
+          right: size * 0.36,
+          top: size * 0.1,
+          height: size * 0.12,
+          borderTopLeftRadius: size * 0.06,
+          borderTopRightRadius: size * 0.06,
+          borderWidth: stroke,
+          borderBottomWidth: 0,
+          borderColor: color,
+        }}
+      />
+      <View
+        style={{
+          position: 'absolute',
+          left: (size - stroke) / 2,
+          top: size * 0.4,
+          width: stroke,
+          height: size * 0.32,
+          borderRadius: stroke,
+          backgroundColor: color,
+        }}
+      />
+    </View>
+  );
+}
+
+/** Vertical ⋮ overflow for selection-mode bulk actions. */
+export function MoreIcon({ color, size = 22, style }: IconProps) {
+  const dot = Math.max(2.5, size * 0.14);
+  const gap = size * 0.22;
+  const startY = (size - (3 * dot + 2 * gap)) / 2;
+  return (
+    <View style={[{ width: size, height: size }, style]}>
+      {[0, 1, 2].map((i) => (
+        <View
+          key={i}
+          style={{
+            position: 'absolute',
+            left: (size - dot) / 2,
+            top: startY + i * (dot + gap),
+            width: dot,
+            height: dot,
+            borderRadius: dot / 2,
+            backgroundColor: color,
+          }}
+        />
+      ))}
+    </View>
+  );
+}
+
 /** Small calendar glyph for Period date fields. */
 export function CalendarIcon({ color, size = 16, style }: IconProps) {
   const stroke = Math.max(1.25, size * 0.08);

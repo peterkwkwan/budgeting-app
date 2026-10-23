@@ -16,9 +16,18 @@ function formatAmount(txn: Transaction): string {
 type Props = {
   transaction: Transaction;
   onPress: () => void;
+  onLongPress?: () => void;
+  selected?: boolean;
+  selectionMode?: boolean;
 };
 
-export function TransactionRow({ transaction, onPress }: Props) {
+export function TransactionRow({
+  transaction,
+  onPress,
+  onLongPress,
+  selected = false,
+  selectionMode = false,
+}: Props) {
   const { profile } = useAuth();
   const timeZone = profile?.timezone || deviceTimezone();
   const amountColor =
@@ -28,10 +37,26 @@ export function TransactionRow({ transaction, onPress }: Props) {
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => [styles.row, pressed && styles.pressed]}
+      onLongPress={onLongPress}
+      delayLongPress={600}
+      style={({ pressed }) => [
+        styles.row,
+        selected && styles.selected,
+        pressed && !selected && styles.pressed,
+      ]}
       accessibilityRole="button"
-      accessibilityLabel={`${transaction.category}, ${formatAmount(transaction)}, ${dateLabel}`}
+      accessibilityState={{ selected: selectionMode ? selected : undefined }}
+      accessibilityLabel={`${transaction.category}, ${formatAmount(transaction)}, ${dateLabel}${
+        selectionMode ? (selected ? ', selected' : ', not selected') : ''
+      }`}
     >
+      {selectionMode ? (
+        <View
+          style={[styles.check, selected && styles.checkSelected]}
+          accessibilityElementsHidden
+          importantForAccessibility="no"
+        />
+      ) : null}
       <View style={styles.left}>
         <StrongText style={styles.category}>{transaction.category}</StrongText>
         {transaction.note ? (
@@ -63,8 +88,26 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
+  selected: {
+    backgroundColor: colors.green[50],
+    borderBottomColor: colors.green[200],
+  },
   pressed: {
     backgroundColor: colors.surfaceMuted,
+  },
+  check: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.canvas,
+  },
+  checkSelected: {
+    borderColor: colors.green[700],
+    backgroundColor: colors.green[700],
   },
   left: {
     flex: 1,

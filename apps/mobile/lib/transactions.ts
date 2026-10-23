@@ -296,6 +296,56 @@ export async function softDeleteTransaction(id: string): Promise<void> {
   }
 }
 
+/** Soft-delete many rows with the same policy as single-delete. */
+export async function softDeleteTransactions(ids: string[]): Promise<void> {
+  const unique = [...new Set(ids.filter(Boolean))];
+  if (unique.length === 0) return;
+  await Promise.all(unique.map((id) => softDeleteTransaction(id)));
+}
+
+export type TransactionBulkPatch = {
+  occurred_at?: string;
+  category?: string;
+  note?: string | null;
+};
+
+/**
+ * Apply one shared field value to each row. Keeps amount/type/(other fields)
+ * from the provided snapshots so validation still matches single-edit rules.
+ */
+export async function bulkPatchTransactions(
+  rows: Transaction[],
+  patch: TransactionBulkPatch
+): Promise<void> {
+  if (rows.length === 0) return;
+  if (
+    patch.occurred_at === undefined &&
+    patch.category === undefined &&
+    patch.note === undefined
+  ) {
+    return;
+  }
+
+  await Promise.all(
+    rows.map((row) => {
+      const category = patch.category ?? row.category;
+      const type = row.type;
+      if (patch.category !== undefined && !isValidCategory(type, category)) {
+        throw new Error(
+          `“${category}” is not valid for ${type === 'income' ? 'income' : 'expense'} transactions.`
+        );
+      }
+      return updateTransaction(row.id, {
+        amount: row.amount,
+        type,
+        category,
+        note: patch.note !== undefined ? patch.note : row.note,
+        occurred_at: patch.occurred_at ?? row.occurred_at,
+      });
+    })
+  );
+}
+
 export const transactionKeys = {
   all: ['transactions'] as const,
   list: () => [...transactionKeys.all, 'list'] as const,
