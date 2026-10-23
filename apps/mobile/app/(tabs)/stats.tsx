@@ -16,6 +16,7 @@ import {
 import { CategoryBreakdownList } from '@/components/stats/CategoryBreakdownList';
 import { CategoryPieChart } from '@/components/stats/CategoryPieChart';
 import { PeriodSelector } from '@/components/stats/PeriodSelector';
+import { StatsEmptyState } from '@/components/stats/StatsEmptyState';
 import { TrendLineChart } from '@/components/stats/TrendLineChart';
 import { CaptionText, StrongText, TitleText } from '@/components/StyledText';
 import type { TransactionType } from '@/constants/categories';
@@ -30,6 +31,7 @@ import {
 } from '@/hooks/useStats';
 import { useAuth } from '@/lib/auth';
 import { formatUsd } from '@/lib/money';
+import { guardedPush } from '@/lib/navGuard';
 import {
   PeriodNavHeader,
   periodNavScreenOptions,
@@ -41,6 +43,8 @@ import {
   type PeriodPreset,
 } from '@/lib/periods';
 import type { StatsMetric } from '@/lib/stats';
+
+const ADD_TRANSACTION = '/transaction/new';
 
 function formatMoney(n: number): string {
   const sign = n < 0 ? '−' : '';
@@ -151,6 +155,18 @@ export default function StatsScreen() {
       trend.error.message) ||
     null;
 
+  const txnCount =
+    (totals.data?.expenseCount ?? 0) + (totals.data?.incomeCount ?? 0);
+  const isPeriodEmpty = !loading && !error && txnCount === 0;
+
+  // Fresh each render so midnight / timezone wall-clock stays correct.
+  const currentFocus = currentPeriodFocus(timeZone);
+  /** Already on current calendar month in Monthly — omit secondary CTA. */
+  const onCurrentMonthMonthly =
+    preset === 'month' &&
+    focus.year === currentFocus.year &&
+    focus.month === currentFocus.month;
+
   const onRefresh = () => {
     void partnerLink.refetch();
     void totals.refetch();
@@ -160,11 +176,19 @@ export default function StatsScreen() {
     }
   };
 
+  const goToThisMonth = () => {
+    setPreset('month');
+    setFocus(currentPeriodFocus(timeZone));
+  };
+
   return (
     <ScrollEdgeHost edges={edges} style={styles.container}>
     <ScrollView
       style={styles.scroll}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[
+        styles.content,
+        isPeriodEmpty && styles.contentEmpty,
+      ]}
       {...scrollProps}
       refreshControl={
         <RefreshControl
@@ -231,6 +255,15 @@ export default function StatsScreen() {
             <CaptionText style={styles.secondaryText}>Try again</CaptionText>
           </Pressable>
         </View>
+      ) : isPeriodEmpty ? (
+        <StatsEmptyState
+          periodLabel={period.navLabel}
+          preset={preset}
+          onAddTransaction={() => guardedPush(router, ADD_TRANSACTION)}
+          onGoToThisMonth={
+            onCurrentMonthMonthly ? undefined : goToThisMonth
+          }
+        />
       ) : (
         <>
           <View style={styles.totals}>
@@ -388,6 +421,9 @@ const styles = StyleSheet.create({
     paddingTop: space.md,
     paddingBottom: space.xxl,
     gap: space.lg,
+  },
+  contentEmpty: {
+    flexGrow: 1,
   },
   scopeRow: {
     flexDirection: 'row',
