@@ -333,23 +333,27 @@ export default function TransactionsScreen() {
     );
   }
 
+  const monthHasTransactions = (data?.length ?? 0) > 0;
+
   const sharedHeader = (
     <View>
-      <DateViewToggle value={dateView} onChange={setDateView} />
+      {monthHasTransactions ? (
+        <DateViewToggle value={dateView} onChange={setDateView} />
+      ) : null}
       {upcoming ? (
         <UpcomingRepeatsBar
           summary={upcoming}
           onPress={() => router.push('/recurring')}
         />
       ) : null}
-      {dateView === 'week' ? (
+      {monthHasTransactions && dateView === 'week' ? (
         <WeekDayStrip
           focus={focus}
           selectedDay={selectedDay}
           onSelectDay={setSelectedDay}
         />
       ) : null}
-      {dateView === 'month' ? (
+      {monthHasTransactions && dateView === 'month' ? (
         <MonthDayCalendar
           focus={focus}
           selectedDay={selectedDay}
@@ -357,7 +361,8 @@ export default function TransactionsScreen() {
           onSelectDay={setSelectedDay}
         />
       ) : null}
-      {dateView === 'week' || dateView === 'month' ? (
+      {monthHasTransactions &&
+      (dateView === 'week' || dateView === 'month') ? (
         <View style={styles.dayHeading}>
           <StrongText style={styles.dayHeadingText}>
             {selectedDayHeading}
