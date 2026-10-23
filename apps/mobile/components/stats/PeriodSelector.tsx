@@ -378,24 +378,25 @@ const styles = StyleSheet.create({
   modeTrigger: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 2,
-    paddingVertical: 6,
-    paddingHorizontal: 8,
+    gap: 3,
+    // Slightly larger tap target (Stats-only); keep compact, not oversized.
+    paddingVertical: 8,
+    paddingHorizontal: 10,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radius.sm,
     backgroundColor: colors.surface,
-    minHeight: 32,
+    minHeight: 36,
   },
   modeTriggerText: {
     color: colors.green[700],
     fontFamily: fonts.bodyStrong,
-    fontSize: 13,
+    fontSize: 14,
   },
   modeCaret: {
     color: colors.green[700],
-    fontSize: 11,
-    lineHeight: 14,
+    fontSize: 12,
+    lineHeight: 16,
   },
   pressed: {
     opacity: 0.75,
