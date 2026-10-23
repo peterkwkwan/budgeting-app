@@ -1,14 +1,16 @@
 import DateTimePicker, {
   type DateTimePickerEvent,
 } from '@react-native-community/datetimepicker';
-import { useState } from 'react';
+import { useRef, useState, type ComponentRef } from 'react';
 import {
+  Dimensions,
   Modal,
   Platform,
   Pressable,
   StyleSheet,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CalendarIcon } from '@/components/icons';
 import { CaptionText, StrongText } from '@/components/StyledText';
@@ -56,7 +58,10 @@ export function PeriodSelector({
   onCustomEndChange,
   showModeMenu = true,
 }: PeriodSelectorProps) {
+  const insets = useSafeAreaInsets();
+  const modeTriggerRef = useRef<ComponentRef<typeof View>>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [menuAnchor, setMenuAnchor] = useState({ top: 0, right: 0 });
   const [picking, setPicking] = useState<'start' | 'end' | null>(null);
 
   const today = startOfDay(new Date());
@@ -66,6 +71,30 @@ export function PeriodSelector({
   const canGoNext =
     effectivePreset !== 'custom' &&
     canShiftPeriodFocusForward(focus, effectivePreset, timeZone);
+
+  const openModeMenu = () => {
+    const fallbackTop = insets.top + 52;
+    const node = modeTriggerRef.current as
+      | (ComponentRef<typeof View> & {
+          measureInWindow?: (
+            cb: (x: number, y: number, width: number, height: number) => void
+          ) => void;
+        })
+      | null;
+    if (!node?.measureInWindow) {
+      setMenuAnchor({ top: fallbackTop, right: space.md });
+      setMenuOpen(true);
+      return;
+    }
+    node.measureInWindow((x, y, width, height) => {
+      const screenW = Dimensions.get('window').width;
+      setMenuAnchor({
+        top: y + height + 4,
+        right: Math.max(space.sm, screenW - (x + width)),
+      });
+      setMenuOpen(true);
+    });
+  };
 
   const onPickerChange = (event: DateTimePickerEvent, date?: Date) => {
     if (Platform.OS === 'android') {
@@ -100,7 +129,11 @@ export function PeriodSelector({
 
   return (
     <View style={styles.wrap}>
-      <View style={styles.bar} accessibilityRole="toolbar" accessibilityLabel="Period navigation">
+      <View
+        style={[styles.bar, showModeMenu && styles.barWithMode]}
+        accessibilityRole="toolbar"
+        accessibilityLabel="Period navigation"
+      >
         {effectivePreset === 'custom' ? (
           <View style={styles.periodRange} accessibilityRole="text">
             <Pressable
@@ -180,21 +213,23 @@ export function PeriodSelector({
         )}
 
         {showModeMenu ? (
-          <Pressable
-            style={({ pressed }) => [
-              styles.modeTrigger,
-              pressed && styles.pressed,
-            ]}
-            onPress={() => setMenuOpen(true)}
-            accessibilityRole="button"
-            accessibilityLabel={`Period mode ${periodModeLabel(preset)}. Change mode.`}
-            accessibilityHint="Opens Monthly, Yearly, or Period options"
-          >
-            <CaptionText style={styles.modeTriggerText}>
-              {periodModeLabel(preset)}
-            </CaptionText>
-            <CaptionText style={styles.modeCaret}>▾</CaptionText>
-          </Pressable>
+          <View ref={modeTriggerRef} collapsable={false}>
+            <Pressable
+              style={({ pressed }) => [
+                styles.modeTrigger,
+                pressed && styles.pressed,
+              ]}
+              onPress={openModeMenu}
+              accessibilityRole="button"
+              accessibilityLabel={`Period mode ${periodModeLabel(preset)}. Change mode.`}
+              accessibilityHint="Opens Monthly, Yearly, or Period options"
+            >
+              <CaptionText style={styles.modeTriggerText}>
+                {periodModeLabel(preset)}
+              </CaptionText>
+              <CaptionText style={styles.modeCaret}>▾</CaptionText>
+            </Pressable>
+          </View>
         ) : null}
       </View>
 
@@ -211,7 +246,17 @@ export function PeriodSelector({
             accessibilityRole="button"
             accessibilityLabel="Dismiss period mode menu"
           >
-            <Pressable style={styles.menuSheet} accessibilityRole="menu">
+            <Pressable
+              style={[
+                styles.menuSheet,
+                {
+                  position: 'absolute',
+                  top: menuAnchor.top,
+                  right: menuAnchor.right,
+                },
+              ]}
+              accessibilityRole="menu"
+            >
               {periodModeOptions().map((opt, index, arr) => {
                 const selected = preset === opt.value;
                 const last = index === arr.length - 1;
@@ -276,7 +321,7 @@ const styles = StyleSheet.create({
     gap: space.xs,
   },
   bar: {
-    // Left-packed cluster: ‹ label › [Monthly] — gear stays outside (header trailing).
+    // Transactions (no mode): left-packed ‹ label ›.
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-start',
@@ -284,6 +329,11 @@ const styles = StyleSheet.create({
     gap: space.sm,
     minHeight: 36,
     alignSelf: 'stretch',
+    width: '100%',
+  },
+  barWithMode: {
+    // Stats: left = chevrons/label or dates; right = [Monthly] (gear is outside).
+    justifyContent: 'space-between',
   },
   stepper: {
     flexDirection: 'row',
@@ -374,19 +424,25 @@ const styles = StyleSheet.create({
   },
   menuBackdrop: {
     flex: 1,
-    backgroundColor: colors.overlay,
-    justifyContent: 'flex-end',
-    padding: space.md,
+    // Light dim only — menu is top-anchored under the trigger, not a bottom sheet.
+    backgroundColor: 'rgba(28, 28, 30, 0.2)',
   },
   menuSheet: {
     backgroundColor: colors.surface,
-    borderRadius: radius.lg,
+    borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,
     overflow: 'hidden',
+    minWidth: 148,
+    // Soft elevation so it reads as a compact header menu.
+    shadowColor: '#000',
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
   },
   menuItem: {
-    paddingVertical: space.md,
+    paddingVertical: space.sm + 4,
     paddingHorizontal: space.md,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
