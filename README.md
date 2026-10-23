@@ -84,6 +84,9 @@ npx supabase db push
 | `supabase/migrations/20261023120000_planner.sql` | **Planner P0** `planner_vehicles` + `planner_goals` + `planner_contribution_events` (own-row RLS; soft-delete vehicles/goals) |
 | `supabase/migrations/20261023130000_planner_vehicle_compound_period.sql` | **Planner P0** `planner_vehicles.compound_period` (`monthly` \| `yearly`, default yearly) |
 | `supabase/migrations/20261023140000_planner_goal_vehicles.sql` | **Planner P0** `planner_goal_vehicles` join (goal ↔ vehicles; progress = sum of linked balances) |
+| `supabase/migrations/20261023160000_transactions_date_view.sql` | **Transactions** `profiles.transactions_date_view` (`list` \| `week` \| `month`, default `month`) |
+
+**Founder step (Transactions date views):** apply `20261023160000_transactions_date_view.sql` (`npx supabase db push`). No Edge Functions. **EAS rebuild: no.** Until applied, List · Week · Month toggle still works in-session; saving the preference fails until the column exists.
 
 **Founder step (Planner P0):** apply planner migrations through `20261023140000` (`npx supabase db push`). No new Edge Functions. Until applied, the Planner tab’s goals/vehicles CRUD will error. **EAS rebuild: no** (JS + SQL; View-only projection chart). Contributions stay Planner-local (do **not** create Transactions). Tab order: Transactions · Add FAB · Stats · Planner · Account. Vehicles use plain-language yearly growth/interest labels + Monthly/Yearly compounding (default Yearly).
 

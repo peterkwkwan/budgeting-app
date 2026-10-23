@@ -20,6 +20,8 @@ type Props = {
   onLongPress?: () => void;
   selected?: boolean;
   selectionMode?: boolean;
+  /** When grouped under a day heading, omit the date from the meta line. */
+  hideDate?: boolean;
 };
 
 export function TransactionRow({
@@ -28,12 +30,20 @@ export function TransactionRow({
   onLongPress,
   selected = false,
   selectionMode = false,
+  hideDate = false,
 }: Props) {
   const { profile } = useAuth();
   const timeZone = profile?.timezone || deviceTimezone();
   const amountColor =
     transaction.type === 'income' ? colors.income : colors.expense;
   const dateLabel = formatDisplayDate(transaction.occurred_at, timeZone);
+  const typeLabel =
+    transaction.type === 'income' ? 'Income' : 'Expense';
+  const metaParts = [
+    ...(hideDate ? [] : [dateLabel]),
+    typeLabel,
+    ...(transaction.recurring_series_id ? ['Recurring'] : []),
+  ];
   /** RN (esp. web/emulator) often fires onPress on finger-up after onLongPress. */
   const suppressPressAfterLongPress = useRef(false);
 
@@ -80,11 +90,7 @@ export function TransactionRow({
             {transaction.note}
           </CaptionText>
         ) : null}
-        <CaptionText style={styles.meta}>
-          {dateLabel} ·{' '}
-          {transaction.type === 'income' ? 'Income' : 'Expense'}
-          {transaction.recurring_series_id ? ' · Recurring' : ''}
-        </CaptionText>
+        <CaptionText style={styles.meta}>{metaParts.join(' · ')}</CaptionText>
       </View>
       <StrongText style={[styles.amount, { color: amountColor }]}>
         {formatAmount(transaction)}

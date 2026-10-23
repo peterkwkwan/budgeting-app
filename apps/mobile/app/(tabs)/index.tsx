@@ -1,11 +1,19 @@
 import { useNavigation, useRouter } from 'expo-router';
-import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   ActivityIndicator,
   Alert,
   FlatList,
   Modal,
   Pressable,
+  SectionList,
   StyleSheet,
   View,
 } from 'react-native';
@@ -14,6 +22,8 @@ import {
   BulkEditSheet,
   type BulkEditField,
 } from '@/components/BulkEditSheet';
+import { DateViewToggle } from '@/components/DateViewToggle';
+import { MonthDayCalendar } from '@/components/MonthDayCalendar';
 import {
   ScrollEdgeHost,
   useScrollEdges,
@@ -23,6 +33,7 @@ import { CaptionText, StrongText, TitleText } from '@/components/StyledText';
 import { TransactionRow } from '@/components/TransactionRow';
 import { TxnSelectionHeader } from '@/components/TxnSelectionHeader';
 import { UpcomingRepeatsBar } from '@/components/UpcomingRepeatsBar';
+import { WeekDayStrip } from '@/components/WeekDayStrip';
 import { colors, fonts, radius, space, typography } from '@/constants/theme';
 import {
   useBulkPatchTransactions,
@@ -39,17 +50,39 @@ import {
   resolvePeriodBounds,
   type PeriodFocus,
 } from '@/lib/periods';
+import {
+  DEFAULT_TRANSACTIONS_DATE_VIEW,
+  parseTransactionsDateView,
+  updateTransactionsDateView,
+  type TransactionsDateView,
+} from '@/lib/profile';
+import { zonedYmd } from '@/lib/dates';
+import {
+  clampDayInMonth,
+  daysWithTransactions,
+  defaultSelectedDay,
+  filterTransactionsForDay,
+  formatFocusDayHeading,
+  groupTransactionsByDay,
+} from '@/lib/transactionsDateView';
 import type { Transaction } from '@/lib/transactions';
 
 export default function TransactionsScreen() {
   const router = useRouter();
   const navigation = useNavigation();
-  const { profile } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
   const timeZone = profile?.timezone || 'UTC';
 
   const [focus, setFocus] = useState<PeriodFocus>(() =>
     currentPeriodFocus(timeZone)
   );
+  const [dateView, setDateView] = useState<TransactionsDateView>(
+    DEFAULT_TRANSACTIONS_DATE_VIEW
+  );
+  const [selectedDay, setSelectedDay] = useState(() =>
+    defaultSelectedDay(currentPeriodFocus(timeZone), timeZone)
+  );
+  const dateViewHydrated = useRef(false);
 
   const period = useMemo(
     () => resolvePeriodBounds('month', timeZone, { focus }),
@@ -70,10 +103,71 @@ export default function TransactionsScreen() {
   const busy = bulkDelete.isPending || bulkPatch.isPending;
   const { edges, scrollProps } = useScrollEdges();
 
+  // Load persisted preference once profile is available.
+  useEffect(() => {
+    if (!profile || dateViewHydrated.current) return;
+    setDateView(parseTransactionsDateView(profile.transactions_date_view));
+    dateViewHydrated.current = true;
+  }, [profile]);
+
+  // Persist preference (debounced) when the user toggles.
+  useEffect(() => {
+    if (!user?.id || !dateViewHydrated.current) return;
+    if (
+      parseTransactionsDateView(profile?.transactions_date_view) === dateView
+    ) {
+      return;
+    }
+    const handle = setTimeout(() => {
+      void updateTransactionsDateView(user.id, dateView)
+        .then(() => refreshProfile())
+        .catch((err: unknown) => {
+          console.warn(
+            '[transactions] date view save failed',
+            err instanceof Error ? err.message : err
+          );
+        });
+    }, 400);
+    return () => clearTimeout(handle);
+  }, [dateView, user?.id, profile?.transactions_date_view, refreshProfile]);
+
+  // Month ‹ ›: jump to today when focus is the current month; else clamp.
+  useEffect(() => {
+    setSelectedDay((prev) => {
+      const today = zonedYmd(new Date(), timeZone);
+      if (today.year === focus.year && today.month === focus.month) {
+        return today.day;
+      }
+      return clampDayInMonth(focus.year, focus.month, prev);
+    });
+  }, [focus.year, focus.month, timeZone]);
+
+  const daySections = useMemo(
+    () => groupTransactionsByDay(data ?? [], timeZone),
+    [data, timeZone]
+  );
+
+  const daysWithTx = useMemo(
+    () => daysWithTransactions(data ?? [], focus, timeZone),
+    [data, focus, timeZone]
+  );
+
+  const dayRows = useMemo(
+    () =>
+      filterTransactionsForDay(data ?? [], focus, selectedDay, timeZone),
+    [data, focus, selectedDay, timeZone]
+  );
+
+  const selectedDayHeading = useMemo(
+    () => formatFocusDayHeading(focus, selectedDay, timeZone),
+    [focus, selectedDay, timeZone]
+  );
+
+  const listForSelection = dateView === 'list' ? (data ?? []) : dayRows;
+
   const selectedRows = useMemo(() => {
-    const list = data ?? [];
-    return list.filter((t) => selectedIds.has(t.id));
-  }, [data, selectedIds]);
+    return listForSelection.filter((t) => selectedIds.has(t.id));
+  }, [listForSelection, selectedIds]);
 
   const exitSelection = useCallback(() => {
     setSelectionMode(false);
@@ -107,7 +201,7 @@ export default function TransactionsScreen() {
   // Drop ids that left the visible list (e.g. after delete / period change).
   useEffect(() => {
     if (!selectionMode) return;
-    const visible = new Set((data ?? []).map((t) => t.id));
+    const visible = new Set(listForSelection.map((t) => t.id));
     setSelectedIds((prev) => {
       let changed = false;
       const next = new Set<string>();
@@ -117,7 +211,7 @@ export default function TransactionsScreen() {
       }
       return changed ? next : prev;
     });
-  }, [data, selectionMode]);
+  }, [listForSelection, selectionMode]);
 
   const confirmDelete = useCallback(() => {
     const ids = [...selectedIds];
@@ -224,6 +318,90 @@ export default function TransactionsScreen() {
     router.push(`/transaction/${item.id}`);
   }
 
+  function renderRow(item: Transaction) {
+    return (
+      <TransactionRow
+        transaction={item}
+        hideDate
+        selectionMode={selectionMode}
+        selected={selectedIds.has(item.id)}
+        onPress={() => onRowPress(item)}
+        onLongPress={() => {
+          if (!selectionMode) enterSelection(item.id);
+        }}
+      />
+    );
+  }
+
+  const sharedHeader = (
+    <View>
+      <DateViewToggle value={dateView} onChange={setDateView} />
+      {upcoming ? (
+        <UpcomingRepeatsBar
+          summary={upcoming}
+          onPress={() => router.push('/recurring')}
+        />
+      ) : null}
+      {dateView === 'week' ? (
+        <WeekDayStrip
+          focus={focus}
+          selectedDay={selectedDay}
+          onSelectDay={setSelectedDay}
+        />
+      ) : null}
+      {dateView === 'month' ? (
+        <MonthDayCalendar
+          focus={focus}
+          selectedDay={selectedDay}
+          daysWithTx={daysWithTx}
+          onSelectDay={setSelectedDay}
+        />
+      ) : null}
+      {dateView === 'week' || dateView === 'month' ? (
+        <View style={styles.dayHeading}>
+          <StrongText style={styles.dayHeadingText}>
+            {selectedDayHeading}
+          </StrongText>
+        </View>
+      ) : null}
+    </View>
+  );
+
+  const emptyMonth = (
+    <View style={styles.empty}>
+      <TitleText style={styles.emptyTitle}>
+        No transactions in {period.navLabel}
+      </TitleText>
+      <CaptionText style={styles.emptyBody}>
+        Tap + to add an expense or income. On the Add screen you can type it, or
+        tap the mic to speak a draft before saving. It syncs for every device on
+        this account.
+      </CaptionText>
+    </View>
+  );
+
+  const emptyDay = (
+    <View style={styles.emptyDay}>
+      <CaptionText style={styles.emptyBody}>
+        No transactions this day
+      </CaptionText>
+    </View>
+  );
+
+  const emptyListBody =
+    (data?.length ?? 0) === 0 ? (
+      upcoming ? (
+        <View style={styles.emptyBelowBar}>
+          <CaptionText style={styles.emptyBody}>
+            No transactions for today or earlier in {period.navLabel}. Upcoming
+            repeats are listed above.
+          </CaptionText>
+        </View>
+      ) : (
+        emptyMonth
+      )
+    ) : undefined;
+
   return (
     <View style={styles.container}>
       {isLoading ? (
@@ -250,60 +428,59 @@ export default function TransactionsScreen() {
         </View>
       ) : (
         <ScrollEdgeHost edges={edges}>
-          <FlatList
-            data={data ?? []}
-            keyExtractor={(item) => item.id}
-            {...scrollProps}
-            ListHeaderComponent={
-              upcoming ? (
-                <UpcomingRepeatsBar
-                  summary={upcoming}
-                  onPress={() => router.push('/recurring')}
-                />
-              ) : undefined
-            }
-            renderItem={({ item }) => (
-              <TransactionRow
-                transaction={item}
-                selectionMode={selectionMode}
-                selected={selectedIds.has(item.id)}
-                onPress={() => onRowPress(item)}
-                onLongPress={() => {
-                  // Keep handler mounted while selecting so mid-gesture
-                  // re-renders don’t drop onLongPress and synthesize a press.
-                  if (!selectionMode) enterSelection(item.id);
-                }}
-              />
-            )}
-            refreshing={isRefetching}
-            onRefresh={() => void refetch()}
-            contentContainerStyle={
-              (data?.length ?? 0) === 0 && !upcoming
-                ? styles.emptyList
-                : styles.list
-            }
-            ListEmptyComponent={
-              upcoming ? (
-                <View style={styles.emptyBelowBar}>
-                  <CaptionText style={styles.emptyBody}>
-                    No transactions for today or earlier in {period.navLabel}.
-                    Upcoming repeats are listed above.
-                  </CaptionText>
+          {dateView === 'list' ? (
+            <SectionList
+              sections={daySections}
+              keyExtractor={(item) => item.id}
+              {...scrollProps}
+              stickySectionHeadersEnabled
+              ListHeaderComponent={sharedHeader}
+              renderSectionHeader={({ section }) => (
+                <View style={styles.sectionHeader}>
+                  <StrongText style={styles.sectionHeaderText}>
+                    {section.title}
+                  </StrongText>
                 </View>
-              ) : (
-                <View style={styles.empty}>
-                  <TitleText style={styles.emptyTitle}>
-                    No transactions in {period.navLabel}
-                  </TitleText>
-                  <CaptionText style={styles.emptyBody}>
-                    Tap + to add an expense or income. On the Add screen you can
-                    type it, or tap the mic to speak a draft before saving. It
-                    syncs for every device on this account.
-                  </CaptionText>
-                </View>
-              )
-            }
-          />
+              )}
+              renderItem={({ item }) => renderRow(item)}
+              refreshing={isRefetching}
+              onRefresh={() => void refetch()}
+              contentContainerStyle={
+                daySections.length === 0 ? styles.emptyList : styles.list
+              }
+              ListEmptyComponent={emptyListBody}
+            />
+          ) : (
+            <FlatList
+              data={dayRows}
+              keyExtractor={(item) => item.id}
+              {...scrollProps}
+              ListHeaderComponent={sharedHeader}
+              renderItem={({ item }) => renderRow(item)}
+              refreshing={isRefetching}
+              onRefresh={() => void refetch()}
+              contentContainerStyle={
+                dayRows.length === 0 && (data?.length ?? 0) === 0 && !upcoming
+                  ? styles.emptyList
+                  : styles.list
+              }
+              ListEmptyComponent={
+                (data?.length ?? 0) === 0 && !upcoming
+                  ? emptyMonth
+                  : (data?.length ?? 0) === 0 && upcoming
+                    ? (
+                        <View style={styles.emptyBelowBar}>
+                          <CaptionText style={styles.emptyBody}>
+                            No transactions for today or earlier in{' '}
+                            {period.navLabel}. Upcoming repeats are listed
+                            above.
+                          </CaptionText>
+                        </View>
+                      )
+                    : emptyDay
+              }
+            />
+          )}
         </ScrollEdgeHost>
       )}
 
@@ -372,6 +549,36 @@ const styles = StyleSheet.create({
   emptyBelowBar: {
     paddingHorizontal: space.xl,
     paddingTop: space.lg,
+  },
+  emptyDay: {
+    paddingHorizontal: space.xl,
+    paddingVertical: space.lg,
+  },
+  dayHeading: {
+    paddingHorizontal: space.md,
+    paddingTop: space.sm + 2,
+    paddingBottom: space.xs,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+  },
+  dayHeadingText: {
+    color: colors.green[700],
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  sectionHeader: {
+    paddingHorizontal: space.md,
+    paddingVertical: space.sm,
+    backgroundColor: colors.surfaceMuted,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  sectionHeaderText: {
+    color: colors.green[700],
+    fontSize: 13,
+    lineHeight: 18,
   },
   centered: {
     flex: 1,
