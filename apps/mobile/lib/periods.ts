@@ -1,21 +1,39 @@
-/** Period helpers for personal stats (default = this calendar month). */
+/** Period helpers for personal stats (default = focused calendar month). */
 
-export type PeriodPreset = 'week' | 'month' | 'year' | 'custom';
+export type PeriodPreset = 'month' | 'year' | 'custom';
+
+/** Focused month/year for Monthly and Yearly navigation. Month is 1–12. */
+export type PeriodFocus = {
+  year: number;
+  month: number;
+};
 
 export type PeriodBounds = {
   preset: PeriodPreset;
   start: Date;
   end: Date;
+  /** Full range label (drill-down, accessibility). */
   label: string;
+  /** Compact center label for Monthly / Yearly top nav. */
+  navLabel: string;
 };
 
 export type TrendBucket = 'day' | 'week' | 'month';
 
-const PRESET_LABELS: Record<Exclude<PeriodPreset, 'custom'>, string> = {
-  week: 'This week',
-  month: 'This month',
-  year: 'This year',
-};
+const MONTH_NAMES = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+] as const;
 
 /** Parts of `date` in an IANA timezone (fallback: device local). */
 function zonedParts(
@@ -123,54 +141,143 @@ function formatRangeLabel(start: Date, endExclusive: Date, timeZone: string): st
   }
 }
 
-/** Default / preset period bounds in the account timezone. End is exclusive. */
+function monthNavLabel(focus: PeriodFocus, timeZone: string, now: Date): string {
+  const name = MONTH_NAMES[focus.month - 1] ?? `M${focus.month}`;
+  const current = zonedParts(now, timeZone);
+  // Include year when the focused month is outside the current calendar year.
+  if (focus.year !== current.year) {
+    return `${name} ${focus.year}`;
+  }
+  return name;
+}
+
+/** Current calendar month/year in the account timezone. */
+export function currentPeriodFocus(
+  timeZone: string,
+  now: Date = new Date()
+): PeriodFocus {
+  const parts = zonedParts(now, timeZone);
+  return { year: parts.year, month: parts.month };
+}
+
+/** Step focused month (±1) or year (±1). */
+export function shiftPeriodFocus(
+  focus: PeriodFocus,
+  preset: 'month' | 'year',
+  delta: number
+): PeriodFocus {
+  if (preset === 'year') {
+    return { year: focus.year + delta, month: focus.month };
+  }
+  const idx = focus.year * 12 + (focus.month - 1) + delta;
+  const year = Math.floor(idx / 12);
+  const month = (idx % 12) + 1;
+  return { year, month };
+}
+
+/** True when next would move past the current month/year (no future periods). */
+export function canShiftPeriodFocusForward(
+  focus: PeriodFocus,
+  preset: 'month' | 'year',
+  timeZone: string,
+  now: Date = new Date()
+): boolean {
+  const current = currentPeriodFocus(timeZone, now);
+  if (preset === 'year') {
+    return focus.year < current.year;
+  }
+  return (
+    focus.year < current.year ||
+    (focus.year === current.year && focus.month < current.month)
+  );
+}
+
+/** Compact date for Period mode fields — e.g. `1/1/26`. */
+export function formatCompactDate(date: Date, timeZone: string): string {
+  const { year, month, day } = zonedParts(date, timeZone);
+  const yy = String(year).slice(-2);
+  return `${month}/${day}/${yy}`;
+}
+
+export function periodModeLabel(preset: PeriodPreset): string {
+  switch (preset) {
+    case 'month':
+      return 'Monthly';
+    case 'year':
+      return 'Yearly';
+    case 'custom':
+      return 'Period';
+  }
+}
+
+export function periodModeOptions(): { value: PeriodPreset; label: string }[] {
+  return [
+    { value: 'month', label: 'Monthly' },
+    { value: 'year', label: 'Yearly' },
+    { value: 'custom', label: 'Period' },
+  ];
+}
+
+/** Default / mode period bounds in the account timezone. End is exclusive. */
 export function resolvePeriodBounds(
   preset: PeriodPreset,
   timeZone: string,
-  customStart?: Date,
-  customEndInclusive?: Date
+  options?: {
+    focus?: PeriodFocus;
+    customStart?: Date;
+    customEndInclusive?: Date;
+    now?: Date;
+  }
 ): PeriodBounds {
-  const now = new Date();
-  const parts = zonedParts(now, timeZone);
+  const now = options?.now ?? new Date();
+  const focus = options?.focus ?? currentPeriodFocus(timeZone, now);
 
   if (preset === 'custom') {
+    const customStart = options?.customStart;
+    const customEndInclusive = options?.customEndInclusive;
     if (!customStart || !customEndInclusive) {
-      return resolvePeriodBounds('month', timeZone);
+      return resolvePeriodBounds('month', timeZone, { focus, now });
     }
     const s = zonedParts(customStart, timeZone);
     const e = zonedParts(customEndInclusive, timeZone);
     const start = zonedMidnight(s.year, s.month, s.day, timeZone);
     const endDay = addDays(e.year, e.month, e.day, 1);
     const end = zonedMidnight(endDay.year, endDay.month, endDay.day, timeZone);
+    const label = formatRangeLabel(start, end, timeZone);
     return {
       preset: 'custom',
       start,
       end,
-      label: formatRangeLabel(start, end, timeZone),
+      label,
+      navLabel: label,
     };
   }
 
-  if (preset === 'week') {
-    const daysFromMonday = (parts.weekday + 6) % 7;
-    const startDay = addDays(parts.year, parts.month, parts.day, -daysFromMonday);
-    const endDay = addDays(startDay.year, startDay.month, startDay.day, 7);
-    const start = zonedMidnight(startDay.year, startDay.month, startDay.day, timeZone);
-    const end = zonedMidnight(endDay.year, endDay.month, endDay.day, timeZone);
-    return { preset, start, end, label: PRESET_LABELS.week };
-  }
-
   if (preset === 'year') {
-    const start = zonedMidnight(parts.year, 1, 1, timeZone);
-    const end = zonedMidnight(parts.year + 1, 1, 1, timeZone);
-    return { preset, start, end, label: PRESET_LABELS.year };
+    const start = zonedMidnight(focus.year, 1, 1, timeZone);
+    const end = zonedMidnight(focus.year + 1, 1, 1, timeZone);
+    const navLabel = String(focus.year);
+    return {
+      preset: 'year',
+      start,
+      end,
+      label: formatRangeLabel(start, end, timeZone),
+      navLabel,
+    };
   }
 
   // month (default)
-  const start = zonedMidnight(parts.year, parts.month, 1, timeZone);
-  const endMonth = parts.month === 12 ? 1 : parts.month + 1;
-  const endYear = parts.month === 12 ? parts.year + 1 : parts.year;
+  const start = zonedMidnight(focus.year, focus.month, 1, timeZone);
+  const endMonth = focus.month === 12 ? 1 : focus.month + 1;
+  const endYear = focus.month === 12 ? focus.year + 1 : focus.year;
   const end = zonedMidnight(endYear, endMonth, 1, timeZone);
-  return { preset: 'month', start, end, label: PRESET_LABELS.month };
+  return {
+    preset: 'month',
+    start,
+    end,
+    label: formatRangeLabel(start, end, timeZone),
+    navLabel: monthNavLabel(focus, timeZone, now),
+  };
 }
 
 /** Pick trend bucket size from period length. */
@@ -179,13 +286,4 @@ export function trendBucketForPeriod(start: Date, end: Date): TrendBucket {
   if (days <= 45) return 'day';
   if (days <= 180) return 'week';
   return 'month';
-}
-
-export function periodPresetOptions(): { value: PeriodPreset; label: string }[] {
-  return [
-    { value: 'week', label: 'Week' },
-    { value: 'month', label: 'Month' },
-    { value: 'year', label: 'Year' },
-    { value: 'custom', label: 'Custom' },
-  ];
 }

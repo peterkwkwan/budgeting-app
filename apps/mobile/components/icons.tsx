@@ -189,3 +189,56 @@ export function MicIcon({ color, size = 22, style }: IconProps) {
     </View>
   );
 }
+
+/** Small calendar glyph for Period date fields. */
+export function CalendarIcon({ color, size = 16, style }: IconProps) {
+  const stroke = Math.max(1.25, size * 0.08);
+  return (
+    <View style={[{ width: size, height: size }, style]}>
+      <View
+        style={{
+          position: 'absolute',
+          left: size * 0.12,
+          right: size * 0.12,
+          top: size * 0.22,
+          bottom: size * 0.08,
+          borderWidth: stroke,
+          borderRadius: size * 0.12,
+          borderColor: color,
+        }}
+      />
+      <View
+        style={{
+          position: 'absolute',
+          left: size * 0.12,
+          right: size * 0.12,
+          top: size * 0.38,
+          height: stroke,
+          backgroundColor: color,
+        }}
+      />
+      <View
+        style={{
+          position: 'absolute',
+          left: size * 0.28,
+          top: size * 0.08,
+          width: stroke,
+          height: size * 0.22,
+          borderRadius: stroke,
+          backgroundColor: color,
+        }}
+      />
+      <View
+        style={{
+          position: 'absolute',
+          right: size * 0.28,
+          top: size * 0.08,
+          width: stroke,
+          height: size * 0.22,
+          borderRadius: stroke,
+          backgroundColor: color,
+        }}
+      />
+    </View>
+  );
+}
