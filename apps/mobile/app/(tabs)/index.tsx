@@ -149,7 +149,7 @@ export default function LedgerScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.green[50],
+    backgroundColor: colors.canvas,
   },
   list: {
     paddingBottom: 96,
@@ -197,7 +197,7 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: colors.green[700],
+    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -241,7 +241,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.md,
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: colors.green[700],
+    borderColor: colors.border,
     backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',

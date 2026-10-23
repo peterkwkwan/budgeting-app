@@ -19,6 +19,7 @@ export default function TabLayout() {
         tabBarLabelStyle: {
           fontFamily: fonts.caption,
           fontSize: 12,
+          letterSpacing: 0.2,
         },
         headerStyle: {
           backgroundColor: palette.background,

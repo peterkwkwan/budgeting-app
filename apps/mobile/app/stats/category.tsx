@@ -114,7 +114,7 @@ export default function CategoryDrilldownScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.green[50],
+    backgroundColor: colors.canvas,
   },
   period: {
     paddingHorizontal: space.md,

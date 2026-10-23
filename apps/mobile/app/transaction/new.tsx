@@ -120,7 +120,7 @@ export default function NewTransactionScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.green[50],
+    backgroundColor: colors.canvas,
   },
   voiceBanner: {
     marginHorizontal: space.md,
@@ -128,7 +128,7 @@ const styles = StyleSheet.create({
     padding: space.md,
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: colors.green[200],
+    borderColor: colors.border,
     backgroundColor: colors.surfaceMuted,
     gap: space.xs,
   },

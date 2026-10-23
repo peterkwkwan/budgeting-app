@@ -68,7 +68,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: colors.green[50],
+    backgroundColor: colors.canvas,
   },
   container: {
     flex: 1,
@@ -92,7 +92,7 @@ const styles = StyleSheet.create({
     color: colors.warning,
     backgroundColor: colors.surfaceMuted,
     borderWidth: 1,
-    borderColor: colors.green[200],
+    borderColor: colors.border,
     padding: space.sm + 4,
     borderRadius: radius.sm,
   },
@@ -109,7 +109,7 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.98 }],
   },
   buttonDisabled: {
-    backgroundColor: colors.green[200],
+    backgroundColor: colors.surfaceMuted,
   },
   buttonText: {
     fontFamily: fonts.bodyStrong,

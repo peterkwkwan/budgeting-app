@@ -29,10 +29,10 @@ const FudgetNavTheme = {
   colors: {
     ...DefaultTheme.colors,
     primary: colors.green[700],
-    background: colors.green[50],
+    background: colors.canvas,
     card: colors.surface,
     text: colors.ink,
-    border: colors.green[200],
+    border: colors.border,
     notification: colors.green[700],
   },
 };

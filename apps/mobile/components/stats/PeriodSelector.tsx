@@ -161,7 +161,7 @@ const styles = StyleSheet.create({
     paddingVertical: space.sm,
     borderRadius: radius.sm,
     borderWidth: 1,
-    borderColor: colors.green[200],
+    borderColor: colors.border,
     backgroundColor: colors.surface,
     minHeight: 36,
     justifyContent: 'center',
@@ -191,7 +191,7 @@ const styles = StyleSheet.create({
   dateBtn: {
     flex: 1,
     borderWidth: 1,
-    borderColor: colors.green[200],
+    borderColor: colors.border,
     backgroundColor: colors.surfaceMuted,
     borderRadius: radius.sm,
     padding: space.sm,

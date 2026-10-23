@@ -133,7 +133,7 @@ export default function EditRecurringScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.green[50],
+    backgroundColor: colors.canvas,
   },
   centered: {
     flex: 1,
@@ -141,7 +141,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: space.lg,
     gap: space.sm,
-    backgroundColor: colors.green[50],
+    backgroundColor: colors.canvas,
   },
   backBtn: {
     marginTop: space.sm,
@@ -149,7 +149,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.md,
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: colors.green[700],
+    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },

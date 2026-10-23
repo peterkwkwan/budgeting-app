@@ -345,7 +345,7 @@ export default function StatsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.green[50],
+    backgroundColor: colors.canvas,
   },
   content: {
     paddingHorizontal: space.md,
@@ -362,7 +362,7 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: colors.green[200],
+    borderColor: colors.border,
     backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
@@ -404,7 +404,7 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: colors.green[700],
+    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -448,7 +448,7 @@ const styles = StyleSheet.create({
     paddingVertical: space.sm,
     borderRadius: radius.sm,
     borderWidth: 1,
-    borderColor: colors.green[200],
+    borderColor: colors.border,
     backgroundColor: colors.surface,
     minHeight: 36,
     justifyContent: 'center',

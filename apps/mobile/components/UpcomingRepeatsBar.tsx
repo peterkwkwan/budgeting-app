@@ -54,14 +54,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.md,
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: colors.green[200],
+    borderColor: colors.border,
     backgroundColor: colors.surfaceMuted,
     flexDirection: 'row',
     alignItems: 'center',
     gap: space.sm,
   },
   pressed: {
-    backgroundColor: colors.green[200],
+    backgroundColor: colors.surfaceMuted,
   },
   textCol: {
     flex: 1,
