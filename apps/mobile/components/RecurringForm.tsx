@@ -26,6 +26,10 @@ import {
 } from '@/constants/repeatPresets';
 import { formatDisplayDate } from '@/lib/dates';
 import {
+  formatAmountInput,
+  parseAmountInput,
+} from '@/lib/money';
+import {
   cadenceLabel,
   RECURRING_CADENCES,
   type RecurringCadence,
@@ -73,7 +77,9 @@ export function RecurringForm(props: Props) {
   const { initial, submitLabel, busy = false, error = null, timezone } = props;
   const isCreate = props.mode === 'create';
 
-  const [amount, setAmount] = useState(initial?.amount ?? '');
+  const [amount, setAmount] = useState(() =>
+    formatAmountInput(initial?.amount ?? '')
+  );
   const [type, setType] = useState<TransactionType>(initial?.type ?? 'expense');
   const [category, setCategory] = useState(
     initial?.category ?? defaultCategory(initial?.type ?? 'expense')
@@ -112,7 +118,7 @@ export function RecurringForm(props: Props) {
 
   function handleSubmit() {
     setLocalError(null);
-    const parsed = Number.parseFloat(amount.replace(/,/g, '').trim());
+    const parsed = parseAmountInput(amount);
     if (!(parsed > 0) || Number.isNaN(parsed)) {
       setLocalError('Enter an amount greater than zero.');
       return;
@@ -194,7 +200,7 @@ export function RecurringForm(props: Props) {
       <TextInput
         style={styles.input}
         value={amount}
-        onChangeText={setAmount}
+        onChangeText={(v) => setAmount(formatAmountInput(v))}
         keyboardType="decimal-pad"
         placeholder="0.00"
         placeholderTextColor={colors.inkMuted}

@@ -12,9 +12,8 @@ export function formatUsd(amount: number): string {
 }
 
 /**
- * Parse a typed money or rate field.
- * Strips thousands commas, `$`, spaces, and a trailing/leading `USD` before Number.
- * Display still uses {@link formatUsd} commas — this is input-only.
+ * Parse a typed money field (or rate when reused carefully).
+ * Strips thousands commas, `$`, spaces, and `USD` before Number.
  *
  * `557,269` → `557269`, `$1,200.50` → `1200.5`, blank → `NaN`.
  */
@@ -34,4 +33,59 @@ export function parseMoneyInput(raw: string): number {
     return Number.NaN;
   }
   return Number(cleaned);
+}
+
+/** Alias — prefer this name at call sites for dollar amount fields. */
+export const parseAmountInput = parseMoneyInput;
+
+/**
+ * Live TextInput formatting for USD amounts: US thousands commas, optional
+ * decimals (max 2). Cursor typically ends up at the end (simple reformat).
+ *
+ * Do **not** use on percentages, year counts, or other non-money fields.
+ *
+ * `500000` → `500,000`, `1234.5` → `1,234.5`, `1,234.` stays with trailing dot.
+ */
+export function formatAmountInput(raw: string): string {
+  const cleaned = raw.replace(/[^\d.]/g, '');
+  if (cleaned === '') return '';
+
+  const dot = cleaned.indexOf('.');
+  let intRaw: string;
+  let fracRaw: string | null = null;
+  let trailingDot = false;
+
+  if (dot === -1) {
+    intRaw = cleaned;
+  } else {
+    intRaw = cleaned.slice(0, dot);
+    fracRaw = cleaned
+      .slice(dot + 1)
+      .replace(/\./g, '')
+      .slice(0, 2);
+    trailingDot = fracRaw === '' && cleaned.endsWith('.');
+  }
+
+  // ".5" → treat as 0.5
+  if (intRaw === '' && (fracRaw != null || trailingDot)) {
+    intRaw = '0';
+  }
+
+  // Drop leading zeros but keep a lone 0
+  intRaw = intRaw.replace(/^0+(?=\d)/, '');
+
+  const grouped = intRaw.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+
+  if (trailingDot) return `${grouped}.`;
+  if (fracRaw != null) return `${grouped}.${fracRaw}`;
+  return grouped;
+}
+
+/** Seed an amount TextInput from a numeric value (edit screens). */
+export function formatAmountInputFromNumber(n: number): string {
+  if (!Number.isFinite(n)) return '';
+  if (Number.isInteger(n)) return formatAmountInput(String(n));
+  // Keep up to 2 decimal places without forcing trailing zeros
+  const fixed = (Math.round(n * 100) / 100).toFixed(2).replace(/\.?0+$/, '');
+  return formatAmountInput(fixed);
 }

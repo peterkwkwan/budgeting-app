@@ -26,7 +26,11 @@ import {
   useSoftDeletePlannerGoal,
   useUpdatePlannerGoal,
 } from '@/hooks/usePlanner';
-import { formatUsd, parseMoneyInput } from '@/lib/money';
+import {
+  formatAmountInput,
+  formatUsd,
+  parseAmountInput,
+} from '@/lib/money';
 import {
   formatDateOnly,
   goalEffectiveSaved,
@@ -88,7 +92,7 @@ export default function GoalDetailScreen() {
 
   async function onLogContribution() {
     setContribError(null);
-    const amount = parseMoneyInput(contribAmount);
+    const amount = parseAmountInput(contribAmount);
     if (!(amount > 0) || Number.isNaN(amount)) {
       setContribError('Enter an amount greater than zero.');
       return;
@@ -263,7 +267,7 @@ export default function GoalDetailScreen() {
           <TextInput
             style={styles.input}
             value={contribAmount}
-            onChangeText={setContribAmount}
+            onChangeText={(v) => setContribAmount(formatAmountInput(v))}
             keyboardType="decimal-pad"
             placeholder="Amount (USD)"
             placeholderTextColor={colors.inkMuted}

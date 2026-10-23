@@ -22,7 +22,11 @@ import {
   type PlanCadence,
 } from '@/constants/planner';
 import { colors, fonts, radius, space, typography } from '@/constants/theme';
-import { formatUsd, parseMoneyInput } from '@/lib/money';
+import {
+  formatAmountInput,
+  formatUsd,
+  parseAmountInput,
+} from '@/lib/money';
 import { formatDateOnly, parseDateOnly } from '@/lib/plannerMath';
 import type { PlannerGoalInput } from '@/lib/plannerGoals';
 import type { PlannerVehicle } from '@/lib/plannerVehicles';
@@ -68,17 +72,19 @@ export function GoalForm({
   const [goalType, setGoalType] = useState<GoalType>(
     initial?.goal_type ?? 'emergency'
   );
-  const [targetAmount, setTargetAmount] = useState(
-    initial?.target_amount ?? ''
+  const [targetAmount, setTargetAmount] = useState(() =>
+    formatAmountInput(initial?.target_amount ?? '')
   );
   const [targetDate, setTargetDate] = useState<Date | null>(() => {
     if (!initial?.target_date) return null;
     return parseDateOnly(initial.target_date);
   });
-  const [currentSaved, setCurrentSaved] = useState(
-    initial?.current_saved ?? '0'
+  const [currentSaved, setCurrentSaved] = useState(() =>
+    formatAmountInput(initial?.current_saved ?? '0')
   );
-  const [planAmount, setPlanAmount] = useState(initial?.plan_amount ?? '');
+  const [planAmount, setPlanAmount] = useState(() =>
+    formatAmountInput(initial?.plan_amount ?? '')
+  );
   const [planCadence, setPlanCadence] = useState<PlanCadence | null>(
     initial?.plan_cadence ?? null
   );
@@ -97,11 +103,11 @@ export function GoalForm({
 
   function handleSubmit() {
     setLocalError(null);
-    const target_amount = parseMoneyInput(targetAmount);
+    const target_amount = parseAmountInput(targetAmount);
     const current_saved =
-      currentSaved.trim() === '' ? 0 : parseMoneyInput(currentSaved);
+      currentSaved.trim() === '' ? 0 : parseAmountInput(currentSaved);
     const planRaw = planAmount.trim();
-    const plan_amount = planRaw === '' ? null : parseMoneyInput(planRaw);
+    const plan_amount = planRaw === '' ? null : parseAmountInput(planRaw);
 
     if (!name.trim()) {
       setLocalError('Name is required.');
@@ -181,7 +187,7 @@ export function GoalForm({
         <TextInput
           style={styles.input}
           value={targetAmount}
-          onChangeText={setTargetAmount}
+          onChangeText={(v) => setTargetAmount(formatAmountInput(v))}
           keyboardType="decimal-pad"
           placeholder="0.00"
           placeholderTextColor={colors.inkMuted}
@@ -250,7 +256,7 @@ export function GoalForm({
             <TextInput
               style={styles.input}
               value={currentSaved}
-              onChangeText={setCurrentSaved}
+              onChangeText={(v) => setCurrentSaved(formatAmountInput(v))}
               keyboardType="decimal-pad"
               placeholder="0.00"
               placeholderTextColor={colors.inkMuted}
@@ -266,9 +272,10 @@ export function GoalForm({
           style={styles.input}
           value={planAmount}
           onChangeText={(v) => {
-            setPlanAmount(v);
-            if (v.trim() && !planCadence) setPlanCadence('monthly');
-            if (!v.trim()) setPlanCadence(null);
+            const next = formatAmountInput(v);
+            setPlanAmount(next);
+            if (next.trim() && !planCadence) setPlanCadence('monthly');
+            if (!next.trim()) setPlanCadence(null);
           }}
           keyboardType="decimal-pad"
           placeholder="Amount"

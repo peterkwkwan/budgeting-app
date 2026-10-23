@@ -22,7 +22,10 @@ import {
   type VehicleType,
 } from '@/constants/planner';
 import { colors, fonts, radius, space, typography } from '@/constants/theme';
-import { parseMoneyInput } from '@/lib/money';
+import {
+  formatAmountInput,
+  parseAmountInput,
+} from '@/lib/money';
 import type { PlannerVehicleInput } from '@/lib/plannerVehicles';
 
 export type VehicleFormValues = {
@@ -59,12 +62,16 @@ export function VehicleForm({
   const [vehicleType, setVehicleType] = useState<VehicleType>(
     initial?.vehicle_type ?? 'savings'
   );
-  const [balance, setBalance] = useState(initial?.balance ?? '');
+  const [balance, setBalance] = useState(() =>
+    formatAmountInput(initial?.balance ?? '')
+  );
   const [rate, setRate] = useState(initial?.annual_rate ?? '');
   const [compoundPeriod, setCompoundPeriod] = useState<CompoundPeriod>(
     initial?.compound_period ?? 'yearly'
   );
-  const [planAmount, setPlanAmount] = useState(initial?.plan_amount ?? '');
+  const [planAmount, setPlanAmount] = useState(() =>
+    formatAmountInput(initial?.plan_amount ?? '')
+  );
   const [planCadence, setPlanCadence] = useState<PlanCadence | null>(
     initial?.plan_cadence ?? null
   );
@@ -82,10 +89,10 @@ export function VehicleForm({
 
   function handleSubmit() {
     setLocalError(null);
-    const bal = parseMoneyInput(balance);
-    const annual_rate = rate.trim() === '' ? 0 : parseMoneyInput(rate);
+    const bal = parseAmountInput(balance);
+    const annual_rate = rate.trim() === '' ? 0 : parseAmountInput(rate);
     const planRaw = planAmount.trim();
-    const plan_amount = planRaw === '' ? null : parseMoneyInput(planRaw);
+    const plan_amount = planRaw === '' ? null : parseAmountInput(planRaw);
 
     if (!name.trim()) {
       setLocalError('Name is required.');
@@ -160,7 +167,7 @@ export function VehicleForm({
         <TextInput
           style={styles.input}
           value={balance}
-          onChangeText={setBalance}
+          onChangeText={(v) => setBalance(formatAmountInput(v))}
           keyboardType="decimal-pad"
           placeholder="0.00"
           placeholderTextColor={colors.inkMuted}
@@ -199,9 +206,10 @@ export function VehicleForm({
           style={styles.input}
           value={planAmount}
           onChangeText={(v) => {
-            setPlanAmount(v);
-            if (v.trim() && !planCadence) setPlanCadence('monthly');
-            if (!v.trim()) setPlanCadence(null);
+            const next = formatAmountInput(v);
+            setPlanAmount(next);
+            if (next.trim() && !planCadence) setPlanCadence('monthly');
+            if (!next.trim()) setPlanCadence(null);
           }}
           keyboardType="decimal-pad"
           placeholder="Amount"
