@@ -14,14 +14,18 @@ import {
 import { deviceTimezone } from '@/lib/profile';
 import { statsKeys } from '@/lib/stats';
 import {
+  bulkPatchTransactions,
   createTransaction,
   filterTransactionsForMonth,
   getTransaction,
   listTransactions,
   softDeleteTransaction,
+  softDeleteTransactions,
   summarizeUpcomingRepeatsThisMonth,
   transactionKeys,
   updateTransaction,
+  type Transaction,
+  type TransactionBulkPatch,
   type TransactionInput,
 } from '@/lib/transactions';
 
@@ -126,6 +130,34 @@ export function useSoftDeleteTransaction() {
 
   return useMutation({
     mutationFn: (id: string) => softDeleteTransaction(id),
+    onSuccess: () => {
+      invalidateTransactionsAndStats(queryClient);
+    },
+  });
+}
+
+export function useBulkSoftDeleteTransactions() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (ids: string[]) => softDeleteTransactions(ids),
+    onSuccess: () => {
+      invalidateTransactionsAndStats(queryClient);
+    },
+  });
+}
+
+export function useBulkPatchTransactions() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      rows,
+      patch,
+    }: {
+      rows: Transaction[];
+      patch: TransactionBulkPatch;
+    }) => bulkPatchTransactions(rows, patch),
     onSuccess: () => {
       invalidateTransactionsAndStats(queryClient);
     },
