@@ -87,8 +87,19 @@ export default function EditTransactionScreen() {
         <CaptionText style={{ color: colors.inkMuted, textAlign: 'center' }}>
           {error instanceof Error
             ? error.message
-            : 'This transaction may have been deleted.'}
+            : 'This transaction may have been deleted or is no longer on this device.'}
         </CaptionText>
+        <Pressable
+          style={({ pressed }) => [
+            styles.backBtn,
+            pressed && styles.backBtnPressed,
+          ]}
+          onPress={() => router.back()}
+          accessibilityRole="button"
+          accessibilityLabel="Back to ledger"
+        >
+          <StrongText style={{ color: colors.green[700] }}>Back</StrongText>
+        </Pressable>
       </View>
     );
   }
@@ -166,5 +177,18 @@ const styles = StyleSheet.create({
     padding: space.lg,
     gap: space.sm,
     backgroundColor: colors.green[50],
+  },
+  backBtn: {
+    marginTop: space.sm,
+    height: 40,
+    paddingHorizontal: space.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.green[700],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backBtnPressed: {
+    backgroundColor: colors.surfaceMuted,
   },
 });

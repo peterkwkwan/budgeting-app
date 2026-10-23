@@ -1,6 +1,6 @@
 # Fudget
 
-Android-first couple budgeting app by **Kool Krib** (Expo + Supabase). App display name: **Fudget**. **M0** scaffolds Expo + Google sign-in + `profiles`. **M1** adds the ledger (`transactions` CRUD, soft-delete, multi-device sync). **M2** adds personal stats (pie + trend, default = this month). **M3** adds recurring rules (Google-aligned presets + Custom ends) with rolling ~90-day materialization. **M4** adds pair invite-code link + server-computed aggregate stats. Later: voice.
+Android-first couple budgeting app by **Kool Krib** (Expo + Supabase). App display name: **Fudget**. **M0** scaffolds Expo + Google sign-in + `profiles`. **M1** adds the ledger (`transactions` CRUD, soft-delete, multi-device sync). **M2** adds personal stats (pie + trend, default = this month). **M3** adds recurring rules (Google-aligned presets + Custom ends) with rolling ~90-day materialization. **M4** adds pair invite-code link + server-computed aggregate stats. **M5** adds on-device Android speech → confirm → save, plus light harden for using the app ourselves first.
 
 ## Repo layout
 
@@ -30,16 +30,20 @@ npx expo start
 
 Placeholders merge cleanly. The login screen shows a clear hint until env is set. Google OAuth will not complete until the founder checklist below is done.
 
-### Dev Client (required later for voice)
+### Dev Client (required for voice — M5)
 
-Expo Go is fine for early UI, but **on-device speech (M5) needs a Development Build**. Use the EAS `development` profile:
+Expo Go cannot load native speech. **M5 on-device Android STT needs a Development Build** (or a new `preview` APK) after this branch. Config plugin: `expo-speech-recognition` (mic + speech package visibility).
 
-```bash
+```fish
 cd apps/mobile
 npx eas-cli@latest login
-npx eas-cli@latest build:configure   # once if needed; project already linked in app.json
+# Required after pulling M5 (native module + permissions):
 npx eas-cli@latest build --platform android --profile development
+# Optional internal tester APK:
+# npx eas-cli@latest build --platform android --profile preview
 ```
+
+**EAS rebuild: yes** for M5 — profile `development` (Dev Client) at minimum; also rebuild `preview` if you share APKs. JS-only reload is not enough.
 
 Profiles in `apps/mobile/eas.json`:
 
@@ -49,7 +53,9 @@ Profiles in `apps/mobile/eas.json`:
 | `preview`     | Internal APK for testers                     |
 | `production`  | Play App Bundle (internal track submit later)|
 
-**Dev Client Android note (M2):** the `development` profile builds **arm64-v8a only** (physical Pixel / most Android devices) and caps Gradle workers for free-tier EAS. Stats charts are View-only (no Skia). It will not install on classic x86_64 emulators unless you temporarily set `ORG_GRADLE_PROJECT_reactNativeArchitectures=x86_64` for a one-off build.
+**Dev Client Android note:** the `development` profile builds **arm64-v8a only** (physical Pixel / most Android devices) and caps Gradle workers for free-tier EAS. Stats charts are View-only (no Skia). It will not install on classic x86_64 emulators unless you temporarily set `ORG_GRADLE_PROJECT_reactNativeArchitectures=x86_64` for a one-off build.
+
+**Voice permissions:** first Voice tap asks for microphone. If denied, use Add (manual). Prefer installing an English offline speech / language pack in Android settings so recognition stays on-device.
 
 ## Apply SQL migrations
 
@@ -75,6 +81,8 @@ npx supabase db push
 **Founder step (M3):** after pulling this branch, run the recurring migrations, deploy Edge Functions, set `RECURRING_CRON_SECRET`, and schedule hourly cron (see below). Until migrations + functions are live, Add → Repeat / catch-up will error. Recurring is **not** a bottom tab — create via Add transaction → Repeat; manage via Upcoming repeats or Account → Recurring rules.
 
 **Founder step (M4):** apply `20261022140000_partner_links.sql` (`npx supabase db push`). No new Edge Functions — invite/accept/unlink and aggregate stats are Postgres RPCs under RLS. Until applied, Account → Partner and Stats → Pair will error. **EAS rebuild: no** (JS + SQL only; Share uses built-in React Native API).
+
+**Founder step (M5):** no new SQL. **EAS rebuild: yes** — `development` (and `preview` if used) so `expo-speech-recognition` + mic permissions land in the native binary. After install: Ledger → **Voice** → speak → confirm/edit on Add → **Save** (same ledger path as manual). Failure/permission → retry or **Enter manually**. iOS / paid cloud STT / Play Store submit remain out of scope.
 
 Ledger columns (M1+): `amount`, `type` (`expense`\|`income`), fixed `category`, optional `note` (≤500), `currency` (USD), `occurred_at`, `deleted_at`, timestamps, `user_id`. M3 adds `recurring_series_id` + `occurrence_key` for auto-generated rows. Default app queries filter `deleted_at is null`. Soft-delete updates `deleted_at` (no hard delete from the client). Soft-deleted recurring instances are **not** regenerated.
 

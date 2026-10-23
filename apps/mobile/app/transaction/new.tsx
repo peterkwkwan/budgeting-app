@@ -2,15 +2,42 @@ import { Stack, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import { CaptionText, StrongText } from '@/components/StyledText';
 import {
   TransactionForm,
   type TransactionFormSubmit,
+  type TransactionFormValues,
 } from '@/components/TransactionForm';
-import { colors } from '@/constants/theme';
+import { colors, radius, space, typography } from '@/constants/theme';
 import { useCreateRecurringSeries } from '@/hooks/useRecurring';
 import { useCreateTransaction } from '@/hooks/useTransactions';
 import { useAuth } from '@/lib/auth';
 import { deviceTimezone } from '@/lib/profile';
+import { takePendingVoiceDraft } from '@/lib/voiceDraft';
+
+function readVoiceInitial(): {
+  initial?: Partial<TransactionFormValues>;
+  fromVoice: boolean;
+  transcript: string | null;
+  partial: boolean;
+} {
+  const draft = takePendingVoiceDraft();
+  if (!draft) {
+    return { fromVoice: false, transcript: null, partial: false };
+  }
+  return {
+    fromVoice: true,
+    transcript: draft.transcript,
+    partial: draft.confidence === 'partial',
+    initial: {
+      amount: draft.amount,
+      type: draft.type,
+      category: draft.category,
+      note: draft.note,
+      occurredAt: new Date(),
+    },
+  };
+}
 
 export default function NewTransactionScreen() {
   const router = useRouter();
@@ -18,6 +45,7 @@ export default function NewTransactionScreen() {
   const createTxn = useCreateTransaction();
   const createSeries = useCreateRecurringSeries();
   const [error, setError] = useState<string | null>(null);
+  const [voiceMeta] = useState(() => readVoiceInitial());
   const timezone = profile?.timezone || deviceTimezone();
   const busy = createTxn.isPending || createSeries.isPending;
 
@@ -57,9 +85,29 @@ export default function NewTransactionScreen() {
 
   return (
     <View style={styles.container}>
-      <Stack.Screen options={{ title: 'Add transaction' }} />
+      <Stack.Screen
+        options={{
+          title: voiceMeta.fromVoice ? 'Confirm voice draft' : 'Add transaction',
+        }}
+      />
+      {voiceMeta.fromVoice ? (
+        <View style={styles.voiceBanner} accessibilityRole="summary">
+          <StrongText style={styles.voiceTitle}>
+            {voiceMeta.partial
+              ? 'Check this draft — add an amount'
+              : 'Check this draft, then save'}
+          </StrongText>
+          <CaptionText style={styles.voiceBody}>
+            Nothing is saved until you tap Save.
+            {voiceMeta.transcript
+              ? ` Heard: “${voiceMeta.transcript}”`
+              : ''}
+          </CaptionText>
+        </View>
+      ) : null}
       <TransactionForm
         allowRepeat
+        initial={voiceMeta.initial}
         submitLabel="Save"
         busy={busy}
         error={error}
@@ -73,5 +121,24 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.green[50],
+  },
+  voiceBanner: {
+    marginHorizontal: space.md,
+    marginTop: space.md,
+    padding: space.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.green[200],
+    backgroundColor: colors.surfaceMuted,
+    gap: space.xs,
+  },
+  voiceTitle: {
+    color: colors.green[950],
+  },
+  voiceBody: {
+    color: colors.inkMuted,
+    ...typography.body,
+    fontSize: 14,
+    lineHeight: 20,
   },
 });
