@@ -22,12 +22,14 @@ import {
   useContributionEvents,
   useLogContribution,
   usePlannerGoal,
+  usePlannerVehicles,
   useSoftDeletePlannerGoal,
   useUpdatePlannerGoal,
 } from '@/hooks/usePlanner';
 import { formatUsd, parseMoneyInput } from '@/lib/money';
 import {
   formatDateOnly,
+  goalEffectiveSaved,
   goalPace,
   requiredContribution,
 } from '@/lib/plannerMath';
@@ -37,6 +39,7 @@ export default function GoalDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const goalQuery = usePlannerGoal(id);
+  const vehicles = usePlannerVehicles();
   const events = useContributionEvents(id);
   const update = useUpdatePlannerGoal(id!);
   const remove = useSoftDeletePlannerGoal();
@@ -129,11 +132,22 @@ export default function GoalDetailScreen() {
     );
   }
 
+  const linked = goal.vehicle_ids.length > 0;
+  const effectiveSaved = goalEffectiveSaved({
+    currentSaved: goal.current_saved,
+    vehicleIds: goal.vehicle_ids,
+    vehicles: vehicles.data ?? [],
+  });
+  const linkedNames = (vehicles.data ?? [])
+    .filter((v) => goal.vehicle_ids.includes(v.id))
+    .map((v) => v.name);
+
   if (mode === 'edit') {
     return (
       <View style={styles.container}>
         <Stack.Screen options={{ title: 'Edit goal' }} />
         <GoalForm
+          vehicles={vehicles.data ?? []}
           initial={{
             name: goal.name,
             goal_type: goal.goal_type,
@@ -144,6 +158,7 @@ export default function GoalDetailScreen() {
               goal.plan_amount != null ? String(goal.plan_amount) : '',
             plan_cadence: goal.plan_cadence,
             notes: goal.notes ?? '',
+            vehicle_ids: goal.vehicle_ids,
           }}
           submitLabel="Save"
           busy={update.isPending}
@@ -159,13 +174,13 @@ export default function GoalDetailScreen() {
 
   const pace = goalPace({
     targetAmount: goal.target_amount,
-    currentSaved: goal.current_saved,
+    currentSaved: effectiveSaved,
     targetDate: goal.target_date,
     createdAt: goal.created_at,
   });
   const need = requiredContribution({
     targetAmount: goal.target_amount,
-    currentSaved: goal.current_saved,
+    currentSaved: effectiveSaved,
     targetDate: goal.target_date,
     cadence: goal.plan_cadence ?? 'monthly',
   });
@@ -186,7 +201,7 @@ export default function GoalDetailScreen() {
 
       <View style={styles.progressBlock}>
         <StrongText style={styles.amount}>
-          {formatUsd(goal.current_saved)}
+          {formatUsd(effectiveSaved)}
           <CaptionText style={styles.muted}>
             {' '}
             of {formatUsd(goal.target_amount)}
@@ -213,6 +228,12 @@ export default function GoalDetailScreen() {
             ? ` · ~${formatUsd(need)}/${goal.plan_cadence ? PLAN_CADENCE_LABELS[goal.plan_cadence].toLowerCase() : 'month'} needed`
             : ''}
         </CaptionText>
+        {linked ? (
+          <CaptionText style={styles.hint}>
+            Progress from linked vehicles
+            {linkedNames.length > 0 ? `: ${linkedNames.join(', ')}` : ''}.
+          </CaptionText>
+        ) : null}
         {goal.plan_amount != null && goal.plan_cadence ? (
           <CaptionText style={styles.muted}>
             Plan: {formatUsd(goal.plan_amount)}{' '}
@@ -225,58 +246,72 @@ export default function GoalDetailScreen() {
         <CaptionText style={styles.secondaryText}>Edit goal</CaptionText>
       </Pressable>
 
-      <TitleText style={styles.section}>Log contribution</TitleText>
-      <CaptionText style={styles.hint}>
-        Updates progress only — does not create a Transaction.
-      </CaptionText>
-      <TextInput
-        style={styles.input}
-        value={contribAmount}
-        onChangeText={setContribAmount}
-        keyboardType="decimal-pad"
-        placeholder="Amount (USD)"
-        placeholderTextColor={colors.inkMuted}
-      />
-      <TextInput
-        style={styles.input}
-        value={contribNote}
-        onChangeText={setContribNote}
-        placeholder="Note (optional)"
-        placeholderTextColor={colors.inkMuted}
-      />
-      {contribError ? (
-        <CaptionText style={styles.error}>{contribError}</CaptionText>
-      ) : null}
-      <Pressable
-        style={({ pressed }) => [
-          styles.primary,
-          pressed && styles.primaryPressed,
-        ]}
-        onPress={() => void onLogContribution()}
-        disabled={log.isPending}
-      >
-        {log.isPending ? (
-          <ActivityIndicator color={colors.inkInverse} />
-        ) : (
-          <StrongText style={styles.primaryText}>Log contribution</StrongText>
-        )}
-      </Pressable>
-
-      <TitleText style={styles.section}>History</TitleText>
-      {events.isLoading ? (
-        <ActivityIndicator color={colors.green[700]} />
-      ) : (events.data?.length ?? 0) === 0 ? (
-        <CaptionText style={styles.muted}>No contributions yet.</CaptionText>
+      {linked ? (
+        <>
+          <TitleText style={styles.section}>Contributions</TitleText>
+          <CaptionText style={styles.hint}>
+            Progress comes from linked vehicles. Unlink vehicles in Edit to log
+            manual contributions.
+          </CaptionText>
+        </>
       ) : (
-        (events.data ?? []).map((e) => (
-          <View key={e.id} style={styles.eventRow}>
-            <StrongText>{formatUsd(e.amount)}</StrongText>
-            <CaptionText style={styles.muted}>
-              {e.contributed_at}
-              {e.note ? ` · ${e.note}` : ''}
-            </CaptionText>
-          </View>
-        ))
+        <>
+          <TitleText style={styles.section}>Log contribution</TitleText>
+          <CaptionText style={styles.hint}>
+            Updates progress only — does not create a Transaction.
+          </CaptionText>
+          <TextInput
+            style={styles.input}
+            value={contribAmount}
+            onChangeText={setContribAmount}
+            keyboardType="decimal-pad"
+            placeholder="Amount (USD)"
+            placeholderTextColor={colors.inkMuted}
+          />
+          <TextInput
+            style={styles.input}
+            value={contribNote}
+            onChangeText={setContribNote}
+            placeholder="Note (optional)"
+            placeholderTextColor={colors.inkMuted}
+          />
+          {contribError ? (
+            <CaptionText style={styles.error}>{contribError}</CaptionText>
+          ) : null}
+          <Pressable
+            style={({ pressed }) => [
+              styles.primary,
+              pressed && styles.primaryPressed,
+            ]}
+            onPress={() => void onLogContribution()}
+            disabled={log.isPending}
+          >
+            {log.isPending ? (
+              <ActivityIndicator color={colors.inkInverse} />
+            ) : (
+              <StrongText style={styles.primaryText}>
+                Log contribution
+              </StrongText>
+            )}
+          </Pressable>
+
+          <TitleText style={styles.section}>History</TitleText>
+          {events.isLoading ? (
+            <ActivityIndicator color={colors.green[700]} />
+          ) : (events.data?.length ?? 0) === 0 ? (
+            <CaptionText style={styles.muted}>No contributions yet.</CaptionText>
+          ) : (
+            (events.data ?? []).map((e) => (
+              <View key={e.id} style={styles.eventRow}>
+                <StrongText>{formatUsd(e.amount)}</StrongText>
+                <CaptionText style={styles.muted}>
+                  {e.contributed_at}
+                  {e.note ? ` · ${e.note}` : ''}
+                </CaptionText>
+              </View>
+            ))
+          )}
+        </>
       )}
     </ScrollView>
   );

@@ -12,6 +12,7 @@
   - M4: `20261022140000_partner_links.sql` (pair invite + aggregate stats RPCs)
   - Planner P0: `20261023120000_planner.sql` (`planner_vehicles`, `planner_goals`, `planner_contribution_events`; owner-only RLS)
   - Planner P0: `20261023130000_planner_vehicle_compound_period.sql` (`compound_period` monthly|yearly on vehicles)
+  - Planner P0: `20261023140000_planner_goal_vehicles.sql` (goal ↔ vehicle links; progress from balances)
 - `functions/`
   - `generate-recurring` — cron; all users; `RECURRING_CRON_SECRET`
   - `catch-up-recurring` — callable with user JWT; app-open catch-up
@@ -36,4 +37,4 @@ Then schedule hourly POST to `generate-recurring` with `Authorization: Bearer <R
 npx supabase db push
 ```
 
-Applies planner migrations through `20261023130000_planner_vehicle_compound_period.sql`. No Edge Functions. Soft-delete vehicles/goals via `deleted_at`; contribution events hard-delete and adjust `planner_goals.current_saved` via trigger. `compound_period` defaults to `yearly` (full rate once per 12 projection months); `monthly` applies rate/12 each month.
+Applies planner migrations through `20261023140000_planner_goal_vehicles.sql`. No Edge Functions. Soft-delete vehicles/goals via `deleted_at`; contribution events hard-delete and adjust `planner_goals.current_saved` via trigger. `compound_period` defaults to `yearly` (full rate once per 12 projection months); `monthly` applies rate/12 each month. When a goal links vehicles, displayed progress = sum of those balances (manual contribution logs disabled while linked).

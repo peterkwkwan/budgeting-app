@@ -19,6 +19,8 @@ export type PlannerGoal = {
   plan_amount: number | null;
   plan_cadence: PlanCadence | null;
   notes: string | null;
+  /** Linked vehicle ids (progress = sum of balances when non-empty). */
+  vehicle_ids: string[];
   deleted_at: string | null;
   created_at: string;
   updated_at: string;
@@ -33,6 +35,8 @@ export type PlannerGoalInput = {
   plan_amount?: number | null;
   plan_cadence?: PlanCadence | null;
   notes?: string | null;
+  /** Replace linked vehicles when provided (create/update). */
+  vehicle_ids?: string[];
 };
 
 export type ContributionEvent = {
@@ -52,7 +56,10 @@ export type ContributionEventInput = {
   note?: string | null;
 };
 
-function mapGoal(row: Record<string, unknown>): PlannerGoal {
+function mapGoal(
+  row: Record<string, unknown>,
+  vehicleIds: string[] = []
+): PlannerGoal {
   const type = String(row.goal_type);
   return {
     id: String(row.id),
@@ -69,6 +76,7 @@ function mapGoal(row: Record<string, unknown>): PlannerGoal {
         ? (String(row.plan_cadence) as PlanCadence)
         : null,
     notes: (row.notes as string | null) ?? null,
+    vehicle_ids: vehicleIds,
     deleted_at: (row.deleted_at as string | null) ?? null,
     created_at: String(row.created_at),
     updated_at: String(row.updated_at),
@@ -139,6 +147,56 @@ function validateGoal(input: PlannerGoalInput): string | null {
   return null;
 }
 
+async function fetchLinksByGoalIds(
+  goalIds: string[]
+): Promise<Map<string, string[]>> {
+  const map = new Map<string, string[]>();
+  if (goalIds.length === 0) return map;
+
+  const { data, error } = await supabase
+    .from('planner_goal_vehicles')
+    .select('goal_id, vehicle_id')
+    .in('goal_id', goalIds);
+
+  if (error) throw new Error(error.message);
+
+  for (const row of data ?? []) {
+    const gid = String((row as { goal_id: string }).goal_id);
+    const vid = String((row as { vehicle_id: string }).vehicle_id);
+    const list = map.get(gid) ?? [];
+    list.push(vid);
+    map.set(gid, list);
+  }
+  return map;
+}
+
+async function replaceGoalVehicles(
+  userId: string,
+  goalId: string,
+  vehicleIds: string[]
+): Promise<void> {
+  const unique = [...new Set(vehicleIds.filter(Boolean))];
+
+  const { error: delError } = await supabase
+    .from('planner_goal_vehicles')
+    .delete()
+    .eq('goal_id', goalId);
+
+  if (delError) throw new Error(delError.message);
+
+  if (unique.length === 0) return;
+
+  const { error: insError } = await supabase.from('planner_goal_vehicles').insert(
+    unique.map((vehicle_id) => ({
+      goal_id: goalId,
+      vehicle_id,
+      user_id: userId,
+    }))
+  );
+
+  if (insError) throw new Error(insError.message);
+}
+
 export async function listPlannerGoals(): Promise<PlannerGoal[]> {
   const { data, error } = await supabase
     .from('planner_goals')
@@ -147,7 +205,13 @@ export async function listPlannerGoals(): Promise<PlannerGoal[]> {
     .order('updated_at', { ascending: false });
 
   if (error) throw new Error(error.message);
-  return (data ?? []).map((row) => mapGoal(row as Record<string, unknown>));
+  const rows = data ?? [];
+  const ids = rows.map((r) => String((r as { id: string }).id));
+  const links = await fetchLinksByGoalIds(ids);
+  return rows.map((row) => {
+    const r = row as Record<string, unknown>;
+    return mapGoal(r, links.get(String(r.id)) ?? []);
+  });
 }
 
 export async function getPlannerGoal(id: string): Promise<PlannerGoal | null> {
@@ -160,7 +224,8 @@ export async function getPlannerGoal(id: string): Promise<PlannerGoal | null> {
 
   if (error) throw new Error(error.message);
   if (!data) return null;
-  return mapGoal(data as Record<string, unknown>);
+  const links = await fetchLinksByGoalIds([id]);
+  return mapGoal(data as Record<string, unknown>, links.get(id) ?? []);
 }
 
 export async function createPlannerGoal(
@@ -171,6 +236,10 @@ export async function createPlannerGoal(
   if (validationError) throw new Error(validationError);
 
   const notes = input.notes?.trim() ? input.notes.trim() : null;
+  const vehicleIds = input.vehicle_ids ?? [];
+  // Linked goals ignore manual current_saved for display; store 0 when linked.
+  const current_saved =
+    vehicleIds.length > 0 ? 0 : (input.current_saved ?? 0);
 
   const { data, error } = await supabase
     .from('planner_goals')
@@ -180,7 +249,7 @@ export async function createPlannerGoal(
       goal_type: input.goal_type,
       target_amount: input.target_amount,
       target_date: toDateOnly(input.target_date ?? null),
-      current_saved: input.current_saved ?? 0,
+      current_saved,
       plan_amount: input.plan_amount ?? null,
       plan_cadence: input.plan_cadence ?? null,
       notes,
@@ -189,7 +258,11 @@ export async function createPlannerGoal(
     .single();
 
   if (error) throw new Error(error.message);
-  return mapGoal(data as Record<string, unknown>);
+  const goal = mapGoal(data as Record<string, unknown>, []);
+  if (vehicleIds.length > 0) {
+    await replaceGoalVehicles(userId, goal.id, vehicleIds);
+  }
+  return { ...goal, vehicle_ids: vehicleIds };
 }
 
 export async function updatePlannerGoal(
@@ -209,8 +282,12 @@ export async function updatePlannerGoal(
     plan_cadence: input.plan_cadence ?? null,
     notes,
   };
-  // Only set current_saved when explicitly provided (avoid clobbering event trigger)
-  if (input.current_saved != null) {
+
+  const vehicleIds = input.vehicle_ids;
+  if (vehicleIds != null && vehicleIds.length > 0) {
+    // Linked: don't rely on manual saved for display
+    patch.current_saved = input.current_saved ?? 0;
+  } else if (input.current_saved != null) {
     patch.current_saved = input.current_saved;
   }
 
@@ -223,7 +300,18 @@ export async function updatePlannerGoal(
     .single();
 
   if (error) throw new Error(error.message);
-  return mapGoal(data as Record<string, unknown>);
+
+  const userId = String((data as { user_id: string }).user_id);
+  let links: string[] = [];
+  if (vehicleIds != null) {
+    await replaceGoalVehicles(userId, id, vehicleIds);
+    links = vehicleIds;
+  } else {
+    const map = await fetchLinksByGoalIds([id]);
+    links = map.get(id) ?? [];
+  }
+
+  return mapGoal(data as Record<string, unknown>, links);
 }
 
 export async function softDeletePlannerGoal(id: string): Promise<void> {
@@ -265,6 +353,14 @@ export async function logContributionEvent(
   const note = input.note?.trim() ? input.note.trim() : null;
   if (note && note.length > 500) {
     throw new Error('Note must be 500 characters or fewer.');
+  }
+
+  // Block logging when goal is vehicle-linked (option A — no double-count).
+  const links = await fetchLinksByGoalIds([goalId]);
+  if ((links.get(goalId) ?? []).length > 0) {
+    throw new Error(
+      'Progress comes from linked vehicles. Unlink vehicles to log manual contributions.'
+    );
   }
 
   const { data, error } = await supabase

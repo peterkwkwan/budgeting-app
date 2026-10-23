@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import {
+  goalEffectiveSaved,
   goalPace,
   monthlyFromCadence,
   projectNetWorth,
@@ -89,6 +90,29 @@ test('requiredContribution monthly over ~12 months', () => {
   });
   assert.ok(req != null);
   assert.ok(req! > 90 && req! < 110);
+});
+
+test('goalEffectiveSaved uses linked vehicle balances (option A)', () => {
+  assert.equal(
+    goalEffectiveSaved({
+      currentSaved: 100,
+      vehicleIds: [],
+      vehicles: [{ id: 'a', balance: 500 }],
+    }),
+    100
+  );
+  assert.equal(
+    goalEffectiveSaved({
+      currentSaved: 100,
+      vehicleIds: ['a', 'b'],
+      vehicles: [
+        { id: 'a', balance: 400 },
+        { id: 'b', balance: 150 },
+        { id: 'c', balance: 999 },
+      ],
+    }),
+    550
+  );
 });
 
 test('goalPace ahead / behind / on_track', () => {

@@ -22,9 +22,10 @@ import {
   type PlanCadence,
 } from '@/constants/planner';
 import { colors, fonts, radius, space, typography } from '@/constants/theme';
-import { parseMoneyInput } from '@/lib/money';
+import { formatUsd, parseMoneyInput } from '@/lib/money';
 import { formatDateOnly, parseDateOnly } from '@/lib/plannerMath';
 import type { PlannerGoalInput } from '@/lib/plannerGoals';
+import type { PlannerVehicle } from '@/lib/plannerVehicles';
 
 export type GoalFormValues = {
   name: string;
@@ -35,10 +36,13 @@ export type GoalFormValues = {
   plan_amount: string;
   plan_cadence: PlanCadence | null;
   notes: string;
+  vehicle_ids: string[];
 };
 
 type Props = {
   initial?: Partial<GoalFormValues>;
+  /** Active vehicles available to link (multi-select). */
+  vehicles?: PlannerVehicle[];
   submitLabel: string;
   busy?: boolean;
   error?: string | null;
@@ -51,6 +55,7 @@ type Props = {
 
 export function GoalForm({
   initial,
+  vehicles = [],
   submitLabel,
   busy = false,
   error = null,
@@ -78,8 +83,12 @@ export function GoalForm({
     initial?.plan_cadence ?? null
   );
   const [notes, setNotes] = useState(initial?.notes ?? '');
+  const [vehicleIds, setVehicleIds] = useState<string[]>(
+    initial?.vehicle_ids ?? []
+  );
   const [showPicker, setShowPicker] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
+  const linked = vehicleIds.length > 0;
 
   function onDateChange(_e: DateTimePickerEvent, date?: Date) {
     if (Platform.OS !== 'ios') setShowPicker(false);
@@ -102,7 +111,10 @@ export function GoalForm({
       setLocalError('Target amount must be greater than zero.');
       return;
     }
-    if (!(current_saved >= 0) || Number.isNaN(current_saved)) {
+    if (
+      !linked &&
+      (!(current_saved >= 0) || Number.isNaN(current_saved))
+    ) {
       setLocalError('Current saved must be zero or greater.');
       return;
     }
@@ -123,11 +135,18 @@ export function GoalForm({
       plan_amount,
       plan_cadence: planCadence,
       notes: notes.trim() || null,
+      vehicle_ids: vehicleIds,
     };
-    if (allowCurrentSaved) {
+    if (allowCurrentSaved && !linked) {
       input.current_saved = current_saved;
     }
     onSubmit(input);
+  }
+
+  function toggleVehicle(id: string) {
+    setVehicleIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
   }
 
   return (
@@ -199,7 +218,33 @@ export function GoalForm({
           />
         ) : null}
 
-        {allowCurrentSaved ? (
+        <FieldLabel>Linked vehicles (optional)</FieldLabel>
+        {vehicles.length === 0 ? (
+          <CaptionText style={styles.hint}>
+            No vehicles yet. Add a savings or investment vehicle on Planner,
+            then link it here so progress uses that balance.
+          </CaptionText>
+        ) : (
+          <>
+            <ChipRow>
+              {vehicles.map((v) => (
+                <Chip
+                  key={v.id}
+                  label={`${v.name} (${formatUsd(v.balance)})`}
+                  selected={vehicleIds.includes(v.id)}
+                  onPress={() => toggleVehicle(v.id)}
+                />
+              ))}
+            </ChipRow>
+            <CaptionText style={styles.hint}>
+              {linked
+                ? 'Progress comes from linked vehicles (sum of balances). Manual contributions are off while linked.'
+                : 'Link one or more vehicles to auto-fill progress from their balances. Leave empty to track manually.'}
+            </CaptionText>
+          </>
+        )}
+
+        {allowCurrentSaved && !linked ? (
           <>
             <FieldLabel>Current saved (USD)</FieldLabel>
             <TextInput

@@ -11,6 +11,27 @@ import type { CompoundPeriod, PlanCadence } from '@/constants/planner';
 
 export type PaceStatus = 'on_track' | 'behind' | 'ahead' | 'unknown';
 
+/**
+ * Progress “current saved” for a goal (option A):
+ * - ≥1 linked vehicle → sum of those vehicles’ balances (manual logs ignored)
+ * - no links → manual current_saved
+ */
+export function goalEffectiveSaved(args: {
+  currentSaved: number;
+  vehicleIds: string[];
+  vehicles: { id: string; balance: number }[];
+}): number {
+  if (args.vehicleIds.length === 0) {
+    return Math.max(0, args.currentSaved);
+  }
+  const want = new Set(args.vehicleIds);
+  let sum = 0;
+  for (const v of args.vehicles) {
+    if (want.has(v.id)) sum += Math.max(0, v.balance);
+  }
+  return round2(sum);
+}
+
 /** Convert a planned contribution cadence to an equivalent monthly amount. */
 export function monthlyFromCadence(
   amount: number,

@@ -4,19 +4,22 @@ import { StyleSheet, View } from 'react-native';
 
 import { GoalForm } from '@/components/planner/GoalForm';
 import { colors } from '@/constants/theme';
-import { useCreatePlannerGoal } from '@/hooks/usePlanner';
+import {
+  useCreatePlannerGoal,
+  usePlannerVehicles,
+} from '@/hooks/usePlanner';
 import type { PlannerGoalInput } from '@/lib/plannerGoals';
 
 export default function NewGoalScreen() {
   const router = useRouter();
   const create = useCreatePlannerGoal();
+  const vehicles = usePlannerVehicles();
   const [error, setError] = useState<string | null>(null);
 
   async function onSubmit(input: PlannerGoalInput) {
     setError(null);
     try {
       await create.mutateAsync(input);
-      // Return to Planner list (same as vehicle Save).
       if (router.canGoBack()) {
         router.back();
       } else {
@@ -31,6 +34,7 @@ export default function NewGoalScreen() {
     <View style={styles.container}>
       <Stack.Screen options={{ title: 'Add goal' }} />
       <GoalForm
+        vehicles={vehicles.data ?? []}
         submitLabel="Save"
         busy={create.isPending}
         error={error}

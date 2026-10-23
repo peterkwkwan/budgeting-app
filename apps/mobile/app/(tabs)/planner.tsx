@@ -28,6 +28,7 @@ import {
 import { usePersonalStats } from '@/hooks/useStats';
 import { formatUsd } from '@/lib/money';
 import {
+  goalEffectiveSaved,
   goalMarkerMonth,
   goalPace,
   projectNetWorth,
@@ -260,8 +261,8 @@ export default function PlannerScreen() {
           {!hasGoals ? (
             <View style={styles.emptyBlock}>
               <CaptionText style={styles.muted}>
-                No goals yet. Set a target amount and optional date to track
-                pace.
+                No goals yet. Set a target and optional date, or link vehicles
+                so progress uses their balances.
               </CaptionText>
               <Pressable
                 style={styles.secondary}
@@ -272,18 +273,24 @@ export default function PlannerScreen() {
             </View>
           ) : (
             (goals.data ?? []).map((g) => {
+              const saved = goalEffectiveSaved({
+                currentSaved: g.current_saved,
+                vehicleIds: g.vehicle_ids,
+                vehicles: vehicles.data ?? [],
+              });
               const pace = goalPace({
                 targetAmount: g.target_amount,
-                currentSaved: g.current_saved,
+                currentSaved: saved,
                 targetDate: g.target_date,
                 createdAt: g.created_at,
               });
               const need = requiredContribution({
                 targetAmount: g.target_amount,
-                currentSaved: g.current_saved,
+                currentSaved: saved,
                 targetDate: g.target_date,
                 cadence: g.plan_cadence ?? 'monthly',
               });
+              const linkedCount = g.vehicle_ids.length;
               return (
                 <Pressable
                   key={g.id}
@@ -300,10 +307,12 @@ export default function PlannerScreen() {
                     >
                       {GOAL_TYPE_LABELS[g.goal_type]} · {pace.progressPct}% ·{' '}
                       {paceLabel(pace.status)}
+                      {linkedCount > 0
+                        ? ` · ${linkedCount} vehicle${linkedCount === 1 ? '' : 's'}`
+                        : ''}
                     </CaptionText>
                     <CaptionText style={styles.muted}>
-                      {formatUsd(g.current_saved)} of{' '}
-                      {formatUsd(g.target_amount)}
+                      {formatUsd(saved)} of {formatUsd(g.target_amount)}
                       {need != null
                         ? ` · ~${formatUsd(need)}/${g.plan_cadence ? PLAN_CADENCE_LABELS[g.plan_cadence].toLowerCase() : 'mo'} to hit date`
                         : ''}
