@@ -71,7 +71,7 @@ function validateInput(input: PlannerVehicleInput): string | null {
     return 'Name is required (80 characters or fewer).';
   }
   if (!isVehicleType(input.vehicle_type)) {
-    return 'Choose a valid vehicle type.';
+    return 'Choose a valid account type.';
   }
   if (!(input.balance >= 0) || Number.isNaN(input.balance)) {
     return 'Balance must be zero or greater.';

@@ -308,7 +308,7 @@ export default function PlannerScreen() {
                           accessibilityLabel={
                             chartable
                               ? `Show ${g.name}`
-                              : `${g.name}, link a growth vehicle to chart`
+                              : `${g.name}, link a growth account to chart`
                           }
                         >
                           <CaptionText
@@ -396,16 +396,16 @@ export default function PlannerScreen() {
           )}
 
           <View style={styles.sectionHead}>
-            <TitleText style={styles.sectionTitle}>Vehicles</TitleText>
+            <TitleText style={styles.sectionTitle}>Accounts</TitleText>
             {hasVehicles ? (
               <Pressable
                 style={styles.headerAdd}
                 onPress={() => guardedPush(router, ADD_VEHICLE)}
                 accessibilityRole="button"
-                accessibilityLabel="Add vehicle"
+                accessibilityLabel="Add account"
               >
                 <CaptionText style={styles.secondaryText}>
-                  Add vehicle
+                  Add account
                 </CaptionText>
               </Pressable>
             ) : null}
@@ -419,27 +419,42 @@ export default function PlannerScreen() {
               ]}
               onPress={() => guardedPush(router, ADD_VEHICLE)}
               accessibilityRole="button"
-              accessibilityLabel="Add vehicle"
+              accessibilityLabel="Add account"
             >
               <PlusIcon color={colors.green[700]} size={22} />
               <CaptionText style={styles.dashedBody}>
                 Track savings, investments, cash, or debt with a rate and
                 optional plan.
               </CaptionText>
-              <CaptionText style={styles.secondaryText}>Add vehicle</CaptionText>
+              <CaptionText style={styles.secondaryText}>Add account</CaptionText>
             </Pressable>
           ) : (
-            vehicleList.map((v) => (
-              <Pressable
-                key={v.id}
-                style={({ pressed }) => [
-                  styles.row,
-                  pressed && styles.rowPressed,
-                ]}
-                onPress={() => router.push(`/planner/vehicle/${v.id}`)}
-              >
-                <View style={styles.rowMain}>
-                  <StrongText style={styles.rowTitle}>{v.name}</StrongText>
+            vehicleList.map((v) => {
+              const detailHref = `/planner/vehicle/${v.id}`;
+              return (
+                <Pressable
+                  key={v.id}
+                  style={({ pressed }) => [
+                    styles.plannerCard,
+                    pressed && styles.plannerCardPressed,
+                  ]}
+                  onPress={() => guardedPush(router, detailHref)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${v.name} account`}
+                >
+                  <View style={styles.plannerCardTop}>
+                    <StrongText style={styles.plannerCardTitle} numberOfLines={2}>
+                      {v.name}
+                    </StrongText>
+                    <Pressable
+                      onPress={() => guardedPush(router, detailHref)}
+                      hitSlop={8}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Edit ${v.name}`}
+                    >
+                      <CaptionText style={styles.editLink}>Edit</CaptionText>
+                    </Pressable>
+                  </View>
                   <CaptionText style={styles.muted}>
                     {VEHICLE_TYPE_LABELS[v.vehicle_type]} ·{' '}
                     {v.growth_mode === 'grow' ? 'Grows' : 'Shrinks'} ·{' '}
@@ -452,9 +467,9 @@ export default function PlannerScreen() {
                       ? ` · plan ${formatUsd(v.plan_amount)} ${PLAN_CADENCE_LABELS[v.plan_cadence].toLowerCase()}`
                       : ''}
                   </CaptionText>
-                </View>
-              </Pressable>
-            ))
+                </Pressable>
+              );
+            })
           )}
 
           <View style={styles.sectionHead}>
@@ -521,15 +536,15 @@ export default function PlannerScreen() {
                 <Pressable
                   key={g.id}
                   style={({ pressed }) => [
-                    styles.goalCard,
-                    pressed && styles.goalCardPressed,
+                    styles.plannerCard,
+                    pressed && styles.plannerCardPressed,
                   ]}
                   onPress={() => guardedPush(router, detailHref)}
                   accessibilityRole="button"
                   accessibilityLabel={`${g.name} goal`}
                 >
-                  <View style={styles.goalCardTop}>
-                    <StrongText style={styles.goalTitle} numberOfLines={2}>
+                  <View style={styles.plannerCardTop}>
+                    <StrongText style={styles.plannerCardTitle} numberOfLines={2}>
                       {g.name}
                     </StrongText>
                     <Pressable
@@ -709,17 +724,9 @@ const styles = StyleSheet.create({
     color: colors.green[700],
     fontFamily: fonts.bodyStrong,
   },
-  row: {
-    paddingVertical: space.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  rowPressed: { backgroundColor: colors.surfaceMuted },
-  rowMain: { gap: 2 },
-  rowTitle: { color: colors.ink },
-  goalTitle: { color: colors.ink, flex: 1, paddingRight: space.sm },
-  /** Goals list — rounded bordered cards (~14 radius, muted fill). */
-  goalCard: {
+  plannerCardTitle: { color: colors.ink, flex: 1, paddingRight: space.sm },
+  /** Accounts + Goals lists — rounded bordered cards (~14 radius, muted fill). */
+  plannerCard: {
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.border,
     borderRadius: 14,
@@ -729,11 +736,11 @@ const styles = StyleSheet.create({
     gap: 4,
     marginBottom: 2,
   },
-  goalCardPressed: {
+  plannerCardPressed: {
     backgroundColor: colors.green[50],
     borderColor: colors.green[200],
   },
-  goalCardTop: {
+  plannerCardTop: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',

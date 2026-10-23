@@ -37,13 +37,13 @@ export default function VehicleDetailScreen() {
       }
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : 'Could not update vehicle.'
+        err instanceof Error ? err.message : 'Could not update account.'
       );
     }
   }
 
   function onDelete() {
-    Alert.alert('Delete vehicle?', 'This hides the vehicle from Planner.', [
+    Alert.alert('Delete account?', 'This hides the account from Planner.', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',
@@ -57,7 +57,7 @@ export default function VehicleDetailScreen() {
               setError(
                 err instanceof Error
                   ? err.message
-                  : 'Could not delete vehicle.'
+                  : 'Could not delete account.'
               );
             }
           })();
@@ -69,7 +69,7 @@ export default function VehicleDetailScreen() {
   if (query.isLoading) {
     return (
       <View style={styles.centered}>
-        <Stack.Screen options={{ title: 'Vehicle' }} />
+        <Stack.Screen options={{ title: 'Account' }} />
         <ActivityIndicator size="large" color={colors.green[700]} />
       </View>
     );
@@ -79,8 +79,8 @@ export default function VehicleDetailScreen() {
   if (!vehicle) {
     return (
       <View style={styles.centered}>
-        <Stack.Screen options={{ title: 'Vehicle' }} />
-        <TitleText>Vehicle not found</TitleText>
+        <Stack.Screen options={{ title: 'Account' }} />
+        <TitleText>Account not found</TitleText>
         <Pressable style={styles.secondary} onPress={() => router.back()}>
           <CaptionText style={styles.secondaryText}>Back</CaptionText>
         </Pressable>

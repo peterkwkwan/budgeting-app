@@ -24,14 +24,14 @@ export default function NewVehicleScreen() {
       }
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : 'Could not save vehicle.'
+        err instanceof Error ? err.message : 'Could not save account.'
       );
     }
   }
 
   return (
     <View style={styles.container}>
-      <Stack.Screen options={{ title: 'Add vehicle' }} />
+      <Stack.Screen options={{ title: 'Add account' }} />
       <VehicleForm
         submitLabel="Save"
         busy={create.isPending}

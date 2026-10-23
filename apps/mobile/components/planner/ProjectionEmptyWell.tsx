@@ -10,7 +10,7 @@ import { PlusIcon } from '@/components/icons';
 import { CaptionText } from '@/components/StyledText';
 import { colors, space } from '@/constants/theme';
 
-/** Near-white empty fill — matches Goals/Vehicles dashed CTAs. */
+/** Near-white empty fill — matches Goals/Accounts dashed CTAs. */
 const EMPTY_FILL = '#fafafa';
 
 const WELL_H = 180;
@@ -35,7 +35,7 @@ type Props = {
 
 /**
  * H2 hybrid empty projection: faint dashed upward trend + centered plus CTA.
- * Entire well navigates to Add vehicle. Stretches with full-bleed parent.
+ * Entire well navigates to Add account. Stretches with full-bleed parent.
  */
 export function ProjectionEmptyWell({ onPress }: Props) {
   const [chartW, setChartW] = useState(FALLBACK_CHART_W);
@@ -61,7 +61,7 @@ export function ProjectionEmptyWell({ onPress }: Props) {
       onPress={onPress}
       onLayout={onLayout}
       accessibilityRole="button"
-      accessibilityLabel="Add a vehicle to see your projection"
+      accessibilityLabel="Add an account to see your projection"
     >
       <View
         style={[styles.ghostCanvas, { width: chartW }]}
@@ -98,7 +98,7 @@ export function ProjectionEmptyWell({ onPress }: Props) {
           <PlusIcon color={colors.green[700]} size={22} />
         </View>
         <CaptionText style={styles.caption}>
-          Add a vehicle to see your projection
+          Add an account to see your projection
         </CaptionText>
       </View>
     </Pressable>
