@@ -1,17 +1,24 @@
-import { Pressable, StyleSheet, View } from 'react-native';
+import { useState } from 'react';
+import {
+  LayoutChangeEvent,
+  Pressable,
+  StyleSheet,
+  View,
+} from 'react-native';
 
 import { PlusIcon } from '@/components/icons';
 import { CaptionText } from '@/components/StyledText';
-import { colors, radius, space } from '@/constants/theme';
+import { colors, space } from '@/constants/theme';
 
 /** Near-white empty fill — matches Goals/Vehicles dashed CTAs. */
 const EMPTY_FILL = '#fafafa';
 
 const WELL_H = 180;
-const CHART_W = 300;
 const CHART_H = 120;
 const PAD = 16;
 const GHOST_STROKE = 2;
+/** Fallback until onLayout measures the full-bleed well. */
+const FALLBACK_CHART_W = 300;
 
 /** Soft upward curve control points (normalized 0–1 in plot box). */
 const GHOST_POINTS = [
@@ -28,10 +35,17 @@ type Props = {
 
 /**
  * H2 hybrid empty projection: faint dashed upward trend + centered plus CTA.
- * Entire well navigates to Add vehicle.
+ * Entire well navigates to Add vehicle. Stretches with full-bleed parent.
  */
 export function ProjectionEmptyWell({ onPress }: Props) {
-  const plotW = CHART_W - PAD * 2;
+  const [chartW, setChartW] = useState(FALLBACK_CHART_W);
+
+  function onLayout(e: LayoutChangeEvent) {
+    const w = Math.round(e.nativeEvent.layout.width);
+    if (w > 0 && w !== chartW) setChartW(w);
+  }
+
+  const plotW = chartW - PAD * 2;
   const plotH = CHART_H - PAD * 2;
   const pts = GHOST_POINTS.map((p) => ({
     x: PAD + p.x * plotW,
@@ -45,10 +59,14 @@ export function ProjectionEmptyWell({ onPress }: Props) {
         pressed && styles.wellPressed,
       ]}
       onPress={onPress}
+      onLayout={onLayout}
       accessibilityRole="button"
       accessibilityLabel="Add a vehicle to see your projection"
     >
-      <View style={styles.ghostCanvas} pointerEvents="none">
+      <View
+        style={[styles.ghostCanvas, { width: chartW }]}
+        pointerEvents="none"
+      >
         {pts.slice(0, -1).map((a, i) => {
           const b = pts[i + 1]!;
           const dx = b.x - a.x;
@@ -94,7 +112,8 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderStyle: 'dashed',
     borderColor: colors.border,
-    borderRadius: radius.lg,
+    // Full-bleed: square to screen edges.
+    borderRadius: 0,
     backgroundColor: EMPTY_FILL,
     overflow: 'hidden',
     alignItems: 'center',
@@ -107,7 +126,6 @@ const styles = StyleSheet.create({
   },
   ghostCanvas: {
     position: 'absolute',
-    width: CHART_W,
     height: CHART_H,
     opacity: 0.35,
   },

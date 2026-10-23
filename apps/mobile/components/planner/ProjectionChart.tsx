@@ -1,4 +1,10 @@
-import { StyleSheet, View } from 'react-native';
+import { useState } from 'react';
+import {
+  Dimensions,
+  LayoutChangeEvent,
+  StyleSheet,
+  View,
+} from 'react-native';
 
 import { CaptionText } from '@/components/StyledText';
 import { colors, space } from '@/constants/theme';
@@ -17,8 +23,7 @@ type Props = {
 };
 
 const CHART_H = 176;
-const CHART_W = 320;
-/** Left pad for compact Y labels (`$1.0M`). */
+/** Thin left pad so compact Y labels (`$1.0M`) sit inset; plot still reads edge-to-edge. */
 const PAD_LEFT = 46;
 const PAD_RIGHT = 10;
 const PAD_Y = 16;
@@ -31,16 +36,26 @@ const Y_LABEL_W = 42;
 /**
  * Style B projection: solid curve, soft green area fill, light grid with
  * compact Y ticks, start/end dots, optional flat dotted target line.
- * View-only — no Skia / Victory.
+ * View-only — no Skia / Victory. Canvas width follows parent (full-bleed).
  */
 export function ProjectionChart({
   data,
   targetAmount = null,
   emptyLabel,
 }: Props) {
+  // Full-bleed ≈ window width; onLayout corrects if insets differ.
+  const [chartW, setChartW] = useState(
+    () => Dimensions.get('window').width
+  );
+
+  function onWrapLayout(e: LayoutChangeEvent) {
+    const w = Math.round(e.nativeEvent.layout.width);
+    if (w > 0 && w !== chartW) setChartW(w);
+  }
+
   if (data.length === 0) {
     return (
-      <View style={styles.empty}>
+      <View style={styles.empty} onLayout={onWrapLayout}>
         <CaptionText style={styles.emptyText}>{emptyLabel}</CaptionText>
       </View>
     );
@@ -56,7 +71,7 @@ export function ProjectionChart({
   const ticks = niceAxisTicks(dataMin, dataMax, 4);
   const { min: minV, max: maxV } = tickDomain(ticks, dataMin, dataMax);
   const span = maxV - minV || 1;
-  const plotW = CHART_W - PAD_LEFT - PAD_RIGHT;
+  const plotW = Math.max(1, chartW - PAD_LEFT - PAD_RIGHT);
   const plotH = CHART_H - PAD_Y * 2;
   const lastMonth = data[data.length - 1]?.month ?? 1;
 
@@ -90,8 +105,12 @@ export function ProjectionChart({
   }
 
   return (
-    <View style={styles.wrap} accessibilityLabel="Planner projection chart">
-      <View style={styles.canvas}>
+    <View
+      style={styles.wrap}
+      onLayout={onWrapLayout}
+      accessibilityLabel="Planner projection chart"
+    >
+      <View style={[styles.canvas, { width: chartW }]}>
         {/* Compact Y ticks + aligned grid */}
         {ticks.map((tick, i) => {
           const y = yFor(tick);
@@ -192,7 +211,7 @@ export function ProjectionChart({
           ) : null
         )}
       </View>
-      <View style={styles.axisRow}>
+      <View style={[styles.axisRow, { width: chartW }]}>
         <CaptionText style={styles.axis}>Now</CaptionText>
         {target != null ? (
           <CaptionText style={styles.targetHint}>Target</CaptionText>
@@ -212,15 +231,16 @@ export function ProjectionChart({
 const styles = StyleSheet.create({
   wrap: {
     width: '100%',
-    alignItems: 'center',
+    alignItems: 'stretch',
     justifyContent: 'center',
   },
   canvas: {
-    width: CHART_W,
+    width: '100%',
     height: CHART_H,
     overflow: 'hidden',
     backgroundColor: colors.surface,
-    borderRadius: 8,
+    // Full-bleed: square to screen edges (no side gutters / radius).
+    borderRadius: 0,
   },
   yLabel: {
     position: 'absolute',
@@ -263,7 +283,7 @@ const styles = StyleSheet.create({
     borderColor: colors.surface,
   },
   axisRow: {
-    width: CHART_W,
+    width: '100%',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -279,6 +299,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   empty: {
+    width: '100%',
     height: 140,
     alignItems: 'center',
     justifyContent: 'center',

@@ -362,16 +362,21 @@ export default function PlannerScreen() {
           ) : null}
 
           {!hasVehicles ? (
-            <ProjectionEmptyWell
-              onPress={() => guardedPush(router, ADD_VEHICLE)}
-            />
+            <View style={styles.chartBleed}>
+              <ProjectionEmptyWell
+                onPress={() => guardedPush(router, ADD_VEHICLE)}
+              />
+            </View>
           ) : (
             <>
-              <ProjectionChart
-                data={projection}
-                targetAmount={targetAmount}
-                emptyLabel="No projection yet"
-              />
+              {/* Full-bleed: cancel content padding so the chart well hits screen edges. */}
+              <View style={styles.chartBleed}>
+                <ProjectionChart
+                  data={projection}
+                  targetAmount={targetAmount}
+                  emptyLabel="No projection yet"
+                />
+              </View>
               <View style={styles.summaryRow}>
                 <View>
                   <CaptionText style={styles.muted}>Now</CaptionText>
@@ -656,6 +661,11 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     fontFamily: fonts.body,
     color: colors.ink,
+  },
+  /** Break out of `content` horizontal padding so the chart is edge-to-edge. */
+  chartBleed: {
+    marginHorizontal: -space.md,
+    alignSelf: 'stretch',
   },
   summaryRow: {
     flexDirection: 'row',
