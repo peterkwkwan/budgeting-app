@@ -45,7 +45,8 @@ const TABS: {
 ];
 
 /**
- * Concept B tab bar: Transactions · raised Add FAB · Stats · Planner · Account.
+ * Concept B tab bar: Transactions · Stats · raised Add FAB · Planner · Account.
+ * Center FAB gap keeps the four tabs evenly spaced and Stats clear of the FAB.
  * FAB gently pulses brand rings/scale unless reduce-motion is on.
  */
 export function FudgetTabBar({ state, onTabPress }: FudgetTabBarProps) {
@@ -201,8 +202,8 @@ export function FudgetTabBar({ state, onTabPress }: FudgetTabBarProps) {
 
       <View style={styles.row}>
         {renderTab('index')}
-        <View style={styles.fabGap} />
         {renderTab('stats')}
+        <View style={styles.fabGap} />
         {renderTab('planner')}
         {renderTab('account')}
       </View>
