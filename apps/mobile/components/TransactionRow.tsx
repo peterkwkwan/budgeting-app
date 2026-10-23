@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { CaptionText, StrongText } from '@/components/StyledText';
@@ -33,11 +34,26 @@ export function TransactionRow({
   const amountColor =
     transaction.type === 'income' ? colors.income : colors.expense;
   const dateLabel = formatDisplayDate(transaction.occurred_at, timeZone);
+  /** RN (esp. web/emulator) often fires onPress on finger-up after onLongPress. */
+  const suppressPressAfterLongPress = useRef(false);
 
   return (
     <Pressable
-      onPress={onPress}
-      onLongPress={onLongPress}
+      onPress={() => {
+        if (suppressPressAfterLongPress.current) {
+          suppressPressAfterLongPress.current = false;
+          return;
+        }
+        onPress();
+      }}
+      onLongPress={
+        onLongPress
+          ? () => {
+              suppressPressAfterLongPress.current = true;
+              onLongPress();
+            }
+          : undefined
+      }
       delayLongPress={600}
       style={({ pressed }) => [
         styles.row,

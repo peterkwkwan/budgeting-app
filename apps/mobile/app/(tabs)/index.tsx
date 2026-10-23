@@ -261,9 +261,11 @@ export default function TransactionsScreen() {
               selectionMode={selectionMode}
               selected={selectedIds.has(item.id)}
               onPress={() => onRowPress(item)}
-              onLongPress={
-                selectionMode ? undefined : () => enterSelection(item.id)
-              }
+              onLongPress={() => {
+                // Keep handler mounted while selecting so mid-gesture
+                // re-renders don’t drop onLongPress and synthesize a press.
+                if (!selectionMode) enterSelection(item.id);
+              }}
             />
           )}
           refreshing={isRefetching}
