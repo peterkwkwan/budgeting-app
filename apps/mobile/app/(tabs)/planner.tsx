@@ -12,6 +12,7 @@ import {
 
 import { PlusIcon } from '@/components/icons';
 import { ProjectionChart } from '@/components/planner/ProjectionChart';
+import { ProjectionEmptyWell } from '@/components/planner/ProjectionEmptyWell';
 import { CaptionText, StrongText, TitleText } from '@/components/StyledText';
 import {
   DISCLAIMER,
@@ -201,10 +202,9 @@ export default function PlannerScreen() {
           ) : null}
 
           {!hasVehicles ? (
-            <CaptionText style={styles.muted}>
-              Add a savings, investment, or debt vehicle to see a projection
-              curve.
-            </CaptionText>
+            <ProjectionEmptyWell
+              onPress={() => guardedPush(router, ADD_VEHICLE)}
+            />
           ) : (
             <>
               <ProjectionChart
