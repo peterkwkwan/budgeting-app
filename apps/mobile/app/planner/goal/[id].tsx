@@ -1,5 +1,5 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 
 import { GoalForm } from '@/components/planner/GoalForm';
+import { LinkedAccountLinks } from '@/components/planner/LinkedAccountLinks';
 import { CaptionText, StrongText, TitleText } from '@/components/StyledText';
 import {
   DISCLAIMER,
@@ -31,6 +32,7 @@ import {
   formatUsd,
   parseAmountInput,
 } from '@/lib/money';
+import { guardedPush } from '@/lib/navGuard';
 import {
   formatDateOnly,
   goalEffectiveSaved,
@@ -39,8 +41,17 @@ import {
 } from '@/lib/plannerMath';
 import type { PlannerGoalInput } from '@/lib/plannerGoals';
 
+function editParamOn(edit: string | string[] | undefined): boolean {
+  if (edit == null) return false;
+  const v = Array.isArray(edit) ? edit[0] : edit;
+  return v === '1' || v === 'true';
+}
+
 export default function GoalDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, edit } = useLocalSearchParams<{
+    id: string;
+    edit?: string | string[];
+  }>();
   const router = useRouter();
   const goalQuery = usePlannerGoal(id);
   const vehicles = usePlannerVehicles();
@@ -49,7 +60,9 @@ export default function GoalDetailScreen() {
   const remove = useSoftDeletePlannerGoal();
   const log = useLogContribution(id!);
   const [error, setError] = useState<string | null>(null);
-  const [mode, setMode] = useState<'view' | 'edit'>('view');
+  const [mode, setMode] = useState<'view' | 'edit'>(() =>
+    editParamOn(edit) ? 'edit' : 'view'
+  );
   const [contribAmount, setContribAmount] = useState('');
   const [contribNote, setContribNote] = useState('');
   const [contribError, setContribError] = useState<string | null>(null);
@@ -114,6 +127,21 @@ export default function GoalDetailScreen() {
     }
   }
 
+  const headerEdit = useMemo(
+    () => (
+      <Pressable
+        onPress={() => setMode('edit')}
+        hitSlop={8}
+        accessibilityRole="button"
+        accessibilityLabel="Edit goal"
+        style={styles.headerEdit}
+      >
+        <CaptionText style={styles.secondaryText}>Edit</CaptionText>
+      </Pressable>
+    ),
+    []
+  );
+
   if (goalQuery.isLoading) {
     return (
       <View style={styles.centered}>
@@ -142,9 +170,9 @@ export default function GoalDetailScreen() {
     vehicleIds: goal.vehicle_ids,
     vehicles: vehicles.data ?? [],
   });
-  const linkedNames = (vehicles.data ?? [])
-    .filter((v) => goal.vehicle_ids.includes(v.id))
-    .map((v) => v.name);
+  const linkedAccounts = (vehicles.data ?? []).filter((v) =>
+    goal.vehicle_ids.includes(v.id)
+  );
 
   if (mode === 'edit') {
     return (
@@ -195,7 +223,12 @@ export default function GoalDetailScreen() {
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
     >
-      <Stack.Screen options={{ title: goal.name }} />
+      <Stack.Screen
+        options={{
+          title: goal.name,
+          headerRight: () => headerEdit,
+        }}
+      />
       <CaptionText style={styles.disclaimer}>{DISCLAIMER}</CaptionText>
 
       <TitleText style={styles.title}>{goal.name}</TitleText>
@@ -233,10 +266,14 @@ export default function GoalDetailScreen() {
             : ''}
         </CaptionText>
         {linked ? (
-          <CaptionText style={styles.hint}>
-            Progress from linked vehicles
-            {linkedNames.length > 0 ? `: ${linkedNames.join(', ')}` : ''}.
-          </CaptionText>
+          <LinkedAccountLinks
+            accounts={linkedAccounts}
+            label="Progress from linked accounts:"
+            trailingPeriod
+            onPressAccount={(accountId) =>
+              guardedPush(router, `/planner/vehicle/${accountId}`)
+            }
+          />
         ) : null}
         {goal.plan_amount != null && goal.plan_cadence ? (
           <CaptionText style={styles.muted}>
@@ -246,15 +283,11 @@ export default function GoalDetailScreen() {
         ) : null}
       </View>
 
-      <Pressable style={styles.secondary} onPress={() => setMode('edit')}>
-        <CaptionText style={styles.secondaryText}>Edit goal</CaptionText>
-      </Pressable>
-
       {linked ? (
         <>
           <TitleText style={styles.section}>Contributions</TitleText>
           <CaptionText style={styles.hint}>
-            Progress comes from linked vehicles. Unlink vehicles in Edit to log
+            Progress comes from linked accounts. Unlink accounts in Edit to log
             manual contributions.
           </CaptionText>
         </>
@@ -385,6 +418,11 @@ const styles = StyleSheet.create({
   secondaryText: {
     color: colors.green[700],
     fontFamily: fonts.bodyStrong,
+  },
+  headerEdit: {
+    paddingHorizontal: space.sm,
+    paddingVertical: space.xs,
+    marginRight: space.xs,
   },
   eventRow: {
     paddingVertical: space.sm,

@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 
 import { PlusIcon } from '@/components/icons';
+import { LinkedAccountLinks } from '@/components/planner/LinkedAccountLinks';
 import { ProjectionChart } from '@/components/planner/ProjectionChart';
 import { ProjectionEmptyWell } from '@/components/planner/ProjectionEmptyWell';
 import {
@@ -355,7 +356,7 @@ export default function PlannerScreen() {
               </View>
               {hasGreyedGoals ? (
                 <CaptionText style={styles.showHint}>
-                  Greyed goals need a linked growth vehicle (not debt).
+                  Greyed goals need a linked growth account (not debt).
                 </CaptionText>
               ) : null}
             </View>
@@ -487,7 +488,7 @@ export default function PlannerScreen() {
               </CaptionText>
               {hasVehicles ? (
                 <CaptionText style={styles.muted}>
-                  Link vehicles when you add a goal.
+                  Link accounts when you add a goal.
                 </CaptionText>
               ) : null}
               <CaptionText style={styles.secondaryText}>Add goal</CaptionText>
@@ -511,34 +512,54 @@ export default function PlannerScreen() {
                 targetDate: g.target_date,
                 cadence: g.plan_cadence ?? 'monthly',
               });
-              const linkedCount = g.vehicle_ids.length;
+              const linkedAccounts = vehicleList.filter((v) =>
+                g.vehicle_ids.includes(v.id)
+              );
+              const detailHref = `/planner/goal/${g.id}`;
+              const editHref = `/planner/goal/${g.id}?edit=1`;
               return (
                 <Pressable
                   key={g.id}
                   style={({ pressed }) => [
-                    styles.row,
-                    pressed && styles.rowPressed,
+                    styles.goalCard,
+                    pressed && styles.goalCardPressed,
                   ]}
-                  onPress={() => router.push(`/planner/goal/${g.id}`)}
+                  onPress={() => guardedPush(router, detailHref)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${g.name} goal`}
                 >
-                  <View style={styles.rowMain}>
-                    <StrongText style={styles.rowTitle}>{g.name}</StrongText>
-                    <CaptionText
-                      style={[styles.muted, { color: paceColor(pace.status) }]}
+                  <View style={styles.goalCardTop}>
+                    <StrongText style={styles.goalTitle} numberOfLines={2}>
+                      {g.name}
+                    </StrongText>
+                    <Pressable
+                      onPress={() => guardedPush(router, editHref)}
+                      hitSlop={8}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Edit ${g.name}`}
                     >
-                      {GOAL_TYPE_LABELS[g.goal_type]} · {pace.progressPct}% ·{' '}
-                      {paceLabel(pace.status)}
-                      {linkedCount > 0
-                        ? ` · ${linkedCount} vehicle${linkedCount === 1 ? '' : 's'}`
-                        : ''}
-                    </CaptionText>
-                    <CaptionText style={styles.muted}>
-                      {formatUsd(saved)} of {formatUsd(g.target_amount)}
-                      {need != null
-                        ? ` · ~${formatUsd(need)}/${g.plan_cadence ? PLAN_CADENCE_LABELS[g.plan_cadence].toLowerCase() : 'mo'} to hit date`
-                        : ''}
-                    </CaptionText>
+                      <CaptionText style={styles.editLink}>Edit</CaptionText>
+                    </Pressable>
                   </View>
+                  <CaptionText
+                    style={[styles.muted, { color: paceColor(pace.status) }]}
+                  >
+                    {GOAL_TYPE_LABELS[g.goal_type]} · {pace.progressPct}% ·{' '}
+                    {paceLabel(pace.status)}
+                  </CaptionText>
+                  <CaptionText style={styles.muted}>
+                    {formatUsd(saved)} of {formatUsd(g.target_amount)}
+                    {need != null
+                      ? ` · ~${formatUsd(need)}/${g.plan_cadence ? PLAN_CADENCE_LABELS[g.plan_cadence].toLowerCase() : 'mo'} to hit date`
+                      : ''}
+                  </CaptionText>
+                  <LinkedAccountLinks
+                    accounts={linkedAccounts}
+                    label="Linked accounts:"
+                    onPressAccount={(id) =>
+                      guardedPush(router, `/planner/vehicle/${id}`)
+                    }
+                  />
                 </Pressable>
               );
             })
@@ -696,4 +717,30 @@ const styles = StyleSheet.create({
   rowPressed: { backgroundColor: colors.surfaceMuted },
   rowMain: { gap: 2 },
   rowTitle: { color: colors.ink },
+  goalTitle: { color: colors.ink, flex: 1, paddingRight: space.sm },
+  /** Goals list — rounded bordered cards (~14 radius, muted fill). */
+  goalCard: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    backgroundColor: colors.surfaceMuted,
+    gap: 4,
+    marginBottom: 2,
+  },
+  goalCardPressed: {
+    backgroundColor: colors.green[50],
+    borderColor: colors.green[200],
+  },
+  goalCardTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: space.sm,
+  },
+  editLink: {
+    color: colors.green[700],
+    fontFamily: fonts.bodyStrong,
+  },
 });
