@@ -4,7 +4,9 @@ import { test } from 'node:test';
 import {
   formatAmountInput,
   formatAmountInputFromNumber,
+  formatCompactUsd,
   formatUsd,
+  niceAxisTicks,
   parseAmountInput,
   parseMoneyInput,
 } from './money.ts';
@@ -17,6 +19,24 @@ test('adds thousands commas and keeps two decimals', () => {
   assert.equal(formatUsd(1000000.5), '$1,000,000.50');
   assert.equal(formatUsd(999.99), '$999.99');
   assert.equal(formatUsd(0), '$0.00');
+});
+
+test('formatCompactUsd abbreviates axis ticks', () => {
+  assert.equal(formatCompactUsd(0), '$0');
+  assert.equal(formatCompactUsd(42), '$42');
+  assert.equal(formatCompactUsd(999), '$999');
+  assert.equal(formatCompactUsd(250_000), '$250k');
+  assert.equal(formatCompactUsd(1500), '$1.5k');
+  assert.equal(formatCompactUsd(1_000_000), '$1.0M');
+  assert.equal(formatCompactUsd(1_079_462.49), '$1.1M');
+  assert.equal(formatCompactUsd(-250_000), '-$250k');
+});
+
+test('niceAxisTicks returns 3–4 values spanning the range', () => {
+  const ticks = niceAxisTicks(0, 1_000_000, 4);
+  assert.ok(ticks.length >= 3 && ticks.length <= 4);
+  assert.ok(ticks[0]! <= 0);
+  assert.ok(ticks[ticks.length - 1]! >= 1_000_000);
 });
 
 test('drops the sign so callers can prefix − or +', () => {

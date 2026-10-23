@@ -85,7 +85,7 @@ export function VehicleForm({
   const rateHelper =
     growth === 'shrink'
       ? 'What the loan charges per year (APR). Example: 6 = about 6%.'
-      : 'What you expect to earn in a year (like a savings APY). Example: 4 = about 4%.';
+      : 'What you expect to earn in a year (like a savings APY). Example: 4 = 4%.';
 
   function handleSubmit() {
     setLocalError(null);

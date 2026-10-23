@@ -2,6 +2,11 @@ import { StyleSheet, View } from 'react-native';
 
 import { CaptionText } from '@/components/StyledText';
 import { colors, space } from '@/constants/theme';
+import {
+  formatCompactUsd,
+  niceAxisTicks,
+  tickDomain,
+} from '@/lib/money';
 import type { ProjectionPoint } from '@/lib/plannerMath';
 
 type Props = {
@@ -13,17 +18,19 @@ type Props = {
 
 const CHART_H = 176;
 const CHART_W = 320;
-const PAD_X = 10;
+/** Left pad for compact Y labels (`$1.0M`). */
+const PAD_LEFT = 46;
+const PAD_RIGHT = 10;
 const PAD_Y = 16;
 const STROKE = 2.5;
 const DOT = 8;
-const GRID_LINES = 3;
 const DASH_W = 5;
 const DASH_GAP = 4;
+const Y_LABEL_W = 42;
 
 /**
- * Style B projection: solid curve, soft green area fill, light grid,
- * start/end dots, optional flat dotted target line (goal mode).
+ * Style B projection: solid curve, soft green area fill, light grid with
+ * compact Y ticks, start/end dots, optional flat dotted target line.
  * View-only — no Skia / Victory.
  */
 export function ProjectionChart({
@@ -44,10 +51,12 @@ export function ProjectionChart({
     targetAmount != null && Number.isFinite(targetAmount)
       ? targetAmount
       : null;
-  const minV = Math.min(...values, target ?? values[0]!, 0);
-  const maxV = Math.max(...values, target ?? values[0]!, 0);
+  const dataMin = Math.min(...values, target ?? values[0]!, 0);
+  const dataMax = Math.max(...values, target ?? values[0]!, 0);
+  const ticks = niceAxisTicks(dataMin, dataMax, 4);
+  const { min: minV, max: maxV } = tickDomain(ticks, dataMin, dataMax);
   const span = maxV - minV || 1;
-  const plotW = CHART_W - PAD_X * 2;
+  const plotW = CHART_W - PAD_LEFT - PAD_RIGHT;
   const plotH = CHART_H - PAD_Y * 2;
   const lastMonth = data[data.length - 1]?.month ?? 1;
 
@@ -56,7 +65,7 @@ export function ProjectionChart({
   const points = values.map((v, i) => {
     const month = data[i]!.month;
     const x =
-      PAD_X +
+      PAD_LEFT +
       (lastMonth === 0 ? plotW / 2 : (month / lastMonth) * plotW);
     return { x, y: yFor(v) };
   });
@@ -72,10 +81,10 @@ export function ProjectionChart({
 
   const dashes: { left: number; width: number }[] = [];
   if (targetY != null) {
-    for (let x = PAD_X; x < PAD_X + plotW; x += DASH_W + DASH_GAP) {
+    for (let x = PAD_LEFT; x < PAD_LEFT + plotW; x += DASH_W + DASH_GAP) {
       dashes.push({
         left: x,
-        width: Math.min(DASH_W, PAD_X + plotW - x),
+        width: Math.min(DASH_W, PAD_LEFT + plotW - x),
       });
     }
   }
@@ -83,14 +92,25 @@ export function ProjectionChart({
   return (
     <View style={styles.wrap} accessibilityLabel="Planner projection chart">
       <View style={styles.canvas}>
-        {/* Light horizontal grid */}
-        {Array.from({ length: GRID_LINES }, (_, i) => {
-          const t = (i + 1) / (GRID_LINES + 1);
+        {/* Compact Y ticks + aligned grid */}
+        {ticks.map((tick, i) => {
+          const y = yFor(tick);
           return (
-            <View
-              key={`grid-${i}`}
-              style={[styles.gridLine, { top: PAD_Y + t * plotH }]}
-            />
+            <View key={`tick-${i}`}>
+              <CaptionText
+                style={[
+                  styles.yLabel,
+                  {
+                    top: y - 7,
+                    width: Y_LABEL_W,
+                  },
+                ]}
+                numberOfLines={1}
+              >
+                {formatCompactUsd(tick)}
+              </CaptionText>
+              <View style={[styles.gridLine, { top: y }]} />
+            </View>
           );
         })}
 
@@ -117,7 +137,7 @@ export function ProjectionChart({
           );
         })}
 
-        {/* Flat dotted target (goal mode) */}
+        {/* Flat dotted target (goal mode) — same scale as ticks */}
         {targetY != null
           ? dashes.map((d, i) => (
               <View
@@ -202,10 +222,18 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderRadius: 8,
   },
+  yLabel: {
+    position: 'absolute',
+    left: 2,
+    color: colors.inkMuted,
+    fontSize: 11,
+    lineHeight: 14,
+    textAlign: 'right',
+  },
   gridLine: {
     position: 'absolute',
-    left: PAD_X,
-    right: PAD_X,
+    left: PAD_LEFT,
+    right: PAD_RIGHT,
     height: StyleSheet.hairlineWidth,
     backgroundColor: colors.border,
   },
@@ -239,7 +267,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: PAD_X,
+    paddingLeft: PAD_LEFT,
+    paddingRight: PAD_RIGHT,
     marginTop: space.xs,
   },
   axis: {
