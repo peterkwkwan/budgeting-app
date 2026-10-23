@@ -18,9 +18,11 @@ import {
   UserIcon,
 } from '@/components/icons';
 import { colors, fonts, space } from '@/constants/theme';
+import { guardedPush } from '@/lib/navGuard';
 
 const FAB_SIZE = 60;
 const FAB_GAP = 56;
+const ADD_TRANSACTION = '/transaction/new';
 
 type FudgetTabBarProps = {
   state: {
@@ -188,7 +190,7 @@ export function FudgetTabBar({ state, onTabPress }: FudgetTabBarProps) {
               styles.fab,
               pressed && styles.fabPressed,
             ]}
-            onPress={() => router.push('/transaction/new')}
+            onPress={() => guardedPush(router, ADD_TRANSACTION)}
             accessibilityRole="button"
             accessibilityLabel="Add transaction"
           >

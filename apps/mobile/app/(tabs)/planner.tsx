@@ -22,15 +22,14 @@ import {
   type HorizonPresetKey,
 } from '@/constants/planner';
 import { colors, fonts, radius, space, typography } from '@/constants/theme';
-
-/** Near-white empty fill — lighter than surfaceMuted (#f5f5f7). */
-const EMPTY_FILL = '#fafafa';
 import {
   usePlannerGoals,
   usePlannerVehicles,
 } from '@/hooks/usePlanner';
 import { usePersonalStats } from '@/hooks/useStats';
+import { useAuth } from '@/lib/auth';
 import { formatUsd } from '@/lib/money';
+import { guardedPush } from '@/lib/navGuard';
 import {
   goalEffectiveSaved,
   goalMarkerMonth,
@@ -40,7 +39,12 @@ import {
   type PaceStatus,
 } from '@/lib/plannerMath';
 import { resolvePeriodBounds } from '@/lib/periods';
-import { useAuth } from '@/lib/auth';
+
+/** Near-white empty fill — lighter than surfaceMuted (#f5f5f7). */
+const EMPTY_FILL = '#fafafa';
+
+const ADD_VEHICLE = '/planner/vehicle/new';
+const ADD_GOAL = '/planner/goal/new';
 
 function paceLabel(status: PaceStatus): string {
   switch (status) {
@@ -254,7 +258,7 @@ export default function PlannerScreen() {
             {hasVehicles ? (
               <Pressable
                 style={styles.headerAdd}
-                onPress={() => router.push('/planner/vehicle/new')}
+                onPress={() => guardedPush(router, ADD_VEHICLE)}
                 accessibilityRole="button"
                 accessibilityLabel="Add vehicle"
               >
@@ -271,7 +275,7 @@ export default function PlannerScreen() {
                 styles.dashedEmpty,
                 pressed && styles.dashedEmptyPressed,
               ]}
-              onPress={() => router.push('/planner/vehicle/new')}
+              onPress={() => guardedPush(router, ADD_VEHICLE)}
               accessibilityRole="button"
               accessibilityLabel="Add vehicle"
             >
@@ -316,7 +320,7 @@ export default function PlannerScreen() {
             {hasGoals ? (
               <Pressable
                 style={styles.headerAdd}
-                onPress={() => router.push('/planner/goal/new')}
+                onPress={() => guardedPush(router, ADD_GOAL)}
                 accessibilityRole="button"
                 accessibilityLabel="Add goal"
               >
@@ -331,7 +335,7 @@ export default function PlannerScreen() {
                 styles.dashedEmpty,
                 pressed && styles.dashedEmptyPressed,
               ]}
-              onPress={() => router.push('/planner/goal/new')}
+              onPress={() => guardedPush(router, ADD_GOAL)}
               accessibilityRole="button"
               accessibilityLabel="Add goal"
             >
