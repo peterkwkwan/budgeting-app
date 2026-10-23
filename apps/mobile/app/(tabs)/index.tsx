@@ -1,5 +1,4 @@
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -11,15 +10,13 @@ import {
 import { CaptionText, TitleText } from '@/components/StyledText';
 import { TransactionRow } from '@/components/TransactionRow';
 import { UpcomingRepeatsBar } from '@/components/UpcomingRepeatsBar';
-import { VoiceListenModal } from '@/components/VoiceListenModal';
 import { colors, fonts, radius, space, typography } from '@/constants/theme';
 import { useTransactionList } from '@/hooks/useTransactions';
 
-export default function LedgerScreen() {
+export default function TransactionsScreen() {
   const router = useRouter();
   const { data, upcoming, isLoading, isError, error, refetch, isRefetching } =
     useTransactionList();
-  const [voiceOpen, setVoiceOpen] = useState(false);
 
   return (
     <View style={styles.container}>
@@ -29,7 +26,9 @@ export default function LedgerScreen() {
         </View>
       ) : isError ? (
         <View style={styles.centered}>
-          <TitleText style={styles.emptyTitle}>Couldn’t load ledger</TitleText>
+          <TitleText style={styles.emptyTitle}>
+            Couldn’t load transactions
+          </TitleText>
           <CaptionText style={styles.emptyBody}>
             {error instanceof Error ? error.message : 'Something went wrong.'}
           </CaptionText>
@@ -72,7 +71,7 @@ export default function LedgerScreen() {
             upcoming ? (
               <View style={styles.emptyBelowBar}>
                 <CaptionText style={styles.emptyBody}>
-                  No ledger entries for today or earlier. Upcoming repeats for
+                  No transactions for today or earlier. Upcoming repeats for
                   this month are listed above.
                 </CaptionText>
               </View>
@@ -82,66 +81,15 @@ export default function LedgerScreen() {
                   No transactions yet
                 </TitleText>
                 <CaptionText style={styles.emptyBody}>
-                  Add your first expense or income — type it, or say it and
-                  check the draft before saving. It syncs for every device on
-                  this account.
+                  Tap + to add an expense or income. On the Add screen you can
+                  type it, or tap the mic to speak a draft before saving. It
+                  syncs for every device on this account.
                 </CaptionText>
-                <View style={styles.emptyActions}>
-                  <Pressable
-                    style={({ pressed }) => [
-                      styles.secondary,
-                      pressed && styles.secondaryPressed,
-                    ]}
-                    onPress={() => router.push('/transaction/new')}
-                    accessibilityRole="button"
-                    accessibilityLabel="Add transaction"
-                  >
-                    <CaptionText style={styles.secondaryText}>Add</CaptionText>
-                  </Pressable>
-                  <Pressable
-                    style={({ pressed }) => [
-                      styles.secondary,
-                      pressed && styles.secondaryPressed,
-                    ]}
-                    onPress={() => setVoiceOpen(true)}
-                    accessibilityRole="button"
-                    accessibilityLabel="Speak a transaction"
-                  >
-                    <CaptionText style={styles.secondaryText}>Voice</CaptionText>
-                  </Pressable>
-                </View>
               </View>
             )
           }
         />
       )}
-
-      <View style={styles.fabRow} pointerEvents="box-none">
-        <Pressable
-          style={({ pressed }) => [
-            styles.fabSecondary,
-            pressed && styles.fabSecondaryPressed,
-          ]}
-          onPress={() => setVoiceOpen(true)}
-          accessibilityRole="button"
-          accessibilityLabel="Speak a transaction"
-        >
-          <TitleText style={styles.fabSecondaryText}>Voice</TitleText>
-        </Pressable>
-        <Pressable
-          style={({ pressed }) => [styles.fab, pressed && styles.fabPressed]}
-          onPress={() => router.push('/transaction/new')}
-          accessibilityRole="button"
-          accessibilityLabel="Add transaction"
-        >
-          <TitleText style={styles.fabText}>Add</TitleText>
-        </Pressable>
-      </View>
-
-      <VoiceListenModal
-        visible={voiceOpen}
-        onClose={() => setVoiceOpen(false)}
-      />
     </View>
   );
 }
@@ -152,12 +100,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.canvas,
   },
   list: {
-    paddingBottom: 96,
+    paddingBottom: space.xxl,
   },
   emptyList: {
     flexGrow: 1,
     justifyContent: 'center',
-    paddingBottom: 96,
+    paddingBottom: space.xxl,
   },
   emptyBelowBar: {
     paddingHorizontal: space.xl,
@@ -174,11 +122,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.xl,
     alignItems: 'center',
     gap: space.sm,
-  },
-  emptyActions: {
-    flexDirection: 'row',
-    gap: space.sm,
-    marginTop: space.sm,
   },
   emptyTitle: {
     color: colors.green[950],
@@ -207,53 +150,5 @@ const styles = StyleSheet.create({
   secondaryText: {
     color: colors.green[700],
     fontFamily: fonts.bodyStrong,
-  },
-  fabRow: {
-    position: 'absolute',
-    right: space.md,
-    bottom: space.lg,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space.sm,
-  },
-  fab: {
-    minWidth: 88,
-    height: 48,
-    paddingHorizontal: space.md,
-    borderRadius: radius.md,
-    backgroundColor: colors.green[700],
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  fabPressed: {
-    backgroundColor: colors.green[950],
-    transform: [{ scale: 0.98 }],
-  },
-  fabText: {
-    color: colors.inkInverse,
-    fontFamily: fonts.bodyStrong,
-    fontSize: 16,
-    lineHeight: 24,
-  },
-  fabSecondary: {
-    minWidth: 72,
-    height: 48,
-    paddingHorizontal: space.md,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  fabSecondaryPressed: {
-    backgroundColor: colors.surfaceMuted,
-    transform: [{ scale: 0.98 }],
-  },
-  fabSecondaryText: {
-    color: colors.green[700],
-    fontFamily: fonts.bodyStrong,
-    fontSize: 16,
-    lineHeight: 24,
   },
 });

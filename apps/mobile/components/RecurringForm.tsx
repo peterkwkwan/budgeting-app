@@ -278,14 +278,14 @@ export function RecurringForm(props: Props) {
             </Pressable>
           ) : null}
           <CaptionText style={styles.hint}>
-            Matching ledger entries are written about 90 days ahead in{' '}
+            Matching transactions are written about 90 days ahead in{' '}
             {timezone} (or sooner if the series ends). Prefer Add transaction →
             Repeat for Google-style presets.
           </CaptionText>
         </>
       ) : (
         <CaptionText style={styles.hint}>
-          Saving updates this rule and future ledger amounts only. Past entries
+          Saving updates this rule and future transaction amounts only. Past entries
           stay the same. Repeats:{' '}
           {cadenceLabel(initial?.cadence ?? 'monthly')} · {timezone}.
         </CaptionText>

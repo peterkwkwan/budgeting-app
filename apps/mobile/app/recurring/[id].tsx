@@ -42,7 +42,7 @@ export default function EditRecurringScreen() {
     if (!id) return;
     Alert.alert(
       'Stop this series?',
-      'The rule will be removed. Future ledger entries go away. Past entries stay in your ledger.',
+      'The rule will be removed. Future transactions go away. Past entries stay in Transactions.',
       [
         { text: 'Cancel', style: 'cancel' },
         {

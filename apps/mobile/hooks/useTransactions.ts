@@ -11,7 +11,7 @@ import { deviceTimezone } from '@/lib/profile';
 import { statsKeys } from '@/lib/stats';
 import {
   createTransaction,
-  filterLedgerVisible,
+  filterTransactionsVisible,
   getTransaction,
   listTransactions,
   softDeleteTransaction,
@@ -21,14 +21,16 @@ import {
   type TransactionInput,
 } from '@/lib/transactions';
 
-function invalidateLedgerAndStats(queryClient: ReturnType<typeof useQueryClient>) {
+function invalidateTransactionsAndStats(
+  queryClient: ReturnType<typeof useQueryClient>
+) {
   void queryClient.invalidateQueries({ queryKey: transactionKeys.all });
   void queryClient.invalidateQueries({ queryKey: statsKeys.all });
 }
 
 /**
  * Active transactions from Supabase, then client-split:
- * - ledger: one-offs + recurring on/before local today
+ * - list: one-offs + recurring on/before local today
  * - upcoming: recurring after today within the current calendar month
  */
 export function useTransactionList() {
@@ -47,8 +49,8 @@ export function useTransactionList() {
     }, [queryClient])
   );
 
-  const ledger = useMemo(
-    () => filterLedgerVisible(query.data ?? [], timeZone),
+  const visible = useMemo(
+    () => filterTransactionsVisible(query.data ?? [], timeZone),
     [query.data, timeZone]
   );
 
@@ -57,7 +59,7 @@ export function useTransactionList() {
     [query.data, timeZone]
   );
 
-  return { ...query, data: ledger, allRows: query.data, upcoming, timeZone };
+  return { ...query, data: visible, allRows: query.data, upcoming, timeZone };
 }
 
 export function useTransaction(id: string | undefined) {
@@ -80,7 +82,7 @@ export function useCreateTransaction() {
       return createTransaction(user.id, input);
     },
     onSuccess: () => {
-      invalidateLedgerAndStats(queryClient);
+      invalidateTransactionsAndStats(queryClient);
     },
   });
 }
@@ -91,7 +93,7 @@ export function useUpdateTransaction(id: string) {
   return useMutation({
     mutationFn: (input: TransactionInput) => updateTransaction(id, input),
     onSuccess: () => {
-      invalidateLedgerAndStats(queryClient);
+      invalidateTransactionsAndStats(queryClient);
     },
   });
 }
@@ -102,7 +104,7 @@ export function useSoftDeleteTransaction() {
   return useMutation({
     mutationFn: (id: string) => softDeleteTransaction(id),
     onSuccess: () => {
-      invalidateLedgerAndStats(queryClient);
+      invalidateTransactionsAndStats(queryClient);
     },
   });
 }

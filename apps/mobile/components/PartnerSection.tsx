@@ -50,7 +50,7 @@ export function PartnerSection() {
     const message =
       link?.status === 'pending'
         ? 'Your invite code will stop working.'
-        : 'Pair stats will disappear for both of you right away. Ledgers stay private.';
+        : 'Pair stats will disappear for both of you right away. Transactions stay private.';
     Alert.alert(title, message, [
       { text: 'Keep', style: 'cancel' },
       {

@@ -61,7 +61,7 @@ export function useCreateRecurringSeries() {
         throw new Error('You must be signed in to add a recurring rule.');
       }
       const series = await createRecurringSeries(user.id, input);
-      // Fill the rolling window immediately so ledger updates without waiting for cron.
+      // Fill the rolling window immediately so Transactions updates without waiting for cron.
       // Soft-fail if the Edge Function is not deployed yet.
       const catchUp = await catchUpRecurring();
       if (!catchUp.ok) {

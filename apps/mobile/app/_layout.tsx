@@ -52,12 +52,12 @@ function SplashController({ fontsReady }: { fontsReady: boolean }) {
 
 /**
  * Always mount the root Stack on first render. AuthGate used to swap the
- * Stack for a spinner, which left screens (e.g. Ledger) calling useRouter()
+ * Stack for a spinner, which left screens (e.g. Transactions) calling useRouter()
  * outside NavigationContainer.
  */
 function RootNavigator() {
   const { session } = useAuth();
-  // Fill missing recurring ledger rows when signed in / returning to app.
+  // Fill missing recurring transaction rows when signed in / returning to app.
   useCatchUpRecurring();
 
   return (

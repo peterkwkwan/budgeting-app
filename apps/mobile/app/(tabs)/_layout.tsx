@@ -1,5 +1,6 @@
 import { Tabs } from 'expo-router';
 
+import { FudgetTabBar } from '@/components/FudgetTabBar';
 import { useColorScheme } from '@/components/useColorScheme';
 import { Colors, fonts } from '@/constants/theme';
 
@@ -9,6 +10,23 @@ export default function TabLayout() {
 
   return (
     <Tabs
+      tabBar={(props) => (
+        <FudgetTabBar
+          state={props.state}
+          onTabPress={(routeKey) => {
+            const route = props.state.routes.find((r) => r.key === routeKey);
+            if (!route) return;
+            const event = props.emitter.emit({
+              type: 'tabPress',
+              target: route.key,
+              canPreventDefault: true,
+            });
+            if (!event.defaultPrevented) {
+              props.navigateToTab(route.key);
+            }
+          }}
+        />
+      )}
       screenOptions={{
         tabBarActiveTintColor: palette.tint,
         tabBarInactiveTintColor: palette.tabIconDefault,
@@ -35,7 +53,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Ledger',
+          title: 'Transactions',
         }}
       />
       <Tabs.Screen

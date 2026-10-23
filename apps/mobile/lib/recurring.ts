@@ -278,7 +278,7 @@ export async function createRecurringSeries(
   return mapRow(data as Record<string, unknown>);
 }
 
-/** Updates series amount fields + optional ends; future ledger instances for amount only via RPC. */
+/** Updates series amount fields + optional ends; future transaction instances for amount only via RPC. */
 export async function updateRecurringSeriesFuture(
   id: string,
   input: RecurringSeriesUpdateInput
@@ -324,7 +324,7 @@ export async function updateRecurringSeriesFuture(
 
 /**
  * Stop series: hard-delete the rule + future instances (after local today).
- * Past/today ledger rows remain. Rule disappears from manage lists.
+ * Past/today transaction rows remain. Rule disappears from manage lists.
  */
 export async function stopRecurringSeries(id: string): Promise<void> {
   const { error } = await supabase.rpc('stop_recurring_series', {

@@ -88,10 +88,10 @@ export async function listTransactions(): Promise<Transaction[]> {
 }
 
 /**
- * Ledger list: one-offs always; recurring only when local calendar date <= today.
+ * Transactions list: one-offs always; recurring only when local calendar date <= today.
  * Future generated instances stay in DB (90d horizon) but are hidden here.
  */
-export function filterLedgerVisible(
+export function filterTransactionsVisible(
   rows: Transaction[],
   timeZone: string,
   now: Date = new Date()

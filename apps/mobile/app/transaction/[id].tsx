@@ -49,7 +49,7 @@ export default function EditTransactionScreen() {
     if (!id) return;
     Alert.alert(
       'Delete transaction?',
-      'It will be hidden from your ledger (soft-delete). It is not permanently removed.',
+      'It will be hidden from Transactions (soft-delete). It is not permanently removed.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -96,7 +96,7 @@ export default function EditTransactionScreen() {
           ]}
           onPress={() => router.back()}
           accessibilityRole="button"
-          accessibilityLabel="Back to ledger"
+          accessibilityLabel="Back to Transactions"
         >
           <StrongText style={{ color: colors.green[700] }}>Back</StrongText>
         </Pressable>
