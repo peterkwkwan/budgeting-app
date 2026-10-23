@@ -2,21 +2,36 @@ import DateTimePicker, {
   type DateTimePickerEvent,
 } from '@react-native-community/datetimepicker';
 import { useState } from 'react';
-import { Platform, Pressable, StyleSheet, View } from 'react-native';
+import {
+  Modal,
+  Platform,
+  Pressable,
+  StyleSheet,
+  View,
+} from 'react-native';
 
+import { CalendarIcon } from '@/components/icons';
 import { CaptionText, StrongText } from '@/components/StyledText';
 import { colors, fonts, radius, space } from '@/constants/theme';
 import {
-  periodPresetOptions,
+  canShiftPeriodFocusForward,
+  formatCompactDate,
+  periodModeLabel,
+  periodModeOptions,
+  shiftPeriodFocus,
+  type PeriodFocus,
   type PeriodPreset,
 } from '@/lib/periods';
 
 type Props = {
   preset: PeriodPreset;
-  label: string;
+  navLabel: string;
+  focus: PeriodFocus;
+  timeZone: string;
   customStart: Date;
   customEnd: Date;
   onPresetChange: (preset: PeriodPreset) => void;
+  onFocusChange: (focus: PeriodFocus) => void;
   onCustomStartChange: (date: Date) => void;
   onCustomEndChange: (date: Date) => void;
 };
@@ -27,18 +42,25 @@ function startOfDay(d: Date): Date {
 
 export function PeriodSelector({
   preset,
-  label,
+  navLabel,
+  focus,
+  timeZone,
   customStart,
   customEnd,
   onPresetChange,
+  onFocusChange,
   onCustomStartChange,
   onCustomEndChange,
 }: Props) {
+  const [menuOpen, setMenuOpen] = useState(false);
   const [picking, setPicking] = useState<'start' | 'end' | null>(null);
 
   const today = startOfDay(new Date());
   const fromDay = startOfDay(customStart);
   const toDay = startOfDay(customEnd);
+  const canGoNext =
+    preset !== 'custom' &&
+    canShiftPeriodFocusForward(focus, preset, timeZone);
 
   const onPickerChange = (event: DateTimePickerEvent, date?: Date) => {
     if (Platform.OS === 'android') {
@@ -51,13 +73,11 @@ export function PeriodSelector({
     const picked = startOfDay(date);
 
     if (picking === 'start') {
-      // Pick always takes; if From moves past To, bump To up to From.
       onCustomStartChange(picked);
       if (picked.getTime() > toDay.getTime()) {
         onCustomEndChange(picked);
       }
     } else if (picking === 'end') {
-      // Pick always takes; if To moves before From, bump From down to To.
       onCustomEndChange(picked);
       if (picked.getTime() < fromDay.getTime()) {
         onCustomStartChange(picked);
@@ -68,61 +88,155 @@ export function PeriodSelector({
   const fromMaximum = toDay.getTime() < today.getTime() ? toDay : today;
   const toMinimum = fromDay;
 
+  const step = (delta: number) => {
+    if (preset === 'custom') return;
+    onFocusChange(shiftPeriodFocus(focus, preset, delta));
+  };
+
   return (
     <View style={styles.wrap}>
-      <View style={styles.row} accessibilityRole="tablist">
-        {periodPresetOptions().map((opt) => {
-          const selected = preset === opt.value;
-          return (
+      <View style={styles.bar}>
+        {preset === 'custom' ? (
+          <View style={styles.periodRange} accessibilityRole="text">
             <Pressable
-              key={opt.value}
-              accessibilityRole="tab"
-              accessibilityState={{ selected }}
-              onPress={() => onPresetChange(opt.value)}
-              style={({ pressed }) => [
-                styles.chip,
-                selected && styles.chipSelected,
-                pressed && styles.chipPressed,
-              ]}
+              style={styles.dateField}
+              onPress={() => setPicking('start')}
+              accessibilityRole="button"
+              accessibilityLabel={`Start date ${formatCompactDate(customStart, timeZone)}`}
             >
-              <CaptionText
-                style={[styles.chipText, selected && styles.chipTextSelected]}
-              >
-                {opt.label}
+              <CaptionText style={styles.dateFieldText}>
+                {formatCompactDate(customStart, timeZone)}
               </CaptionText>
+              <CalendarIcon color={colors.inkMuted} size={14} />
             </Pressable>
-          );
-        })}
+            <CaptionText style={styles.tilde}>~</CaptionText>
+            <Pressable
+              style={styles.dateField}
+              onPress={() => setPicking('end')}
+              accessibilityRole="button"
+              accessibilityLabel={`End date ${formatCompactDate(customEnd, timeZone)}`}
+            >
+              <CaptionText style={styles.dateFieldText}>
+                {formatCompactDate(customEnd, timeZone)}
+              </CaptionText>
+              <CalendarIcon color={colors.inkMuted} size={14} />
+            </Pressable>
+          </View>
+        ) : (
+          <View style={styles.stepper}>
+            <Pressable
+              onPress={() => step(-1)}
+              style={({ pressed }) => [
+                styles.chevronBtn,
+                pressed && styles.pressed,
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel={
+                preset === 'month' ? 'Previous month' : 'Previous year'
+              }
+              hitSlop={8}
+            >
+              <StrongText style={styles.chevronGlyph}>‹</StrongText>
+            </Pressable>
+            <StrongText
+              style={styles.navLabel}
+              numberOfLines={1}
+              accessibilityRole="header"
+            >
+              {navLabel}
+            </StrongText>
+            <Pressable
+              onPress={() => {
+                if (canGoNext) step(1);
+              }}
+              style={({ pressed }) => [
+                styles.chevronBtn,
+                !canGoNext && styles.chevronDisabled,
+                pressed && canGoNext && styles.pressed,
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel={
+                preset === 'month' ? 'Next month' : 'Next year'
+              }
+              accessibilityState={{ disabled: !canGoNext }}
+              disabled={!canGoNext}
+              hitSlop={8}
+            >
+              <StrongText
+                style={[
+                  styles.chevronGlyph,
+                  !canGoNext && styles.chevronGlyphDisabled,
+                ]}
+              >
+                ›
+              </StrongText>
+            </Pressable>
+          </View>
+        )}
+
+        <Pressable
+          style={({ pressed }) => [
+            styles.modeTrigger,
+            pressed && styles.pressed,
+          ]}
+          onPress={() => setMenuOpen(true)}
+          accessibilityRole="button"
+          accessibilityLabel={`Period mode ${periodModeLabel(preset)}. Change mode.`}
+          accessibilityHint="Opens Monthly, Yearly, or Period options"
+        >
+          <CaptionText style={styles.modeTriggerText}>
+            {periodModeLabel(preset)}
+          </CaptionText>
+          <CaptionText style={styles.modeCaret}>▾</CaptionText>
+        </Pressable>
       </View>
 
-      <StrongText style={styles.label}>{label}</StrongText>
-
-      {preset === 'custom' ? (
-        <View style={styles.customRow}>
-          <Pressable
-            style={styles.dateBtn}
-            onPress={() => setPicking('start')}
-            accessibilityRole="button"
-            accessibilityLabel="Custom start date"
-          >
-            <CaptionText style={styles.dateBtnLabel}>From</CaptionText>
-            <StrongText style={styles.dateBtnValue}>
-              {customStart.toLocaleDateString()}
-            </StrongText>
+      <Modal
+        visible={menuOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setMenuOpen(false)}
+      >
+        <Pressable
+          style={styles.menuBackdrop}
+          onPress={() => setMenuOpen(false)}
+          accessibilityRole="button"
+          accessibilityLabel="Dismiss period mode menu"
+        >
+          <Pressable style={styles.menuSheet} accessibilityRole="menu">
+            {periodModeOptions().map((opt, index, arr) => {
+              const selected = preset === opt.value;
+              const last = index === arr.length - 1;
+              return (
+                <Pressable
+                  key={opt.value}
+                  style={({ pressed }) => [
+                    styles.menuItem,
+                    last && styles.menuItemLast,
+                    selected && styles.menuItemSelected,
+                    pressed && styles.pressed,
+                  ]}
+                  onPress={() => {
+                    onPresetChange(opt.value);
+                    setMenuOpen(false);
+                  }}
+                  accessibilityRole="menuitem"
+                  accessibilityState={{ selected }}
+                >
+                  <StrongText
+                    style={[
+                      styles.menuItemText,
+                      selected && styles.menuItemTextSelected,
+                    ]}
+                  >
+                    {opt.label}
+                  </StrongText>
+                </Pressable>
+              );
+            })}
           </Pressable>
-          <Pressable
-            style={styles.dateBtn}
-            onPress={() => setPicking('end')}
-            accessibilityRole="button"
-            accessibilityLabel="Custom end date"
-          >
-            <CaptionText style={styles.dateBtnLabel}>To</CaptionText>
-            <StrongText style={styles.dateBtnValue}>
-              {customEnd.toLocaleDateString()}
-            </StrongText>
-          </Pressable>
-        </View>
-      ) : null}
+        </Pressable>
+      </Modal>
 
       {picking ? (
         <DateTimePicker
@@ -151,58 +265,129 @@ const styles = StyleSheet.create({
   wrap: {
     gap: space.sm,
   },
-  row: {
+  bar: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     gap: space.sm,
-  },
-  chip: {
-    paddingHorizontal: space.sm + 4,
-    paddingVertical: space.sm,
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
     minHeight: 36,
+  },
+  stepper: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.xs,
+    minWidth: 0,
+  },
+  chevronBtn: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
     justifyContent: 'center',
   },
-  chipSelected: {
-    borderColor: colors.green[700],
-    backgroundColor: colors.green[50],
-  },
-  chipPressed: {
-    opacity: 0.85,
-  },
-  chipText: {
-    color: colors.inkMuted,
-    fontFamily: fonts.caption,
-  },
-  chipTextSelected: {
-    color: colors.green[700],
-    fontFamily: fonts.bodyStrong,
-  },
-  label: {
+  chevronGlyph: {
     color: colors.ink,
+    fontSize: 22,
+    lineHeight: 26,
   },
-  customRow: {
-    flexDirection: 'row',
-    gap: space.sm,
+  chevronGlyphDisabled: {
+    color: colors.inkMuted,
   },
-  dateBtn: {
+  chevronDisabled: {
+    opacity: 0.45,
+  },
+  navLabel: {
+    flexShrink: 1,
+    color: colors.ink,
+    fontSize: 16,
+    lineHeight: 22,
+    textAlign: 'center',
+    minWidth: 72,
+  },
+  periodRange: {
     flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.xs,
+    minWidth: 0,
+  },
+  dateField: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 6,
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: colors.surfaceMuted,
     borderRadius: radius.sm,
-    padding: space.sm,
-    gap: 2,
-    minHeight: 48,
+    backgroundColor: colors.surface,
+    minHeight: 32,
   },
-  dateBtnLabel: {
-    color: colors.inkMuted,
-  },
-  dateBtnValue: {
+  dateFieldText: {
     color: colors.ink,
+    fontFamily: fonts.caption,
+    fontSize: 13,
+  },
+  tilde: {
+    color: colors.inkMuted,
+    paddingHorizontal: 2,
+  },
+  modeTrigger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.sm,
+    backgroundColor: colors.surface,
+    minHeight: 32,
+  },
+  modeTriggerText: {
+    color: colors.green[700],
+    fontFamily: fonts.bodyStrong,
+    fontSize: 13,
+  },
+  modeCaret: {
+    color: colors.green[700],
+    fontSize: 11,
+    lineHeight: 14,
+  },
+  pressed: {
+    opacity: 0.75,
+  },
+  menuBackdrop: {
+    flex: 1,
+    backgroundColor: colors.overlay,
+    justifyContent: 'flex-end',
+    padding: space.md,
+  },
+  menuSheet: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    overflow: 'hidden',
+  },
+  menuItem: {
+    paddingVertical: space.md,
+    paddingHorizontal: space.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  menuItemLast: {
+    borderBottomWidth: 0,
+  },
+  menuItemSelected: {
+    backgroundColor: colors.green[50],
+  },
+  menuItemText: {
+    color: colors.ink,
+    fontSize: 16,
+  },
+  menuItemTextSelected: {
+    color: colors.green[700],
   },
   done: {
     alignSelf: 'flex-end',

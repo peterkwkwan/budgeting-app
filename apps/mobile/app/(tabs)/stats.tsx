@@ -27,7 +27,9 @@ import {
 import { useAuth } from '@/lib/auth';
 import { formatUsd } from '@/lib/money';
 import {
+  currentPeriodFocus,
   resolvePeriodBounds,
+  type PeriodFocus,
   type PeriodPreset,
 } from '@/lib/periods';
 import type { StatsMetric } from '@/lib/stats';
@@ -46,6 +48,9 @@ export default function StatsScreen() {
 
   const [scope, setScope] = useState<StatsScope>('personal');
   const [preset, setPreset] = useState<PeriodPreset>('month');
+  const [focus, setFocus] = useState<PeriodFocus>(() =>
+    currentPeriodFocus(timeZone)
+  );
   const [customStart, setCustomStart] = useState(() => {
     const d = new Date();
     return new Date(d.getFullYear(), d.getMonth(), 1);
@@ -63,13 +68,12 @@ export default function StatsScreen() {
 
   const period = useMemo(
     () =>
-      resolvePeriodBounds(
-        preset,
-        timeZone,
-        preset === 'custom' ? customStart : undefined,
-        preset === 'custom' ? customEnd : undefined
-      ),
-    [preset, timeZone, customStart, customEnd]
+      resolvePeriodBounds(preset, timeZone, {
+        focus,
+        customStart: preset === 'custom' ? customStart : undefined,
+        customEndInclusive: preset === 'custom' ? customEnd : undefined,
+      }),
+    [preset, timeZone, focus, customStart, customEnd]
   );
 
   const personal = usePersonalStats(period, pieType);
@@ -159,10 +163,13 @@ export default function StatsScreen() {
 
       <PeriodSelector
         preset={preset}
-        label={period.label}
+        navLabel={period.navLabel}
+        focus={focus}
+        timeZone={timeZone}
         customStart={customStart}
         customEnd={customEnd}
         onPresetChange={setPreset}
+        onFocusChange={setFocus}
         onCustomStartChange={(date) => {
           setCustomStart(date);
           setCustomEnd((end) => (date.getTime() > end.getTime() ? date : end));
