@@ -15,8 +15,13 @@ export default function NewGoalScreen() {
   async function onSubmit(input: PlannerGoalInput) {
     setError(null);
     try {
-      const goal = await create.mutateAsync(input);
-      router.replace(`/planner/goal/${goal.id}`);
+      await create.mutateAsync(input);
+      // Return to Planner list (same as vehicle Save).
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace('/(tabs)/planner');
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save goal.');
     }

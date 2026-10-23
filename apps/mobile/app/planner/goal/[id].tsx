@@ -51,8 +51,11 @@ export default function GoalDetailScreen() {
     setError(null);
     try {
       await update.mutateAsync(input);
-      setMode('view');
-      void goalQuery.refetch();
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace('/(tabs)/planner');
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not update goal.');
     }

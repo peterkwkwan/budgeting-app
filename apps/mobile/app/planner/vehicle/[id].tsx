@@ -30,7 +30,11 @@ export default function VehicleDetailScreen() {
     setError(null);
     try {
       await update.mutateAsync(input);
-      router.back();
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace('/(tabs)/planner');
+      }
     } catch (err) {
       setError(
         err instanceof Error ? err.message : 'Could not update vehicle.'

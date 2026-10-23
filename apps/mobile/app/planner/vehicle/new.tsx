@@ -15,8 +15,13 @@ export default function NewVehicleScreen() {
   async function onSubmit(input: PlannerVehicleInput) {
     setError(null);
     try {
-      const vehicle = await create.mutateAsync(input);
-      router.replace(`/planner/vehicle/${vehicle.id}`);
+      await create.mutateAsync(input);
+      // Return to Planner list (same as Transactions after Add).
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace('/(tabs)/planner');
+      }
     } catch (err) {
       setError(
         err instanceof Error ? err.message : 'Could not save vehicle.'
