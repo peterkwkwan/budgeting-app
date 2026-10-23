@@ -62,6 +62,9 @@ function RootNavigator() {
 
   return (
     <Stack>
+      {/* Cold launch resolves `/`. `(tabs)/index` owns `/` when signed in;
+          `(auth)/index` must own `/` when signed out (session is null on
+          first paint), or Expo Router shows +not-found. */}
       <Stack.Protected guard={!!session}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="transaction" options={{ headerShown: false }} />
