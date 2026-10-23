@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
@@ -12,6 +13,7 @@ import { colors, fonts, radius, space, typography } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 
 export default function LoginScreen() {
+  const router = useRouter();
   const { signInWithGoogle, configured } = useAuth();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -22,7 +24,12 @@ export default function LoginScreen() {
     const result = await signInWithGoogle();
     if (result.error) {
       setError(result.error);
+      setBusy(false);
+      return;
     }
+    // Belt-and-suspenders with auth/callback Redirect: if the WebBrowser
+    // return path did not navigate the router, land on Transactions (`/`).
+    router.replace('/');
     setBusy(false);
   }
 
