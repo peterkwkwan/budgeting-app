@@ -1,0 +1,471 @@
+import { useRouter } from 'expo-router';
+import { useMemo, useState } from 'react';
+import {
+  ActivityIndicator,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  View,
+} from 'react-native';
+
+import { ProjectionChart } from '@/components/planner/ProjectionChart';
+import { CaptionText, StrongText, TitleText } from '@/components/StyledText';
+import {
+  DISCLAIMER,
+  GOAL_TYPE_LABELS,
+  HORIZON_PRESETS,
+  PLAN_CADENCE_LABELS,
+  VEHICLE_TYPE_LABELS,
+  type HorizonPresetKey,
+} from '@/constants/planner';
+import { colors, fonts, radius, space, typography } from '@/constants/theme';
+import {
+  usePlannerGoals,
+  usePlannerVehicles,
+} from '@/hooks/usePlanner';
+import { usePersonalStats } from '@/hooks/useStats';
+import { formatUsd } from '@/lib/money';
+import {
+  goalMarkerMonth,
+  goalPace,
+  projectNetWorth,
+  requiredContribution,
+  type PaceStatus,
+} from '@/lib/plannerMath';
+import { resolvePeriodBounds } from '@/lib/periods';
+import { useAuth } from '@/lib/auth';
+
+function paceLabel(status: PaceStatus): string {
+  switch (status) {
+    case 'ahead':
+      return 'Ahead';
+    case 'behind':
+      return 'Behind';
+    case 'on_track':
+      return 'On track';
+    default:
+      return 'No date';
+  }
+}
+
+function paceColor(status: PaceStatus): string {
+  switch (status) {
+    case 'ahead':
+      return colors.green[700];
+    case 'behind':
+      return colors.warning;
+    case 'on_track':
+      return colors.ink;
+    default:
+      return colors.inkMuted;
+  }
+}
+
+export default function PlannerScreen() {
+  const router = useRouter();
+  const { profile } = useAuth();
+  const timeZone = profile?.timezone || 'UTC';
+  const vehicles = usePlannerVehicles();
+  const goals = usePlannerGoals();
+
+  const [horizonKey, setHorizonKey] = useState<HorizonPresetKey>('10y');
+  const [customYears, setCustomYears] = useState('15');
+
+  const horizonMonths = useMemo(() => {
+    if (horizonKey === 'custom') {
+      const y = Number(customYears);
+      if (!(y > 0) || Number.isNaN(y)) return 120;
+      return Math.min(600, Math.round(y * 12));
+    }
+    return (
+      HORIZON_PRESETS.find((h) => h.key === horizonKey)?.months ?? 120
+    );
+  }, [horizonKey, customYears]);
+
+  // Optional thin “recent net” hint from trailing ~30d personal Stats (non-blocking).
+  const last30 = useMemo(
+    () => resolvePeriodBounds('custom', timeZone, daysAgo(30), new Date()),
+    [timeZone]
+  );
+  const recentStats = usePersonalStats(last30, 'expense');
+
+  const projection = useMemo(() => {
+    const list = vehicles.data ?? [];
+    return projectNetWorth(
+      list.map((v) => ({
+        balance: v.balance,
+        annualRatePercent: v.annual_rate,
+        growthMode: v.growth_mode,
+        planAmount: v.plan_amount,
+        planCadence: v.plan_cadence,
+      })),
+      horizonMonths
+    );
+  }, [vehicles.data, horizonMonths]);
+
+  const markers = useMemo(() => {
+    return (goals.data ?? [])
+      .map((g) => {
+        const month = goalMarkerMonth(g.target_date, horizonMonths);
+        if (month == null) return null;
+        return { month, label: g.name };
+      })
+      .filter((m): m is { month: number; label: string } => m != null);
+  }, [goals.data, horizonMonths]);
+
+  const refreshing = vehicles.isRefetching || goals.isRefetching;
+  const loading = vehicles.isLoading || goals.isLoading;
+  const error =
+    (vehicles.error instanceof Error && vehicles.error.message) ||
+    (goals.error instanceof Error && goals.error.message) ||
+    null;
+
+  const hasVehicles = (vehicles.data?.length ?? 0) > 0;
+  const hasGoals = (goals.data?.length ?? 0) > 0;
+  const endNet = projection[projection.length - 1]?.netWorth ?? 0;
+  const startNet = projection[0]?.netWorth ?? 0;
+
+  const recentNet =
+    recentStats.totals.data != null ? recentStats.totals.data.net : null;
+
+  return (
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={() => {
+            void vehicles.refetch();
+            void goals.refetch();
+          }}
+          tintColor={colors.green[700]}
+        />
+      }
+    >
+      {loading ? (
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color={colors.green[700]} />
+        </View>
+      ) : error ? (
+        <View style={styles.centered}>
+          <TitleText style={styles.sectionTitle}>Couldn’t load planner</TitleText>
+          <CaptionText style={styles.muted}>{error}</CaptionText>
+          <Pressable
+            style={styles.secondary}
+            onPress={() => {
+              void vehicles.refetch();
+              void goals.refetch();
+            }}
+          >
+            <CaptionText style={styles.secondaryText}>Try again</CaptionText>
+          </Pressable>
+        </View>
+      ) : (
+        <>
+          <CaptionText style={styles.disclaimer}>{DISCLAIMER}</CaptionText>
+
+          <View style={styles.sectionHead}>
+            <TitleText style={styles.sectionTitle}>Projection</TitleText>
+          </View>
+
+          <View style={styles.chips}>
+            {HORIZON_PRESETS.map((h) => (
+              <Pressable
+                key={h.key}
+                style={[
+                  styles.chip,
+                  horizonKey === h.key && styles.chipSelected,
+                ]}
+                onPress={() => setHorizonKey(h.key)}
+              >
+                <CaptionText
+                  style={[
+                    styles.chipText,
+                    horizonKey === h.key && styles.chipTextSelected,
+                  ]}
+                >
+                  {h.label}
+                </CaptionText>
+              </Pressable>
+            ))}
+          </View>
+          {horizonKey === 'custom' ? (
+            <View style={styles.customRow}>
+              <CaptionText style={styles.muted}>Years</CaptionText>
+              <TextInput
+                style={styles.customInput}
+                value={customYears}
+                onChangeText={setCustomYears}
+                keyboardType="number-pad"
+                maxLength={3}
+              />
+            </View>
+          ) : null}
+
+          {!hasVehicles ? (
+            <View style={styles.emptyBlock}>
+              <CaptionText style={styles.muted}>
+                Add a savings, investment, or debt vehicle to see a projection
+                curve.
+              </CaptionText>
+            </View>
+          ) : (
+            <>
+              <ProjectionChart
+                data={projection}
+                markers={markers}
+                emptyLabel="No projection yet"
+              />
+              <View style={styles.summaryRow}>
+                <View>
+                  <CaptionText style={styles.muted}>Now</CaptionText>
+                  <StrongText style={styles.amount}>
+                    {formatUsd(startNet)}
+                  </StrongText>
+                </View>
+                <View style={styles.summaryEnd}>
+                  <CaptionText style={styles.muted}>At horizon</CaptionText>
+                  <StrongText style={styles.amount}>
+                    {formatUsd(endNet)}
+                  </StrongText>
+                </View>
+              </View>
+            </>
+          )}
+
+          {recentNet != null && !recentStats.totals.isError ? (
+            <CaptionText style={styles.hint}>
+              Recent ~30d net (Stats):{' '}
+              {recentNet < 0 ? '−' : ''}
+              {formatUsd(recentNet)} — optional context only; projections use
+              vehicles and plans.
+            </CaptionText>
+          ) : null}
+
+          <View style={styles.sectionHead}>
+            <TitleText style={styles.sectionTitle}>Goals</TitleText>
+            <Pressable
+              onPress={() => router.push('/planner/goal/new')}
+              accessibilityRole="button"
+              accessibilityLabel="Add goal"
+            >
+              <CaptionText style={styles.link}>Add</CaptionText>
+            </Pressable>
+          </View>
+
+          {!hasGoals ? (
+            <View style={styles.emptyBlock}>
+              <CaptionText style={styles.muted}>
+                No goals yet. Set a target amount and optional date to track
+                pace.
+              </CaptionText>
+              <Pressable
+                style={styles.secondary}
+                onPress={() => router.push('/planner/goal/new')}
+              >
+                <CaptionText style={styles.secondaryText}>Add goal</CaptionText>
+              </Pressable>
+            </View>
+          ) : (
+            (goals.data ?? []).map((g) => {
+              const pace = goalPace({
+                targetAmount: g.target_amount,
+                currentSaved: g.current_saved,
+                targetDate: g.target_date,
+                createdAt: g.created_at,
+              });
+              const need = requiredContribution({
+                targetAmount: g.target_amount,
+                currentSaved: g.current_saved,
+                targetDate: g.target_date,
+                cadence: g.plan_cadence ?? 'monthly',
+              });
+              return (
+                <Pressable
+                  key={g.id}
+                  style={({ pressed }) => [
+                    styles.row,
+                    pressed && styles.rowPressed,
+                  ]}
+                  onPress={() => router.push(`/planner/goal/${g.id}`)}
+                >
+                  <View style={styles.rowMain}>
+                    <StrongText style={styles.rowTitle}>{g.name}</StrongText>
+                    <CaptionText
+                      style={[styles.muted, { color: paceColor(pace.status) }]}
+                    >
+                      {GOAL_TYPE_LABELS[g.goal_type]} · {pace.progressPct}% ·{' '}
+                      {paceLabel(pace.status)}
+                    </CaptionText>
+                    <CaptionText style={styles.muted}>
+                      {formatUsd(g.current_saved)} of{' '}
+                      {formatUsd(g.target_amount)}
+                      {need != null
+                        ? ` · ~${formatUsd(need)}/${g.plan_cadence ? PLAN_CADENCE_LABELS[g.plan_cadence].toLowerCase() : 'mo'} to hit date`
+                        : ''}
+                    </CaptionText>
+                  </View>
+                </Pressable>
+              );
+            })
+          )}
+
+          <View style={styles.sectionHead}>
+            <TitleText style={styles.sectionTitle}>Vehicles</TitleText>
+            <Pressable
+              onPress={() => router.push('/planner/vehicle/new')}
+              accessibilityRole="button"
+              accessibilityLabel="Add vehicle"
+            >
+              <CaptionText style={styles.link}>Add</CaptionText>
+            </Pressable>
+          </View>
+
+          {!hasVehicles ? (
+            <View style={styles.emptyBlock}>
+              <CaptionText style={styles.muted}>
+                Track savings, investments, cash, or debt with a rate and
+                optional plan.
+              </CaptionText>
+              <Pressable
+                style={styles.secondary}
+                onPress={() => router.push('/planner/vehicle/new')}
+              >
+                <CaptionText style={styles.secondaryText}>
+                  Add vehicle
+                </CaptionText>
+              </Pressable>
+            </View>
+          ) : (
+            (vehicles.data ?? []).map((v) => (
+              <Pressable
+                key={v.id}
+                style={({ pressed }) => [
+                  styles.row,
+                  pressed && styles.rowPressed,
+                ]}
+                onPress={() => router.push(`/planner/vehicle/${v.id}`)}
+              >
+                <View style={styles.rowMain}>
+                  <StrongText style={styles.rowTitle}>{v.name}</StrongText>
+                  <CaptionText style={styles.muted}>
+                    {VEHICLE_TYPE_LABELS[v.vehicle_type]} ·{' '}
+                    {v.growth_mode === 'grow' ? 'Grows' : 'Shrinks'} ·{' '}
+                    {v.annual_rate}%
+                  </CaptionText>
+                  <CaptionText style={styles.muted}>
+                    {formatUsd(v.balance)}
+                    {v.plan_amount != null && v.plan_cadence
+                      ? ` · plan ${formatUsd(v.plan_amount)} ${PLAN_CADENCE_LABELS[v.plan_cadence].toLowerCase()}`
+                      : ''}
+                  </CaptionText>
+                </View>
+              </Pressable>
+            ))
+          )}
+        </>
+      )}
+    </ScrollView>
+  );
+}
+
+function daysAgo(n: number): Date {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  return d;
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.canvas },
+  content: { padding: space.md, paddingBottom: space.xxl, gap: space.sm },
+  centered: {
+    paddingVertical: space.xxl,
+    alignItems: 'center',
+    gap: space.sm,
+  },
+  disclaimer: {
+    color: colors.inkMuted,
+    ...typography.caption,
+    marginBottom: space.sm,
+  },
+  sectionHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: space.lg,
+    marginBottom: space.xs,
+  },
+  sectionTitle: { color: colors.green[950], fontSize: 20 },
+  link: { color: colors.green[700], fontFamily: fonts.bodyStrong },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
+  chip: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    paddingHorizontal: space.sm,
+    paddingVertical: 8,
+    backgroundColor: colors.surface,
+  },
+  chipSelected: {
+    borderColor: colors.green[700],
+    backgroundColor: colors.green[50],
+  },
+  chipText: { color: colors.ink },
+  chipTextSelected: {
+    color: colors.green[700],
+    fontFamily: fonts.bodyStrong,
+  },
+  customRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
+  },
+  customInput: {
+    width: 64,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    paddingHorizontal: space.sm,
+    paddingVertical: 8,
+    fontFamily: fonts.body,
+    color: colors.ink,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: space.sm,
+  },
+  summaryEnd: { alignItems: 'flex-end' },
+  amount: { color: colors.ink, ...typography.amount, fontSize: 18 },
+  hint: { color: colors.inkMuted, marginTop: space.sm },
+  muted: { color: colors.inkMuted },
+  emptyBlock: {
+    paddingVertical: space.md,
+    gap: space.sm,
+    alignItems: 'flex-start',
+  },
+  secondary: {
+    paddingHorizontal: space.md,
+    height: 40,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  secondaryText: {
+    color: colors.green[700],
+    fontFamily: fonts.bodyStrong,
+  },
+  row: {
+    paddingVertical: space.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  rowPressed: { backgroundColor: colors.surfaceMuted },
+  rowMain: { gap: 2 },
+  rowTitle: { color: colors.ink },
+});

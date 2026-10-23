@@ -63,6 +63,12 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="planner"
+        options={{
+          title: 'Planner',
+        }}
+      />
+      <Tabs.Screen
         name="account"
         options={{
           title: 'Account',
