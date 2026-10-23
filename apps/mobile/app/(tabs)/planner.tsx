@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -27,16 +27,26 @@ import {
   usePlannerGoals,
   usePlannerVehicles,
 } from '@/hooks/usePlanner';
+import {
+  type ChartFocusSelection,
+  isChartableGoal,
+  linkedGrowthVehicles,
+  loadChartFocus,
+  resolveChartFocus,
+  resolveChartMode,
+  saveChartFocus,
+} from '@/lib/plannerChartFocus';
 import { formatUsd } from '@/lib/money';
 import { guardedPush } from '@/lib/navGuard';
 import {
   goalEffectiveSaved,
-  goalMarkerMonth,
   goalPace,
   projectNetWorth,
   requiredContribution,
   type PaceStatus,
+  type ProjectVehicleInput,
 } from '@/lib/plannerMath';
+import type { PlannerVehicle } from '@/lib/plannerVehicles';
 
 /** Near-white empty fill — lighter than surfaceMuted (#f5f5f7). */
 const EMPTY_FILL = '#fafafa';
@@ -70,6 +80,17 @@ function paceColor(status: PaceStatus): string {
   }
 }
 
+function toProjectInput(v: PlannerVehicle): ProjectVehicleInput {
+  return {
+    balance: v.balance,
+    annualRatePercent: v.annual_rate,
+    growthMode: v.growth_mode,
+    compoundPeriod: v.compound_period,
+    planAmount: v.plan_amount,
+    planCadence: v.plan_cadence,
+  };
+}
+
 export default function PlannerScreen() {
   const router = useRouter();
   const vehicles = usePlannerVehicles();
@@ -77,6 +98,23 @@ export default function PlannerScreen() {
 
   const [horizonKey, setHorizonKey] = useState<HorizonPresetKey>('10y');
   const [customYears, setCustomYears] = useState('15');
+  const [storedFocus, setStoredFocus] = useState<ChartFocusSelection | null>(
+    null
+  );
+  const [prefsReady, setPrefsReady] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    void loadChartFocus().then((sel) => {
+      if (!cancelled) {
+        setStoredFocus(sel);
+        setPrefsReady(true);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const horizonMonths = useMemo(() => {
     if (horizonKey === 'custom') {
@@ -89,42 +127,74 @@ export default function PlannerScreen() {
     );
   }, [horizonKey, customYears]);
 
+  const vehicleList = vehicles.data ?? [];
+  const goalList = goals.data ?? [];
+
+  const chartMode = useMemo(
+    () => resolveChartMode(goalList, vehicleList),
+    [goalList, vehicleList]
+  );
+
+  const focus = useMemo(
+    () =>
+      resolveChartFocus({
+        mode: chartMode,
+        goals: goalList,
+        vehicles: vehicleList,
+        stored: storedFocus,
+      }),
+    [chartMode, goalList, vehicleList, storedFocus]
+  );
+
+  const focusedGoal = useMemo(() => {
+    if (focus?.kind !== 'goal') return null;
+    return goalList.find((g) => g.id === focus.id) ?? null;
+  }, [focus, goalList]);
+
+  const primaryVehicles = useMemo(() => {
+    if (!focus) return [] as PlannerVehicle[];
+    if (focus.kind === 'goal' && focusedGoal) {
+      return linkedGrowthVehicles(focusedGoal, vehicleList);
+    }
+    if (focus.kind === 'vehicle') {
+      const v = vehicleList.find((x) => x.id === focus.id);
+      return v ? [v] : [];
+    }
+    return [];
+  }, [focus, focusedGoal, vehicleList]);
+
   const projection = useMemo(() => {
-    const list = vehicles.data ?? [];
+    if (primaryVehicles.length === 0) return [];
     return projectNetWorth(
-      list.map((v) => ({
-        balance: v.balance,
-        annualRatePercent: v.annual_rate,
-        growthMode: v.growth_mode,
-        compoundPeriod: v.compound_period,
-        planAmount: v.plan_amount,
-        planCadence: v.plan_cadence,
-      })),
+      primaryVehicles.map(toProjectInput),
       horizonMonths
     );
-  }, [vehicles.data, horizonMonths]);
+  }, [primaryVehicles, horizonMonths]);
 
-  const markers = useMemo(() => {
-    return (goals.data ?? [])
-      .map((g) => {
-        const month = goalMarkerMonth(g.target_date, horizonMonths);
-        if (month == null) return null;
-        return { month, label: g.name };
-      })
-      .filter((m): m is { month: number; label: string } => m != null);
-  }, [goals.data, horizonMonths]);
+  const targetAmount =
+    chartMode === 'goal' && focusedGoal != null
+      ? focusedGoal.target_amount
+      : null;
 
   const refreshing = vehicles.isRefetching || goals.isRefetching;
-  const loading = vehicles.isLoading || goals.isLoading;
+  const loading = vehicles.isLoading || goals.isLoading || !prefsReady;
   const error =
     (vehicles.error instanceof Error && vehicles.error.message) ||
     (goals.error instanceof Error && goals.error.message) ||
     null;
 
-  const hasVehicles = (vehicles.data?.length ?? 0) > 0;
-  const hasGoals = (goals.data?.length ?? 0) > 0;
+  const hasVehicles = vehicleList.length > 0;
+  const hasGoals = goalList.length > 0;
   const endNet = projection[projection.length - 1]?.netWorth ?? 0;
   const startNet = projection[0]?.netWorth ?? 0;
+  const hasGreyedGoals =
+    chartMode === 'goal' &&
+    goalList.some((g) => !isChartableGoal(g, vehicleList));
+
+  function selectFocus(next: ChartFocusSelection) {
+    setStoredFocus(next);
+    void saveChartFocus(next);
+  }
 
   return (
     <ScrollView
@@ -201,6 +271,89 @@ export default function PlannerScreen() {
             </View>
           ) : null}
 
+          {hasVehicles ? (
+            <View style={styles.showBlock}>
+              <CaptionText style={styles.showLabel}>Show</CaptionText>
+              <View style={styles.chips}>
+                {chartMode === 'goal'
+                  ? goalList.map((g) => {
+                      const chartable = isChartableGoal(g, vehicleList);
+                      const selected =
+                        focus?.kind === 'goal' && focus.id === g.id;
+                      return (
+                        <Pressable
+                          key={g.id}
+                          disabled={!chartable}
+                          style={[
+                            styles.chip,
+                            styles.showChip,
+                            selected && styles.chipSelected,
+                            !chartable && styles.chipDisabled,
+                          ]}
+                          onPress={() =>
+                            selectFocus({ kind: 'goal', id: g.id })
+                          }
+                          accessibilityState={{
+                            selected,
+                            disabled: !chartable,
+                          }}
+                          accessibilityLabel={
+                            chartable
+                              ? `Show ${g.name}`
+                              : `${g.name}, link a growth vehicle to chart`
+                          }
+                        >
+                          <CaptionText
+                            style={[
+                              styles.chipText,
+                              selected && styles.chipTextSelected,
+                              !chartable && styles.chipTextDisabled,
+                            ]}
+                            numberOfLines={1}
+                          >
+                            {g.name}
+                          </CaptionText>
+                        </Pressable>
+                      );
+                    })
+                  : vehicleList.map((v) => {
+                      const selected =
+                        focus?.kind === 'vehicle' && focus.id === v.id;
+                      return (
+                        <Pressable
+                          key={v.id}
+                          style={[
+                            styles.chip,
+                            styles.showChip,
+                            selected && styles.chipSelected,
+                          ]}
+                          onPress={() =>
+                            selectFocus({ kind: 'vehicle', id: v.id })
+                          }
+                          accessibilityState={{ selected }}
+                          accessibilityLabel={`Show ${v.name}`}
+                        >
+                          <CaptionText
+                            style={[
+                              styles.chipText,
+                              selected && styles.chipTextSelected,
+                            ]}
+                            numberOfLines={1}
+                          >
+                            {v.name}
+                          </CaptionText>
+                        </Pressable>
+                      );
+                    })}
+              </View>
+              {hasGreyedGoals ? (
+                <CaptionText style={styles.showHint}>
+                  Greyed goals need a linked growth vehicle (not debt).
+                </CaptionText>
+              ) : null}
+            </View>
+          ) : null}
+
           {!hasVehicles ? (
             <ProjectionEmptyWell
               onPress={() => guardedPush(router, ADD_VEHICLE)}
@@ -209,7 +362,7 @@ export default function PlannerScreen() {
             <>
               <ProjectionChart
                 data={projection}
-                markers={markers}
+                targetAmount={targetAmount}
                 emptyLabel="No projection yet"
               />
               <View style={styles.summaryRow}>
@@ -263,7 +416,7 @@ export default function PlannerScreen() {
               <CaptionText style={styles.secondaryText}>Add vehicle</CaptionText>
             </Pressable>
           ) : (
-            (vehicles.data ?? []).map((v) => (
+            vehicleList.map((v) => (
               <Pressable
                 key={v.id}
                 style={({ pressed }) => [
@@ -328,11 +481,11 @@ export default function PlannerScreen() {
               <CaptionText style={styles.secondaryText}>Add goal</CaptionText>
             </Pressable>
           ) : (
-            (goals.data ?? []).map((g) => {
+            goalList.map((g) => {
               const saved = goalEffectiveSaved({
                 currentSaved: g.current_saved,
                 vehicleIds: g.vehicle_ids,
-                vehicles: vehicles.data ?? [],
+                vehicles: vehicleList,
               });
               const pace = goalPace({
                 targetAmount: g.target_amount,
@@ -447,14 +600,38 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     backgroundColor: colors.surface,
   },
+  showChip: {
+    maxWidth: 140,
+  },
   chipSelected: {
     borderColor: colors.green[700],
     backgroundColor: colors.green[50],
+  },
+  chipDisabled: {
+    backgroundColor: colors.surfaceMuted,
+    borderColor: colors.border,
+    opacity: 0.65,
   },
   chipText: { color: colors.ink },
   chipTextSelected: {
     color: colors.green[700],
     fontFamily: fonts.bodyStrong,
+  },
+  chipTextDisabled: {
+    color: colors.inkMuted,
+  },
+  showBlock: {
+    gap: space.xs,
+    marginTop: space.xs,
+  },
+  showLabel: {
+    color: colors.inkMuted,
+    fontFamily: fonts.bodyStrong,
+  },
+  showHint: {
+    color: colors.inkMuted,
+    fontSize: 12,
+    lineHeight: 16,
   },
   customRow: {
     flexDirection: 'row',

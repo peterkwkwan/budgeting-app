@@ -4,30 +4,31 @@ import { CaptionText } from '@/components/StyledText';
 import { colors, space } from '@/constants/theme';
 import type { ProjectionPoint } from '@/lib/plannerMath';
 
-type Marker = {
-  month: number;
-  label: string;
-};
-
 type Props = {
   data: ProjectionPoint[];
-  markers?: Marker[];
+  /** Flat horizontal target (goal mode only). */
+  targetAmount?: number | null;
   emptyLabel: string;
 };
 
-const CHART_H = 168;
+const CHART_H = 176;
 const CHART_W = 320;
-const PAD_X = 8;
-const PAD_Y = 14;
+const PAD_X = 10;
+const PAD_Y = 16;
 const STROKE = 2.5;
+const DOT = 8;
+const GRID_LINES = 3;
+const DASH_W = 5;
+const DASH_GAP = 4;
 
 /**
- * View-only net-worth projection polyline (same approach as Stats TrendLineChart).
- * Goal markers are vertical ticks — no Skia / Victory.
+ * Style B projection: solid curve, soft green area fill, light grid,
+ * start/end dots, optional flat dotted target line (goal mode).
+ * View-only — no Skia / Victory.
  */
 export function ProjectionChart({
   data,
-  markers = [],
+  targetAmount = null,
   emptyLabel,
 }: Props) {
   if (data.length === 0) {
@@ -39,52 +40,97 @@ export function ProjectionChart({
   }
 
   const values = data.map((p) => p.netWorth);
-  const minV = Math.min(...values, 0);
-  const maxV = Math.max(...values, 0);
+  const target =
+    targetAmount != null && Number.isFinite(targetAmount)
+      ? targetAmount
+      : null;
+  const minV = Math.min(...values, target ?? values[0]!, 0);
+  const maxV = Math.max(...values, target ?? values[0]!, 0);
   const span = maxV - minV || 1;
   const plotW = CHART_W - PAD_X * 2;
   const plotH = CHART_H - PAD_Y * 2;
   const lastMonth = data[data.length - 1]?.month ?? 1;
+
+  const yFor = (v: number) => PAD_Y + (1 - (v - minV) / span) * plotH;
 
   const points = values.map((v, i) => {
     const month = data[i]!.month;
     const x =
       PAD_X +
       (lastMonth === 0 ? plotW / 2 : (month / lastMonth) * plotW);
-    const y = PAD_Y + (1 - (v - minV) / span) * plotH;
-    return { x, y };
+    return { x, y: yFor(v) };
   });
 
-  const zeroY =
-    minV < 0 && maxV > 0
-      ? PAD_Y + (1 - (0 - minV) / span) * plotH
-      : null;
+  // Keep chart light on long horizons; denser than before for a smoother curve
+  const step = points.length > 90 ? Math.ceil(points.length / 72) : 1;
+  const drawn = points.filter(
+    (_, i) => i % step === 0 || i === points.length - 1
+  );
 
-  // Downsample segments for long horizons (keep chart light)
-  const step = points.length > 60 ? Math.ceil(points.length / 48) : 1;
-  const drawn = points.filter((_, i) => i % step === 0 || i === points.length - 1);
+  const baselineY = PAD_Y + plotH;
+  const targetY = target != null ? yFor(target) : null;
+
+  const dashes: { left: number; width: number }[] = [];
+  if (targetY != null) {
+    for (let x = PAD_X; x < PAD_X + plotW; x += DASH_W + DASH_GAP) {
+      dashes.push({
+        left: x,
+        width: Math.min(DASH_W, PAD_X + plotW - x),
+      });
+    }
+  }
 
   return (
     <View style={styles.wrap} accessibilityLabel="Planner projection chart">
       <View style={styles.canvas}>
-        {zeroY != null ? (
-          <View style={[styles.baseline, { top: zeroY }]} />
-        ) : null}
-
-        {markers.map((m) => {
-          if (m.month < 0 || m.month > lastMonth) return null;
-          const x =
-            PAD_X +
-            (lastMonth === 0 ? plotW / 2 : (m.month / lastMonth) * plotW);
+        {/* Light horizontal grid */}
+        {Array.from({ length: GRID_LINES }, (_, i) => {
+          const t = (i + 1) / (GRID_LINES + 1);
           return (
             <View
-              key={`m-${m.month}-${m.label}`}
-              style={[styles.marker, { left: x - 1 }]}
-              accessibilityLabel={`Goal marker ${m.label}`}
+              key={`grid-${i}`}
+              style={[styles.gridLine, { top: PAD_Y + t * plotH }]}
             />
           );
         })}
 
+        {/* Soft area fill under the curve */}
+        {drawn.slice(0, -1).map((a, i) => {
+          const b = drawn[i + 1]!;
+          const left = a.x;
+          const width = Math.max(1, b.x - a.x);
+          const top = Math.min(a.y, b.y);
+          const height = Math.max(0, baselineY - top);
+          return (
+            <View
+              key={`fill-${i}`}
+              style={[
+                styles.areaStrip,
+                {
+                  left,
+                  width,
+                  top,
+                  height,
+                },
+              ]}
+            />
+          );
+        })}
+
+        {/* Flat dotted target (goal mode) */}
+        {targetY != null
+          ? dashes.map((d, i) => (
+              <View
+                key={`dash-${i}`}
+                style={[
+                  styles.targetDash,
+                  { left: d.left, width: d.width, top: targetY },
+                ]}
+              />
+            ))
+          : null}
+
+        {/* Solid primary curve */}
         {drawn.slice(0, -1).map((a, i) => {
           const b = drawn[i + 1]!;
           const dx = b.x - a.x;
@@ -103,7 +149,6 @@ export function ProjectionChart({
                   height: STROKE,
                   left: midX - length / 2,
                   top: midY - STROKE / 2,
-                  backgroundColor: colors.green[700],
                   transform: [{ rotate: `${angle}deg` }],
                 },
               ]}
@@ -111,24 +156,29 @@ export function ProjectionChart({
           );
         })}
 
-        {drawn
-          .filter((_, i) => i === 0 || i === drawn.length - 1 || i % 4 === 0)
-          .map((p, i) => (
+        {/* Start + end dots only */}
+        {[drawn[0], drawn[drawn.length - 1]].map((p, i) =>
+          p ? (
             <View
-              key={`dot-${i}`}
+              key={`end-${i}`}
               style={[
                 styles.dot,
                 {
-                  left: p.x - 3.5,
-                  top: p.y - 3.5,
-                  backgroundColor: colors.green[700],
+                  left: p.x - DOT / 2,
+                  top: p.y - DOT / 2,
                 },
               ]}
             />
-          ))}
+          ) : null
+        )}
       </View>
       <View style={styles.axisRow}>
         <CaptionText style={styles.axis}>Now</CaptionText>
+        {target != null ? (
+          <CaptionText style={styles.targetHint}>Target</CaptionText>
+        ) : (
+          <View />
+        )}
         <CaptionText style={styles.axis}>
           {lastMonth >= 12
             ? `${Math.round(lastMonth / 12)}y`
@@ -149,31 +199,38 @@ const styles = StyleSheet.create({
     width: CHART_W,
     height: CHART_H,
     overflow: 'hidden',
+    backgroundColor: colors.surface,
+    borderRadius: 8,
   },
-  baseline: {
+  gridLine: {
     position: 'absolute',
     left: PAD_X,
     right: PAD_X,
     height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.green[200],
+    backgroundColor: colors.border,
   },
-  marker: {
+  areaStrip: {
     position: 'absolute',
-    top: PAD_Y,
-    bottom: PAD_Y,
-    width: 2,
-    backgroundColor: colors.green[400],
+    backgroundColor: colors.green[50],
     opacity: 0.85,
+  },
+  targetDash: {
+    position: 'absolute',
+    height: 2,
+    backgroundColor: colors.green[400],
+    borderRadius: 1,
   },
   segment: {
     position: 'absolute',
     borderRadius: 2,
+    backgroundColor: colors.green[700],
   },
   dot: {
     position: 'absolute',
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
+    width: DOT,
+    height: DOT,
+    borderRadius: DOT / 2,
+    backgroundColor: colors.green[700],
     borderWidth: 2,
     borderColor: colors.surface,
   },
@@ -181,11 +238,16 @@ const styles = StyleSheet.create({
     width: CHART_W,
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: PAD_X,
     marginTop: space.xs,
   },
   axis: {
     color: colors.inkMuted,
+  },
+  targetHint: {
+    color: colors.green[400],
+    fontSize: 12,
   },
   empty: {
     height: 140,
