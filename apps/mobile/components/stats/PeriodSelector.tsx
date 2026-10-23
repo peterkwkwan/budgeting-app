@@ -100,7 +100,11 @@ export function PeriodSelector({
 
   return (
     <View style={styles.wrap}>
-      <View style={styles.bar} accessibilityRole="toolbar" accessibilityLabel="Period navigation">
+      <View
+        style={[styles.bar, showModeMenu && styles.barWithMode]}
+        accessibilityRole="toolbar"
+        accessibilityLabel="Period navigation"
+      >
         {effectivePreset === 'custom' ? (
           <View style={styles.periodRange} accessibilityRole="text">
             <Pressable
@@ -276,7 +280,7 @@ const styles = StyleSheet.create({
     gap: space.xs,
   },
   bar: {
-    // Left-packed cluster: ‹ label › [Monthly] — gear stays outside (header trailing).
+    // Transactions (no mode): left-packed ‹ label ›.
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-start',
@@ -284,6 +288,11 @@ const styles = StyleSheet.create({
     gap: space.sm,
     minHeight: 36,
     alignSelf: 'stretch',
+    width: '100%',
+  },
+  barWithMode: {
+    // Stats: left = chevrons/label or dates; right = [Monthly] (gear is outside).
+    justifyContent: 'space-between',
   },
   stepper: {
     flexDirection: 'row',

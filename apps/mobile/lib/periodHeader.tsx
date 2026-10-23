@@ -73,7 +73,8 @@ const styles = StyleSheet.create({
   nav: {
     flex: 1,
     minWidth: 0,
-    alignItems: 'flex-start',
+    // Stretch so Stats can space-between left period + right mode dropdown.
+    alignItems: 'stretch',
     justifyContent: 'center',
   },
   trailingSlot: {
