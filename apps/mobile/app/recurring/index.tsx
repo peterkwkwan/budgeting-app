@@ -78,7 +78,7 @@ export default function RecurringManageScreen() {
                   styles.secondary,
                   pressed && styles.secondaryPressed,
                 ]}
-                onPress={() => router.push('/transaction/new')}
+                onPress={() => guardedPush(router, '/transaction/new')}
               >
                 <CaptionText style={styles.secondaryText}>
                   Add transaction
