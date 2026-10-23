@@ -7,11 +7,15 @@ import { useFocusEffect } from 'expo-router';
 import { useCallback, useMemo } from 'react';
 
 import { useAuth } from '@/lib/auth';
+import {
+  currentPeriodFocus,
+  type PeriodFocus,
+} from '@/lib/periods';
 import { deviceTimezone } from '@/lib/profile';
 import { statsKeys } from '@/lib/stats';
 import {
   createTransaction,
-  filterTransactionsVisible,
+  filterTransactionsForMonth,
   getTransaction,
   listTransactions,
   softDeleteTransaction,
@@ -29,14 +33,15 @@ function invalidateTransactionsAndStats(
 }
 
 /**
- * Active transactions from Supabase, then client-split:
- * - list: one-offs + recurring on/before local today
- * - upcoming: recurring after today within the current calendar month
+ * Active transactions from Supabase, then client-split for the focused month:
+ * - list: one-offs + recurring on/before local today, within focused month
+ * - upcoming: recurring after today within the focused calendar month
  */
-export function useTransactionList() {
+export function useTransactionList(focus?: PeriodFocus) {
   const queryClient = useQueryClient();
   const { profile } = useAuth();
   const timeZone = profile?.timezone || deviceTimezone();
+  const monthFocus = focus ?? currentPeriodFocus(timeZone);
 
   const query = useQuery({
     queryKey: transactionKeys.list(),
@@ -50,16 +55,34 @@ export function useTransactionList() {
   );
 
   const visible = useMemo(
-    () => filterTransactionsVisible(query.data ?? [], timeZone),
-    [query.data, timeZone]
+    () =>
+      filterTransactionsForMonth(
+        query.data ?? [],
+        timeZone,
+        monthFocus
+      ),
+    [query.data, timeZone, monthFocus.year, monthFocus.month]
   );
 
   const upcoming = useMemo(
-    () => summarizeUpcomingRepeatsThisMonth(query.data ?? [], timeZone),
-    [query.data, timeZone]
+    () =>
+      summarizeUpcomingRepeatsThisMonth(
+        query.data ?? [],
+        timeZone,
+        new Date(),
+        monthFocus
+      ),
+    [query.data, timeZone, monthFocus.year, monthFocus.month]
   );
 
-  return { ...query, data: visible, allRows: query.data, upcoming, timeZone };
+  return {
+    ...query,
+    data: visible,
+    allRows: query.data,
+    upcoming,
+    timeZone,
+    focus: monthFocus,
+  };
 }
 
 export function useTransaction(id: string | undefined) {
