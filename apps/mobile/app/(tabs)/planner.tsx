@@ -26,8 +26,6 @@ import {
   usePlannerGoals,
   usePlannerVehicles,
 } from '@/hooks/usePlanner';
-import { usePersonalStats } from '@/hooks/useStats';
-import { useAuth } from '@/lib/auth';
 import { formatUsd } from '@/lib/money';
 import { guardedPush } from '@/lib/navGuard';
 import {
@@ -38,7 +36,6 @@ import {
   requiredContribution,
   type PaceStatus,
 } from '@/lib/plannerMath';
-import { resolvePeriodBounds } from '@/lib/periods';
 
 /** Near-white empty fill — lighter than surfaceMuted (#f5f5f7). */
 const EMPTY_FILL = '#fafafa';
@@ -74,8 +71,6 @@ function paceColor(status: PaceStatus): string {
 
 export default function PlannerScreen() {
   const router = useRouter();
-  const { profile } = useAuth();
-  const timeZone = profile?.timezone || 'UTC';
   const vehicles = usePlannerVehicles();
   const goals = usePlannerGoals();
 
@@ -92,13 +87,6 @@ export default function PlannerScreen() {
       HORIZON_PRESETS.find((h) => h.key === horizonKey)?.months ?? 120
     );
   }, [horizonKey, customYears]);
-
-  // Optional thin “recent net” hint from trailing ~30d personal Stats (non-blocking).
-  const last30 = useMemo(
-    () => resolvePeriodBounds('custom', timeZone, daysAgo(30), new Date()),
-    [timeZone]
-  );
-  const recentStats = usePersonalStats(last30, 'expense');
 
   const projection = useMemo(() => {
     const list = vehicles.data ?? [];
@@ -136,9 +124,6 @@ export default function PlannerScreen() {
   const hasGoals = (goals.data?.length ?? 0) > 0;
   const endNet = projection[projection.length - 1]?.netWorth ?? 0;
   const startNet = projection[0]?.netWorth ?? 0;
-
-  const recentNet =
-    recentStats.totals.data != null ? recentStats.totals.data.net : null;
 
   return (
     <ScrollView
@@ -243,15 +228,6 @@ export default function PlannerScreen() {
               </View>
             </>
           )}
-
-          {recentNet != null && !recentStats.totals.isError ? (
-            <CaptionText style={styles.hint}>
-              Recent ~30d net (Stats):{' '}
-              {recentNet < 0 ? '−' : ''}
-              {formatUsd(recentNet)} — optional context only; projections use
-              vehicles and plans.
-            </CaptionText>
-          ) : null}
 
           <View style={styles.sectionHead}>
             <TitleText style={styles.sectionTitle}>Vehicles</TitleText>
@@ -408,12 +384,6 @@ export default function PlannerScreen() {
   );
 }
 
-function daysAgo(n: number): Date {
-  const d = new Date();
-  d.setDate(d.getDate() - n);
-  return d;
-}
-
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.canvas },
   content: { padding: space.md, paddingBottom: space.xxl, gap: space.sm },
@@ -508,7 +478,6 @@ const styles = StyleSheet.create({
   },
   summaryEnd: { alignItems: 'flex-end' },
   amount: { color: colors.ink, ...typography.amount, fontSize: 18 },
-  hint: { color: colors.inkMuted, marginTop: space.sm },
   muted: { color: colors.inkMuted },
   secondary: {
     paddingHorizontal: space.md,
