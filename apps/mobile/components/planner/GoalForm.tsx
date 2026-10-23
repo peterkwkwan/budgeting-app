@@ -224,10 +224,10 @@ export function GoalForm({
           />
         ) : null}
 
-        <FieldLabel>Linked vehicles (optional)</FieldLabel>
+        <FieldLabel>Linked accounts (optional)</FieldLabel>
         {vehicles.length === 0 ? (
           <CaptionText style={styles.hint}>
-            No vehicles yet. Add a savings or investment vehicle on Planner,
+            No accounts yet. Add a savings or investment account on Planner,
             then link it here so progress uses that balance.
           </CaptionText>
         ) : (
@@ -244,8 +244,8 @@ export function GoalForm({
             </ChipRow>
             <CaptionText style={styles.hint}>
               {linked
-                ? 'Progress comes from linked vehicles (sum of balances). Manual contributions are off while linked.'
-                : 'Link one or more vehicles to auto-fill progress from their balances. Leave empty to track manually.'}
+                ? 'Progress comes from linked accounts (sum of balances). Manual contributions are off while linked.'
+                : 'Link one or more accounts to auto-fill progress from their balances. Leave empty to track manually.'}
             </CaptionText>
           </>
         )}

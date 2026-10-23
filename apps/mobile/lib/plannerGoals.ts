@@ -359,7 +359,7 @@ export async function logContributionEvent(
   const links = await fetchLinksByGoalIds([goalId]);
   if ((links.get(goalId) ?? []).length > 0) {
     throw new Error(
-      'Progress comes from linked vehicles. Unlink vehicles to log manual contributions.'
+      'Progress comes from linked accounts. Unlink accounts to log manual contributions.'
     );
   }
 
