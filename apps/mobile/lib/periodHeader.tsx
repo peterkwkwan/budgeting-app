@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { colors, space } from '@/constants/theme';
+import { chromeHairline, colors, space } from '@/constants/theme';
 
 /** Reserve room so left-aligned period controls don’t sit under a top-right gear. */
 const TRAILING_SLOT = 44;
@@ -50,6 +50,10 @@ export function periodNavScreenOptions(header: () => ReactNode) {
     headerShadowVisible: false,
     headerStyle: {
       backgroundColor: colors.canvas,
+      // Custom header draws its own chrome hairline.
+      borderBottomWidth: 0,
+      elevation: 0,
+      shadowOpacity: 0,
     },
     header,
   };
@@ -58,8 +62,8 @@ export function periodNavScreenOptions(header: () => ReactNode) {
 const styles = StyleSheet.create({
   wrap: {
     backgroundColor: colors.canvas,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
+    borderBottomWidth: chromeHairline.width,
+    borderBottomColor: chromeHairline.color,
   },
   row: {
     minHeight: 44,

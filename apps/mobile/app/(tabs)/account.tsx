@@ -3,6 +3,10 @@ import * as WebBrowser from 'expo-web-browser';
 import { Pressable, ScrollView, StyleSheet } from 'react-native';
 
 import { PartnerSection } from '@/components/PartnerSection';
+import {
+  ScrollEdgeHost,
+  useScrollEdges,
+} from '@/components/ScrollEdgeShadows';
 import { CaptionText, StrongText, TitleText } from '@/components/StyledText';
 import { Text, View } from '@/components/Themed';
 import { colors, fonts, radius, space, typography } from '@/constants/theme';
@@ -14,16 +18,19 @@ const PRIVACY_POLICY_URL = 'https://peterkwkwan.github.io/fudget/privacy.html';
 export default function AccountScreen() {
   const router = useRouter();
   const { user, profile, signOut } = useAuth();
+  const { edges, scrollProps } = useScrollEdges();
 
   const openPrivacyPolicy = () => {
     void WebBrowser.openBrowserAsync(PRIVACY_POLICY_URL);
   };
 
   return (
+    <ScrollEdgeHost edges={edges} style={styles.host}>
     <ScrollView
       style={styles.scroll}
       contentContainerStyle={styles.container}
       keyboardShouldPersistTaps="handled"
+      {...scrollProps}
     >
       <TitleText style={styles.title}>Account</TitleText>
 
@@ -88,10 +95,15 @@ export default function AccountScreen() {
         </Text>
       </Pressable>
     </ScrollView>
+    </ScrollEdgeHost>
   );
 }
 
 const styles = StyleSheet.create({
+  host: {
+    flex: 1,
+    backgroundColor: colors.canvas,
+  },
   scroll: {
     flex: 1,
     backgroundColor: colors.canvas,

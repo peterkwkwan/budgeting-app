@@ -27,7 +27,13 @@ export const colors = {
   inkInverse: '#ffffff',
   surface: '#ffffff',
   surfaceMuted: '#f5f5f7',
+  /** Content hairlines — fields, list rows, secondary outlines. */
   border: '#e5e5ea',
+  /**
+   * Top nav / bottom tab chrome — slightly stronger than `border`
+   * (`#e5e5ea`) so 1px edges read clearly on paper-white without thick bars.
+   */
+  chromeBorder: '#d2d2d7',
   danger: '#b42318',
   warning: '#b54708',
   /** Transactions / totals amount color for income (aligns with green.700). */
@@ -110,6 +116,32 @@ export const shadow = {
     shadowRadius: 2,
     elevation: 1,
   },
+  /**
+   * Scroll-edge cue when content is clipped under the header / above the tab bar.
+   * Soft ink wash — not multi-layer chrome elevation.
+   */
+  scrollEdge: {
+    color: 'rgba(28, 28, 30, 0.07)',
+    height: 8,
+  },
+} as const;
+
+/**
+ * Shared 1px chrome separators for nav headers + tab bar.
+ * Prefer over `StyleSheet.hairlineWidth` so edges stay visible on retina.
+ */
+export const chromeHairline = {
+  width: 1,
+  color: colors.chromeBorder,
+} as const;
+
+/** Stack / tab header style: paper canvas + bottom chrome hairline, no platform shadow. */
+export const navHeaderStyle = {
+  backgroundColor: colors.canvas,
+  borderBottomWidth: chromeHairline.width,
+  borderBottomColor: chromeHairline.color,
+  elevation: 0,
+  shadowOpacity: 0,
 } as const;
 
 /** Navigation / Themed light+dark maps (MVP ships light; dark mapped to brand neutrals). */
@@ -121,6 +153,7 @@ export const Colors = {
     tabIconDefault: colors.inkMuted,
     tabIconSelected: colors.green[700],
     border: colors.border,
+    chromeBorder: colors.chromeBorder,
     surface: colors.surface,
     surfaceMuted: colors.surfaceMuted,
     danger: colors.danger,
@@ -133,6 +166,7 @@ export const Colors = {
     tabIconDefault: colors.green[200],
     tabIconSelected: colors.green[400],
     border: colors.green[700],
+    chromeBorder: colors.green[700],
     surface: '#0f1c14',
     surfaceMuted: '#1a2a1f',
     danger: '#ff8a80',

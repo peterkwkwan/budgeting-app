@@ -17,7 +17,7 @@ import {
   PlusIcon,
   UserIcon,
 } from '@/components/icons';
-import { colors, fonts, space } from '@/constants/theme';
+import { chromeHairline, colors, fonts, space } from '@/constants/theme';
 import { guardedPush } from '@/lib/navGuard';
 
 const FAB_SIZE = 60;
@@ -213,8 +213,8 @@ export function FudgetTabBar({ state, onTabPress }: FudgetTabBarProps) {
 const styles = StyleSheet.create({
   bar: {
     backgroundColor: colors.surface,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
+    borderTopWidth: chromeHairline.width,
+    borderTopColor: chromeHairline.color,
     paddingTop: 10,
   },
   row: {

@@ -3,7 +3,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { MoreIcon, TrashIcon } from '@/components/icons';
 import { CaptionText, StrongText } from '@/components/StyledText';
-import { colors, space } from '@/constants/theme';
+import { chromeHairline, colors, space } from '@/constants/theme';
 
 type Props = {
   count: number;
@@ -95,8 +95,8 @@ export function TxnSelectionHeader({
 const styles = StyleSheet.create({
   wrap: {
     backgroundColor: colors.canvas,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
+    borderBottomWidth: chromeHairline.width,
+    borderBottomColor: chromeHairline.color,
   },
   row: {
     minHeight: 44,
