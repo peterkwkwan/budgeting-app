@@ -49,7 +49,7 @@ export function localDateKey(
 }
 
 /**
- * Ledger / form date label in account timezone.
+ * Transactions / form date label in account timezone.
  * Full weekday + month, day only — e.g. `Monday, October 22` (no year).
  */
 export function formatDisplayDate(

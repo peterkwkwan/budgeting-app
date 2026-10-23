@@ -1,7 +1,7 @@
 import DateTimePicker, {
   type DateTimePickerEvent,
 } from '@react-native-community/datetimepicker';
-import { useState } from 'react';
+import { useCallback, useState, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   Modal,
@@ -13,6 +13,7 @@ import {
   View,
 } from 'react-native';
 
+import { MicButton } from '@/components/MicButton';
 import { CaptionText, StrongText, TitleText } from '@/components/StyledText';
 import { Text } from '@/components/Themed';
 import {
@@ -27,10 +28,12 @@ import {
 } from '@/constants/repeatPresets';
 import { colors, fonts, radius, space, typography } from '@/constants/theme';
 import { RepeatCustomSheet } from '@/components/RepeatCustomSheet';
+import { useVoiceRecognition } from '@/hooks/useVoiceRecognition';
 import { useAuth } from '@/lib/auth';
 import { formatDisplayDate } from '@/lib/dates';
 import { deviceTimezone } from '@/lib/profile';
 import type { TransactionInput } from '@/lib/transactions';
+import type { VoiceDraft } from '@/lib/voiceParse';
 
 export type TransactionFormValues = {
   amount: string;
@@ -52,6 +55,10 @@ type Props = {
   error?: string | null;
   /** When true, show Repeat beside Date (Add Transaction only). */
   allowRepeat?: boolean;
+  /** When true, footer is [mic][Save] and mic autofills from voice. */
+  allowVoice?: boolean;
+  /** Optional banner above fields (e.g. voice confirm copy from parent). */
+  banner?: ReactNode;
   onSubmit: (input: TransactionFormSubmit) => void;
   onDelete?: () => void;
   deleteBusy?: boolean;
@@ -63,6 +70,8 @@ export function TransactionForm({
   busy = false,
   error = null,
   allowRepeat = false,
+  allowVoice = false,
+  banner,
   onSubmit,
   onDelete,
   deleteBusy = false,
@@ -79,9 +88,28 @@ export function TransactionForm({
   const [showRepeatSheet, setShowRepeatSheet] = useState(false);
   const [showCustomSheet, setShowCustomSheet] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [voiceFilled, setVoiceFilled] = useState(!!initial?.amount);
+  const [voicePartial, setVoicePartial] = useState(false);
+  const [lastHeard, setLastHeard] = useState<string | null>(null);
   const { profile } = useAuth();
   const timeZone = profile?.timezone || deviceTimezone();
   const presetOptions = buildRepeatPresetOptions(occurredAt, timeZone);
+
+  const applyVoiceDraft = useCallback((draft: VoiceDraft) => {
+    setAmount(draft.amount);
+    setType(draft.type);
+    setCategory(draft.category);
+    setNote(draft.note);
+    setVoiceFilled(true);
+    setVoicePartial(draft.confidence === 'partial');
+    setLastHeard(draft.transcript);
+    setLocalError(null);
+  }, []);
+
+  const voice = useVoiceRecognition({
+    active: allowVoice,
+    onDraft: applyVoiceDraft,
+  });
 
   function setTypeAndCategory(next: TransactionType) {
     setType(next);
@@ -123,277 +151,323 @@ export function TransactionForm({
   }
 
   const categories = categoriesForType(type);
-  const displayError = localError ?? error;
+  const displayError = localError ?? error ?? (allowVoice ? voice.error : null);
+  const highlightVoice = voiceFilled && allowVoice;
 
   return (
-    <ScrollView
-      style={styles.scroll}
-      contentContainerStyle={styles.content}
-      keyboardShouldPersistTaps="handled"
-    >
-      <CaptionText style={styles.label}>Type</CaptionText>
-      <View style={styles.segment}>
-        {(['expense', 'income'] as const).map((option) => {
-          const selected = type === option;
-          return (
-            <Pressable
-              key={option}
-              style={[styles.segmentBtn, selected && styles.segmentBtnSelected]}
-              onPress={() => setTypeAndCategory(option)}
-              accessibilityRole="button"
-              accessibilityState={{ selected }}
-            >
-              <StrongText
-                style={[
-                  styles.segmentText,
-                  selected && styles.segmentTextSelected,
-                ]}
+    <View style={styles.root}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+      >
+        {banner}
+
+        {allowVoice && voice.listening ? (
+          <View style={styles.voiceLive} accessibilityRole="summary">
+            <StrongText style={styles.voiceLiveTitle}>
+              {voice.transcript
+                ? `“${voice.transcript}”`
+                : 'Listening…'}
+            </StrongText>
+            <CaptionText style={styles.voiceLiveBody}>
+              Speak amount, category, type — tap mic again to stop
+              {voice.onDevice ? ' (on-device)' : ''}.
+            </CaptionText>
+          </View>
+        ) : null}
+
+        {allowVoice && voiceFilled && !voice.listening ? (
+          <View style={styles.voiceBanner} accessibilityRole="summary">
+            <StrongText style={styles.voiceTitle}>
+              {voicePartial
+                ? 'Check this draft — add an amount'
+                : 'Check this draft, then save'}
+            </StrongText>
+            <CaptionText style={styles.voiceBody}>
+              Nothing is saved until you tap Save.
+              {lastHeard ? ` Heard: “${lastHeard}”` : ''}
+            </CaptionText>
+          </View>
+        ) : null}
+
+        <CaptionText style={styles.label}>Type</CaptionText>
+        <View style={styles.segment}>
+          {(['expense', 'income'] as const).map((option) => {
+            const selected = type === option;
+            return (
+              <Pressable
+                key={option}
+                style={[styles.segmentBtn, selected && styles.segmentBtnSelected]}
+                onPress={() => setTypeAndCategory(option)}
+                accessibilityRole="button"
+                accessibilityState={{ selected }}
               >
-                {option === 'expense' ? 'Expense' : 'Income'}
-              </StrongText>
-            </Pressable>
-          );
-        })}
-      </View>
-
-      <CaptionText style={styles.label}>Amount (USD)</CaptionText>
-      <TextInput
-        style={styles.input}
-        value={amount}
-        onChangeText={setAmount}
-        keyboardType="decimal-pad"
-        placeholder="0.00"
-        placeholderTextColor={colors.inkMuted}
-        accessibilityLabel="Amount in USD"
-      />
-
-      <CaptionText style={styles.label}>Category</CaptionText>
-      <View style={styles.chips}>
-        {categories.map((cat) => {
-          const selected = category === cat;
-          return (
-            <Pressable
-              key={cat}
-              style={[styles.chip, selected && styles.chipSelected]}
-              onPress={() => setCategory(cat)}
-              accessibilityRole="button"
-              accessibilityState={{ selected }}
-            >
-              <Text
-                style={[styles.chipText, selected && styles.chipTextSelected]}
-              >
-                {cat}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
-
-      <View style={styles.dateRepeatRow}>
-        <View style={allowRepeat ? styles.dateCol : styles.dateColFull}>
-          <CaptionText style={styles.labelTight}>Date</CaptionText>
-          <Pressable
-            style={styles.input}
-            onPress={() => setShowPicker(true)}
-            accessibilityRole="button"
-            accessibilityLabel="Choose date"
-          >
-            <Text style={styles.dateText}>
-              {formatDisplayDate(occurredAt, timeZone)}
-            </Text>
-          </Pressable>
+                <StrongText
+                  style={[
+                    styles.segmentText,
+                    selected && styles.segmentTextSelected,
+                  ]}
+                >
+                  {option === 'expense' ? 'Expense' : 'Income'}
+                </StrongText>
+              </Pressable>
+            );
+          })}
         </View>
-        {allowRepeat ? (
-          <View style={styles.repeatCol}>
-            <CaptionText style={styles.labelTight}>Repeat</CaptionText>
-            <Pressable
-              style={[
-                styles.input,
-                repeatRule != null && styles.repeatActive,
-              ]}
-              onPress={() => setShowRepeatSheet(true)}
-              accessibilityRole="button"
-              accessibilityLabel="Choose how often this repeats"
-            >
-              <Text
-                style={[
-                  styles.dateText,
-                  repeatRule != null && styles.repeatActiveText,
-                ]}
-                numberOfLines={1}
+
+        <CaptionText style={styles.label}>Amount (USD)</CaptionText>
+        <TextInput
+          style={[styles.input, highlightVoice && amount ? styles.inputHighlight : null]}
+          value={amount}
+          onChangeText={setAmount}
+          keyboardType="decimal-pad"
+          placeholder="0.00"
+          placeholderTextColor={colors.inkMuted}
+          accessibilityLabel="Amount in USD"
+        />
+
+        <CaptionText style={styles.label}>Category</CaptionText>
+        <View style={styles.chips}>
+          {categories.map((cat) => {
+            const selected = category === cat;
+            return (
+              <Pressable
+                key={cat}
+                style={[styles.chip, selected && styles.chipSelected]}
+                onPress={() => setCategory(cat)}
+                accessibilityRole="button"
+                accessibilityState={{ selected }}
               >
-                {shortRepeatLabel(repeatRule)}
+                <Text
+                  style={[styles.chipText, selected && styles.chipTextSelected]}
+                >
+                  {cat}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        <View style={styles.dateRepeatRow}>
+          <View style={allowRepeat ? styles.dateCol : styles.dateColFull}>
+            <CaptionText style={styles.labelTight}>Date</CaptionText>
+            <Pressable
+              style={styles.input}
+              onPress={() => setShowPicker(true)}
+              accessibilityRole="button"
+              accessibilityLabel="Choose date"
+            >
+              <Text style={styles.dateText}>
+                {formatDisplayDate(occurredAt, timeZone)}
               </Text>
             </Pressable>
           </View>
+          {allowRepeat ? (
+            <View style={styles.repeatCol}>
+              <CaptionText style={styles.labelTight}>Repeat</CaptionText>
+              <Pressable
+                style={[
+                  styles.input,
+                  repeatRule != null && styles.repeatActive,
+                ]}
+                onPress={() => setShowRepeatSheet(true)}
+                accessibilityRole="button"
+                accessibilityLabel="Choose how often this repeats"
+              >
+                <Text
+                  style={[
+                    styles.dateText,
+                    repeatRule != null && styles.repeatActiveText,
+                  ]}
+                  numberOfLines={1}
+                >
+                  {shortRepeatLabel(repeatRule)}
+                </Text>
+              </Pressable>
+            </View>
+          ) : null}
+        </View>
+        {showPicker ? (
+          <DateTimePicker
+            value={occurredAt}
+            mode="date"
+            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            onChange={onDateChange}
+          />
         ) : null}
-      </View>
-      {showPicker ? (
-        <DateTimePicker
-          value={occurredAt}
-          mode="date"
-          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-          onChange={onDateChange}
+        {Platform.OS === 'ios' && showPicker ? (
+          <Pressable onPress={() => setShowPicker(false)} style={styles.doneDate}>
+            <StrongText style={{ color: colors.green[700] }}>Done</StrongText>
+          </Pressable>
+        ) : null}
+        {allowRepeat && repeatRule ? (
+          <CaptionText style={styles.hint}>
+            Saves as a recurring rule. Matching transactions are written about
+            90 days ahead (or sooner if the series ends).
+          </CaptionText>
+        ) : null}
+
+        <CaptionText style={styles.label}>Note (optional)</CaptionText>
+        <TextInput
+          style={[styles.input, styles.noteInput]}
+          value={note}
+          onChangeText={setNote}
+          placeholder="Add a short note"
+          placeholderTextColor={colors.inkMuted}
+          multiline
+          maxLength={500}
+          textAlignVertical="top"
+          accessibilityLabel="Optional note"
         />
-      ) : null}
-      {Platform.OS === 'ios' && showPicker ? (
-        <Pressable onPress={() => setShowPicker(false)} style={styles.doneDate}>
-          <StrongText style={{ color: colors.green[700] }}>Done</StrongText>
-        </Pressable>
-      ) : null}
-      {allowRepeat && repeatRule ? (
-        <CaptionText style={styles.hint}>
-          Saves as a recurring rule. Matching ledger entries are written about
-          90 days ahead (or sooner if the series ends).
-        </CaptionText>
-      ) : null}
+        <CaptionText style={styles.counter}>{note.length}/500</CaptionText>
 
-      <CaptionText style={styles.label}>Note (optional)</CaptionText>
-      <TextInput
-        style={[styles.input, styles.noteInput]}
-        value={note}
-        onChangeText={setNote}
-        placeholder="Add a short note"
-        placeholderTextColor={colors.inkMuted}
-        multiline
-        maxLength={500}
-        textAlignVertical="top"
-        accessibilityLabel="Optional note"
-      />
-      <CaptionText style={styles.counter}>{note.length}/500</CaptionText>
+        {displayError ? <Text style={styles.error}>{displayError}</Text> : null}
 
-      {displayError ? <Text style={styles.error}>{displayError}</Text> : null}
+        {onDelete ? (
+          <Pressable
+            style={({ pressed }) => [
+              styles.danger,
+              (busy || deleteBusy) && styles.disabled,
+              pressed && !deleteBusy && styles.dangerPressed,
+            ]}
+            onPress={onDelete}
+            disabled={busy || deleteBusy}
+            accessibilityRole="button"
+            accessibilityLabel="Delete transaction"
+          >
+            {deleteBusy ? (
+              <ActivityIndicator color={colors.danger} />
+            ) : (
+              <Text style={styles.dangerText}>Delete</Text>
+            )}
+          </Pressable>
+        ) : null}
 
-      <Pressable
-        style={({ pressed }) => [
-          styles.primary,
-          (busy || deleteBusy) && styles.disabled,
-          pressed && !busy && styles.primaryPressed,
-        ]}
-        onPress={handleSubmit}
-        disabled={busy || deleteBusy}
-        accessibilityRole="button"
-        accessibilityLabel={submitLabel}
-      >
-        {busy ? (
-          <ActivityIndicator color={colors.inkInverse} />
-        ) : (
-          <Text style={styles.primaryText}>{submitLabel}</Text>
-        )}
-      </Pressable>
-
-      {onDelete ? (
-        <Pressable
-          style={({ pressed }) => [
-            styles.danger,
-            (busy || deleteBusy) && styles.disabled,
-            pressed && !deleteBusy && styles.dangerPressed,
-          ]}
-          onPress={onDelete}
-          disabled={busy || deleteBusy}
-          accessibilityRole="button"
-          accessibilityLabel="Delete transaction"
-        >
-          {deleteBusy ? (
-            <ActivityIndicator color={colors.danger} />
-          ) : (
-            <Text style={styles.dangerText}>Delete</Text>
-          )}
-        </Pressable>
-      ) : null}
-
-      <Modal
-        visible={showRepeatSheet}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowRepeatSheet(false)}
-      >
-        <Pressable
-          style={styles.sheetScrim}
-          onPress={() => setShowRepeatSheet(false)}
-          accessibilityLabel="Dismiss repeat options"
+        <Modal
+          visible={showRepeatSheet}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowRepeatSheet(false)}
         >
           <Pressable
-            style={styles.sheet}
-            onPress={(e) => e.stopPropagation()}
-            accessibilityViewIsModal
+            style={styles.sheetScrim}
+            onPress={() => setShowRepeatSheet(false)}
+            accessibilityLabel="Dismiss repeat options"
           >
-            <TitleText style={styles.sheetTitle}>Repeat</TitleText>
-            <CaptionText style={styles.sheetSubtitle}>
-              How often should this show up in your ledger?
-            </CaptionText>
-            <ScrollView style={styles.sheetList}>
-              {presetOptions.map((preset) => {
-                const selected =
-                  preset.id === 'none'
-                    ? repeatRule == null
-                    : preset.id === 'custom'
-                      ? false
-                      : preset.rule !== null &&
-                        preset.rule !== 'custom' &&
-                        repeatRule?.cadence === preset.rule.cadence &&
-                        JSON.stringify(repeatRule.byweekday ?? null) ===
-                          JSON.stringify(preset.rule.byweekday ?? null) &&
-                        repeatRule.endsMode === 'never';
-                return (
-                  <Pressable
-                    key={preset.id}
-                    style={[
-                      styles.sheetRow,
-                      selected && styles.sheetRowSelected,
-                    ]}
-                    onPress={() => {
-                      if (preset.rule === 'custom') {
-                        setShowRepeatSheet(false);
-                        setShowCustomSheet(true);
-                        return;
-                      }
-                      setRepeatRule(preset.rule);
-                      setShowRepeatSheet(false);
-                    }}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected }}
-                  >
-                    <StrongText
-                      style={[
-                        styles.sheetRowText,
-                        selected && styles.sheetRowTextSelected,
-                      ]}
-                    >
-                      {preset.label}
-                    </StrongText>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
             <Pressable
-              style={styles.sheetCancel}
-              onPress={() => setShowRepeatSheet(false)}
-              accessibilityRole="button"
-              accessibilityLabel="Cancel"
+              style={styles.sheet}
+              onPress={(e) => e.stopPropagation()}
+              accessibilityViewIsModal
             >
-              <StrongText style={{ color: colors.green[700] }}>Cancel</StrongText>
+              <TitleText style={styles.sheetTitle}>Repeat</TitleText>
+              <CaptionText style={styles.sheetSubtitle}>
+                How often should this show up in Transactions?
+              </CaptionText>
+              <ScrollView style={styles.sheetList}>
+                {presetOptions.map((preset) => {
+                  const selected =
+                    preset.id === 'none'
+                      ? repeatRule == null
+                      : preset.id === 'custom'
+                        ? false
+                        : preset.rule !== null &&
+                          preset.rule !== 'custom' &&
+                          repeatRule?.cadence === preset.rule.cadence &&
+                          JSON.stringify(repeatRule.byweekday ?? null) ===
+                            JSON.stringify(preset.rule.byweekday ?? null) &&
+                          repeatRule.endsMode === 'never';
+                  return (
+                    <Pressable
+                      key={preset.id}
+                      style={[
+                        styles.sheetRow,
+                        selected && styles.sheetRowSelected,
+                      ]}
+                      onPress={() => {
+                        if (preset.rule === 'custom') {
+                          setShowRepeatSheet(false);
+                          setShowCustomSheet(true);
+                          return;
+                        }
+                        setRepeatRule(preset.rule);
+                        setShowRepeatSheet(false);
+                      }}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected }}
+                    >
+                      <StrongText
+                        style={[
+                          styles.sheetRowText,
+                          selected && styles.sheetRowTextSelected,
+                        ]}
+                      >
+                        {preset.label}
+                      </StrongText>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+              <Pressable
+                style={styles.sheetCancel}
+                onPress={() => setShowRepeatSheet(false)}
+                accessibilityRole="button"
+                accessibilityLabel="Cancel"
+              >
+                <StrongText style={{ color: colors.green[700] }}>Cancel</StrongText>
+              </Pressable>
             </Pressable>
           </Pressable>
-        </Pressable>
-      </Modal>
+        </Modal>
 
-      <RepeatCustomSheet
-        visible={showCustomSheet}
-        startDate={occurredAt}
-        timeZone={timeZone}
-        initial={repeatRule}
-        onCancel={() => setShowCustomSheet(false)}
-        onSave={(rule) => {
-          setRepeatRule(rule);
-          setShowCustomSheet(false);
-        }}
-      />
-    </ScrollView>
+        <RepeatCustomSheet
+          visible={showCustomSheet}
+          startDate={occurredAt}
+          timeZone={timeZone}
+          initial={repeatRule}
+          onCancel={() => setShowCustomSheet(false)}
+          onSave={(rule) => {
+            setRepeatRule(rule);
+            setShowCustomSheet(false);
+          }}
+        />
+      </ScrollView>
+
+      <View style={styles.footer}>
+        {allowVoice ? (
+          <MicButton
+            listening={voice.listening}
+            onPress={() => voice.toggle()}
+            disabled={busy || deleteBusy}
+          />
+        ) : null}
+        <Pressable
+          style={({ pressed }) => [
+            styles.primary,
+            (busy || deleteBusy) && styles.disabled,
+            pressed && !busy && styles.primaryPressed,
+          ]}
+          onPress={handleSubmit}
+          disabled={busy || deleteBusy}
+          accessibilityRole="button"
+          accessibilityLabel={submitLabel}
+        >
+          {busy ? (
+            <ActivityIndicator color={colors.inkInverse} />
+          ) : (
+            <Text style={styles.primaryText}>{submitLabel}</Text>
+          )}
+        </Pressable>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: colors.canvas,
+  },
   scroll: {
     flex: 1,
     backgroundColor: colors.canvas,
@@ -402,7 +476,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.md,
     paddingVertical: space.lg,
     gap: space.sm,
-    paddingBottom: space.xxl,
+    paddingBottom: space.lg,
+  },
+  footer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: space.md,
+    paddingTop: space.sm + 4,
+    paddingBottom: space.md + 4,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+    backgroundColor: colors.canvas,
   },
   label: {
     marginTop: space.sm,
@@ -465,6 +550,9 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.ink,
   },
+  inputHighlight: {
+    borderColor: colors.green[700],
+  },
   repeatActive: {
     borderColor: colors.green[700],
     backgroundColor: colors.green[50],
@@ -515,12 +603,13 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodyStrong,
   },
   primary: {
-    marginTop: space.md,
+    flex: 1,
     height: 48,
     borderRadius: radius.md,
     backgroundColor: colors.green[700],
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: space.md,
   },
   primaryPressed: {
     backgroundColor: colors.green[950],
@@ -533,6 +622,7 @@ const styles = StyleSheet.create({
     color: colors.inkInverse,
   },
   danger: {
+    marginTop: space.md,
     height: 48,
     borderRadius: radius.md,
     borderWidth: 1,
@@ -557,6 +647,42 @@ const styles = StyleSheet.create({
   error: {
     ...typography.caption,
     color: colors.danger,
+  },
+  voiceBanner: {
+    padding: space.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceMuted,
+    gap: space.xs,
+    marginBottom: space.xs,
+  },
+  voiceLive: {
+    padding: space.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceMuted,
+    gap: space.xs,
+    marginBottom: space.xs,
+  },
+  voiceLiveTitle: {
+    color: colors.ink,
+  },
+  voiceLiveBody: {
+    color: colors.inkMuted,
+    ...typography.body,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  voiceTitle: {
+    color: colors.green[950],
+  },
+  voiceBody: {
+    color: colors.inkMuted,
+    ...typography.body,
+    fontSize: 14,
+    lineHeight: 20,
   },
   sheetScrim: {
     flex: 1,

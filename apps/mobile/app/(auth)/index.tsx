@@ -31,7 +31,7 @@ export default function LoginScreen() {
       <View style={styles.container}>
         <Text style={styles.brand}>Fudget</Text>
         <Text style={styles.sub}>
-          Sign in with Google to sync your ledger across devices.
+          Sign in with Google to sync your transactions across devices.
         </Text>
 
         {!configured ? (

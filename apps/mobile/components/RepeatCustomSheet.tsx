@@ -309,7 +309,7 @@ export function RepeatCustomSheet({
             ) : null}
 
             <CaptionText style={styles.hint}>
-              Fudget writes matching ledger entries up to about 90 days ahead
+              Fudget writes matching transactions up to about 90 days ahead
               (or sooner if the series ends).
             </CaptionText>
 

@@ -14,7 +14,7 @@ import { useRecurringList } from '@/hooks/useRecurring';
 
 /**
  * Manage recurring rules (stack screen — not a bottom tab).
- * Create new rules via Ledger → Add → Repeat.
+ * Create new rules via + (Add transaction) → Repeat.
  */
 export default function RecurringManageScreen() {
   const router = useRouter();
@@ -68,9 +68,9 @@ export default function RecurringManageScreen() {
             <View style={styles.empty}>
               <TitleText style={styles.emptyTitle}>No recurring rules</TitleText>
               <CaptionText style={styles.emptyBody}>
-                From Ledger, tap Add and choose Repeat beside the date. Matching
-                entries are written about 90 days ahead (or until the series
-                ends).
+                Tap + to add a transaction and choose Repeat beside the date.
+                Matching entries are written about 90 days ahead (or until the
+                series ends).
               </CaptionText>
               <Pressable
                 style={({ pressed }) => [

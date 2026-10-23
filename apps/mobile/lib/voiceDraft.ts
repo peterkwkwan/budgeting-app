@@ -1,5 +1,5 @@
 /**
- * One-shot handoff from Voice listen → Add transaction confirm screen.
+ * Optional one-shot handoff into Add transaction (e.g. deep link). Mic on Add applies drafts in place.
  * Avoids stuffing notes through URL params.
  */
 

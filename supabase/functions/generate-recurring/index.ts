@@ -1,5 +1,5 @@
 /**
- * Cron Edge Function: materialize recurring ledger rows for all active series
+ * Cron Edge Function: materialize recurring transaction rows for all active series
  * through a rolling 90-day horizon (also backfills up to 90 days).
  *
  * Auth: Authorization Bearer must match RECURRING_CRON_SECRET (verify_jwt=false).

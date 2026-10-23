@@ -49,7 +49,7 @@ export default function AccountScreen() {
       >
         <StrongText style={styles.linkTitle}>Recurring rules</StrongText>
         <CaptionText style={styles.linkMeta}>
-          Edit or stop series · add new ones from Ledger → Add → Repeat
+          Edit or stop series · add new ones from + → Repeat
         </CaptionText>
       </Pressable>
 
@@ -71,9 +71,9 @@ export default function AccountScreen() {
       </Pressable>
 
       <Text style={styles.note} lightColor={colors.inkMuted} darkColor={colors.green[200]}>
-        Ledger data syncs from Supabase while online. Soft-deleted rows stay in
+        Transactions sync from Supabase while online. Soft-deleted rows stay in
         the cloud but leave this device’s list. Recurring rules auto-add
-        matching ledger entries about 90 days ahead (or until a series ends).
+        matching transactions about 90 days ahead (or until a series ends).
         Partner stats are combined totals only — never each other’s rows.
       </Text>
 

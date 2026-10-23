@@ -1,6 +1,6 @@
 # Fudget
 
-Android-first couple budgeting app by **Kool Krib** (Expo + Supabase). App display name: **Fudget**. **M0** scaffolds Expo + Google sign-in + `profiles`. **M1** adds the ledger (`transactions` CRUD, soft-delete, multi-device sync). **M2** adds personal stats (pie + trend, default = this month). **M3** adds recurring rules (Google-aligned presets + Custom ends) with rolling ~90-day materialization. **M4** adds pair invite-code link + server-computed aggregate stats. **M5** adds on-device Android speech → confirm → save, plus light harden for using the app ourselves first.
+Android-first couple budgeting app by **Kool Krib** (Expo + Supabase). App display name: **Fudget**. **M0** scaffolds Expo + Google sign-in + `profiles`. **M1** adds Transactions (`transactions` CRUD, soft-delete, multi-device sync). **M2** adds personal stats (pie + trend, default = this month). **M3** adds recurring rules (Google-aligned presets + Custom ends) with rolling ~90-day materialization. **M4** adds pair invite-code link + server-computed aggregate stats. **M5** adds on-device Android speech → confirm → save, plus light harden for using the app ourselves first.
 
 ## Repo layout
 
@@ -59,7 +59,7 @@ Profiles in `apps/mobile/eas.json`:
 
 **Dev Client Android note:** the `development` profile builds **arm64-v8a only** (physical Pixel / most Android devices) and caps Gradle workers for free-tier EAS. Stats charts are View-only (no Skia). It will not install on classic x86_64 emulators unless you temporarily set `ORG_GRADLE_PROJECT_reactNativeArchitectures=x86_64` for a one-off build.
 
-**Voice permissions:** first Voice tap asks for microphone. If denied, use Add (manual). Prefer installing an English offline speech / language pack in Android settings so recognition stays on-device.
+**Voice permissions:** on Add Transaction, the mic asks for microphone. If denied, enter the transaction manually. Prefer installing an English offline speech / language pack in Android settings so recognition stays on-device.
 
 ## Apply SQL migrations
 
@@ -86,9 +86,9 @@ npx supabase db push
 
 **Founder step (M4):** apply `20261022140000_partner_links.sql` (`npx supabase db push`). No new Edge Functions — invite/accept/unlink and aggregate stats are Postgres RPCs under RLS. Until applied, Account → Partner and Stats → Pair will error. **EAS rebuild: no** (JS + SQL only; Share uses built-in React Native API).
 
-**Founder step (M5):** no new SQL. **EAS rebuild: yes** — `development` (and Play AAB via `preview` / `production`) so `expo-speech-recognition` + mic permissions land in the native binary. After install: Ledger → **Voice** → speak → confirm/edit on Add → **Save** (same ledger path as manual). Failure/permission → retry or **Enter manually**. iOS / paid cloud STT / **production** Play track remain out of scope; **Play internal testing** for founder + partner is the dogfood path (see `docs/play-internal-dogfood.md` in the Project store).
+**Founder step (M5):** no new SQL. **EAS rebuild: yes** — `development` (and Play AAB via `preview` / `production`) so `expo-speech-recognition` + mic permissions land in the native binary. After install: **+** → Add Transaction → **mic** → speak → review/edit fields → **Save** (same path as manual). Failure/permission → retry or type fields. iOS / paid cloud STT / **production** Play track remain out of scope; **Play internal testing** for founder + partner is the dogfood path (see `docs/play-internal-dogfood.md` in the Project store).
 
-Ledger columns (M1+): `amount`, `type` (`expense`\|`income`), fixed `category`, optional `note` (≤500), `currency` (USD), `occurred_at`, `deleted_at`, timestamps, `user_id`. M3 adds `recurring_series_id` + `occurrence_key` for auto-generated rows. Default app queries filter `deleted_at is null`. Soft-delete updates `deleted_at` (no hard delete from the client). Soft-deleted recurring instances are **not** regenerated.
+Transaction columns (M1+): `amount`, `type` (`expense`\|`income`), fixed `category`, optional `note` (≤500), `currency` (USD), `occurred_at`, `deleted_at`, timestamps, `user_id`. M3 adds `recurring_series_id` + `occurrence_key` for auto-generated rows. Default app queries filter `deleted_at is null`. Soft-delete updates `deleted_at` (no hard delete from the client). Soft-deleted recurring instances are **not** regenerated.
 
 ### M3 Edge Functions + cron
 
@@ -149,7 +149,7 @@ Do these once so sign-in works end-to-end on a physical Android device or emulat
 8. **Build a Dev Client** when you leave Expo Go (required before voice STT in M5). M3/M4 add **no new native modules** — existing Dev Client / Expo Go reload is enough.
 
 9. **Smoke test**  
-   Open the app → Continue with Google → **Ledger** tab → **Add** → set **Repeat** (e.g. weekdays) → Save → confirm ledger rows (· Recurring) and **Upcoming repeats** bar → tap bar to manage rules (edit future / stop series). One-off Add without Repeat still works. **Stats** tab: default **This month**, etc. **Account** → Recurring rules also opens manage. Soft-delete one instance; stop series from the rule screen. Bottom tabs are Ledger / Stats / Account only.  
+   Open the app → Continue with Google → **Transactions** tab → **+** → set **Repeat** (e.g. weekdays) → Save → confirm rows (· Recurring) and **Upcoming repeats** bar → tap bar to manage rules (edit future / stop series). One-off Add without Repeat still works. **Stats** tab: default **This month**, etc. **Account** → Recurring rules also opens manage. Soft-delete one instance; stop series from the rule screen. Bottom tabs are Transactions / Stats / Account (raised **+** FAB).  
    **M4:** Account → Partner → Create code on device A; Enter code on device B → both show paired. Stats → **Pair** shows combined category totals (no drill-down). Unlink → Pair scope gone immediately. Confirm clients never list partner transaction rows.
 
 Voice lands in M5.

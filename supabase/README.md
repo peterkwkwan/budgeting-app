@@ -2,7 +2,7 @@
 
 - `migrations/` — SQL schema + RLS
   - M0: `20261017150000_profiles.sql`
-  - M1: `20261021020000_transactions.sql` (ledger + soft-delete + own-row RLS)
+  - M1: `20261021020000_transactions.sql` (transactions + soft-delete + own-row RLS)
   - M2: `20261021130000_personal_stats.sql` (personal stats RPCs)
   - M3: `20261022070000_recurring_series.sql` (`recurring_series`, occurrence keys, edit-future / stop-series RPCs)
   - M3: `20261022083000_recurring_byweekday.sql` (optional `byweekday` for weekdays / weekends)

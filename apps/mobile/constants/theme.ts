@@ -30,9 +30,9 @@ export const colors = {
   border: '#e5e5ea',
   danger: '#b42318',
   warning: '#b54708',
-  /** Ledger / totals amount color for income (aligns with green.700). */
+  /** Transactions / totals amount color for income (aligns with green.700). */
   income: '#007a33',
-  /** Ledger / totals amount color for expense (aligns with rust.700). */
+  /** Transactions / totals amount color for expense (aligns with rust.700). */
   expense: '#9a3412',
   overlay: 'rgba(28, 28, 30, 0.45)',
   /** @deprecated Use colors.rust[500] — kept for any stray imports. */
