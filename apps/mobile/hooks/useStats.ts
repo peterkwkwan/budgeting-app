@@ -24,11 +24,7 @@ export function usePersonalStats(period: PeriodBounds, pieType: TransactionType)
   const queryClient = useQueryClient();
   const startIso = period.start.toISOString();
   const endIso = period.end.toISOString();
-  const bucket: TrendBucket = trendBucketForPeriod(
-    period.start,
-    period.end,
-    period.preset
-  );
+  const bucket: TrendBucket = trendBucketForPeriod(period.preset);
 
   const totals = useQuery({
     queryKey: statsKeys.totals(startIso, endIso),

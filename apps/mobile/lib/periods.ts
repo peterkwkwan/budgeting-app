@@ -18,7 +18,7 @@ export type PeriodBounds = {
   navLabel: string;
 };
 
-export type TrendBucket = 'day' | 'week' | 'month';
+export type TrendBucket = 'day' | 'week' | 'month' | 'year';
 
 const MONTH_NAMES = [
   'January',
@@ -264,23 +264,11 @@ export function resolvePeriodBounds(
 }
 
 /**
- * Trend grouping for the Stats chart, aligned with top-nav period mode:
- * - Monthly → day within the focused month
- * - Yearly → month within the focused year
- * - Period (custom) → smart default by range length:
- *   ≤45 days → day; ≤183 days → week; else → month
+ * Trend aggregation grain from period mode (not range length):
+ * Monthly → month, Yearly → year, Period (custom) → month.
  */
-export function trendBucketForPeriod(
-  start: Date,
-  end: Date,
-  preset?: PeriodPreset
-): TrendBucket {
-  if (preset === 'month') return 'day';
-  if (preset === 'year') return 'month';
-
-  const days = (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24);
-  if (days <= 45) return 'day';
-  if (days <= 183) return 'week';
+export function trendBucketForPeriod(preset: PeriodPreset): TrendBucket {
+  if (preset === 'year') return 'year';
   return 'month';
 }
 
@@ -293,6 +281,12 @@ export function formatTrendBucketLabel(
   const date = new Date(bucketStartIso);
   if (Number.isNaN(date.getTime())) return '';
   try {
+    if (bucket === 'year') {
+      return date.toLocaleDateString(undefined, {
+        timeZone,
+        year: 'numeric',
+      });
+    }
     if (bucket === 'month') {
       return date.toLocaleDateString(undefined, {
         timeZone,
@@ -306,6 +300,10 @@ export function formatTrendBucketLabel(
       day: 'numeric',
     });
   } catch {
+    if (bucket === 'year') return String(date.getUTCFullYear());
+    if (bucket === 'month') {
+      return MONTH_NAMES[date.getUTCMonth()]?.slice(0, 3) ?? '';
+    }
     return bucketStartIso.slice(0, 10);
   }
 }
