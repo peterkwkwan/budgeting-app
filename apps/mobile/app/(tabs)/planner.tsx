@@ -250,89 +250,6 @@ export default function PlannerScreen() {
           ) : null}
 
           <View style={styles.sectionHead}>
-            <TitleText style={styles.sectionTitle}>Goals</TitleText>
-            {hasGoals ? (
-              <Pressable
-                style={styles.headerAdd}
-                onPress={() => router.push('/planner/goal/new')}
-                accessibilityRole="button"
-                accessibilityLabel="Add goal"
-              >
-                <CaptionText style={styles.secondaryText}>Add goal</CaptionText>
-              </Pressable>
-            ) : null}
-          </View>
-
-          {!hasGoals ? (
-            <Pressable
-              style={({ pressed }) => [
-                styles.dashedEmpty,
-                pressed && styles.dashedEmptyPressed,
-              ]}
-              onPress={() => router.push('/planner/goal/new')}
-              accessibilityRole="button"
-              accessibilityLabel="Add goal"
-            >
-              <PlusIcon color={colors.green[700]} size={22} />
-              <CaptionText style={styles.dashedBody}>
-                No goals yet. Set a target amount and optional date to track
-                pace.
-              </CaptionText>
-              <CaptionText style={styles.secondaryText}>Add goal</CaptionText>
-            </Pressable>
-          ) : (
-            (goals.data ?? []).map((g) => {
-              const saved = goalEffectiveSaved({
-                currentSaved: g.current_saved,
-                vehicleIds: g.vehicle_ids,
-                vehicles: vehicles.data ?? [],
-              });
-              const pace = goalPace({
-                targetAmount: g.target_amount,
-                currentSaved: saved,
-                targetDate: g.target_date,
-                createdAt: g.created_at,
-              });
-              const need = requiredContribution({
-                targetAmount: g.target_amount,
-                currentSaved: saved,
-                targetDate: g.target_date,
-                cadence: g.plan_cadence ?? 'monthly',
-              });
-              const linkedCount = g.vehicle_ids.length;
-              return (
-                <Pressable
-                  key={g.id}
-                  style={({ pressed }) => [
-                    styles.row,
-                    pressed && styles.rowPressed,
-                  ]}
-                  onPress={() => router.push(`/planner/goal/${g.id}`)}
-                >
-                  <View style={styles.rowMain}>
-                    <StrongText style={styles.rowTitle}>{g.name}</StrongText>
-                    <CaptionText
-                      style={[styles.muted, { color: paceColor(pace.status) }]}
-                    >
-                      {GOAL_TYPE_LABELS[g.goal_type]} · {pace.progressPct}% ·{' '}
-                      {paceLabel(pace.status)}
-                      {linkedCount > 0
-                        ? ` · ${linkedCount} vehicle${linkedCount === 1 ? '' : 's'}`
-                        : ''}
-                    </CaptionText>
-                    <CaptionText style={styles.muted}>
-                      {formatUsd(saved)} of {formatUsd(g.target_amount)}
-                      {need != null
-                        ? ` · ~${formatUsd(need)}/${g.plan_cadence ? PLAN_CADENCE_LABELS[g.plan_cadence].toLowerCase() : 'mo'} to hit date`
-                        : ''}
-                    </CaptionText>
-                  </View>
-                </Pressable>
-              );
-            })
-          )}
-
-          <View style={styles.sectionHead}>
             <TitleText style={styles.sectionTitle}>Vehicles</TitleText>
             {hasVehicles ? (
               <Pressable
@@ -392,6 +309,94 @@ export default function PlannerScreen() {
                 </View>
               </Pressable>
             ))
+          )}
+
+          <View style={styles.sectionHead}>
+            <TitleText style={styles.sectionTitle}>Goals</TitleText>
+            {hasGoals ? (
+              <Pressable
+                style={styles.headerAdd}
+                onPress={() => router.push('/planner/goal/new')}
+                accessibilityRole="button"
+                accessibilityLabel="Add goal"
+              >
+                <CaptionText style={styles.secondaryText}>Add goal</CaptionText>
+              </Pressable>
+            ) : null}
+          </View>
+
+          {!hasGoals ? (
+            <Pressable
+              style={({ pressed }) => [
+                styles.dashedEmpty,
+                pressed && styles.dashedEmptyPressed,
+              ]}
+              onPress={() => router.push('/planner/goal/new')}
+              accessibilityRole="button"
+              accessibilityLabel="Add goal"
+            >
+              <PlusIcon color={colors.green[700]} size={22} />
+              <CaptionText style={styles.dashedBody}>
+                No goals yet. Set a target amount and optional date to track
+                pace.
+              </CaptionText>
+              {hasVehicles ? (
+                <CaptionText style={styles.muted}>
+                  Link vehicles when you add a goal.
+                </CaptionText>
+              ) : null}
+              <CaptionText style={styles.secondaryText}>Add goal</CaptionText>
+            </Pressable>
+          ) : (
+            (goals.data ?? []).map((g) => {
+              const saved = goalEffectiveSaved({
+                currentSaved: g.current_saved,
+                vehicleIds: g.vehicle_ids,
+                vehicles: vehicles.data ?? [],
+              });
+              const pace = goalPace({
+                targetAmount: g.target_amount,
+                currentSaved: saved,
+                targetDate: g.target_date,
+                createdAt: g.created_at,
+              });
+              const need = requiredContribution({
+                targetAmount: g.target_amount,
+                currentSaved: saved,
+                targetDate: g.target_date,
+                cadence: g.plan_cadence ?? 'monthly',
+              });
+              const linkedCount = g.vehicle_ids.length;
+              return (
+                <Pressable
+                  key={g.id}
+                  style={({ pressed }) => [
+                    styles.row,
+                    pressed && styles.rowPressed,
+                  ]}
+                  onPress={() => router.push(`/planner/goal/${g.id}`)}
+                >
+                  <View style={styles.rowMain}>
+                    <StrongText style={styles.rowTitle}>{g.name}</StrongText>
+                    <CaptionText
+                      style={[styles.muted, { color: paceColor(pace.status) }]}
+                    >
+                      {GOAL_TYPE_LABELS[g.goal_type]} · {pace.progressPct}% ·{' '}
+                      {paceLabel(pace.status)}
+                      {linkedCount > 0
+                        ? ` · ${linkedCount} vehicle${linkedCount === 1 ? '' : 's'}`
+                        : ''}
+                    </CaptionText>
+                    <CaptionText style={styles.muted}>
+                      {formatUsd(saved)} of {formatUsd(g.target_amount)}
+                      {need != null
+                        ? ` · ~${formatUsd(need)}/${g.plan_cadence ? PLAN_CADENCE_LABELS[g.plan_cadence].toLowerCase() : 'mo'} to hit date`
+                        : ''}
+                    </CaptionText>
+                  </View>
+                </Pressable>
+              );
+            })
           )}
         </>
       )}
