@@ -22,6 +22,7 @@ import {
   type VehicleType,
 } from '@/constants/planner';
 import { colors, fonts, radius, space, typography } from '@/constants/theme';
+import { parseMoneyInput } from '@/lib/money';
 import type { PlannerVehicleInput } from '@/lib/plannerVehicles';
 
 export type VehicleFormValues = {
@@ -81,10 +82,10 @@ export function VehicleForm({
 
   function handleSubmit() {
     setLocalError(null);
-    const bal = Number(balance);
-    const annual_rate = rate.trim() === '' ? 0 : Number(rate);
+    const bal = parseMoneyInput(balance);
+    const annual_rate = rate.trim() === '' ? 0 : parseMoneyInput(rate);
     const planRaw = planAmount.trim();
-    const plan_amount = planRaw === '' ? null : Number(planRaw);
+    const plan_amount = planRaw === '' ? null : parseMoneyInput(planRaw);
 
     if (!name.trim()) {
       setLocalError('Name is required.');

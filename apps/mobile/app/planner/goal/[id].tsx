@@ -25,7 +25,7 @@ import {
   useSoftDeletePlannerGoal,
   useUpdatePlannerGoal,
 } from '@/hooks/usePlanner';
-import { formatUsd } from '@/lib/money';
+import { formatUsd, parseMoneyInput } from '@/lib/money';
 import {
   formatDateOnly,
   goalPace,
@@ -82,7 +82,7 @@ export default function GoalDetailScreen() {
 
   async function onLogContribution() {
     setContribError(null);
-    const amount = Number(contribAmount);
+    const amount = parseMoneyInput(contribAmount);
     if (!(amount > 0) || Number.isNaN(amount)) {
       setContribError('Enter an amount greater than zero.');
       return;

@@ -22,6 +22,7 @@ import {
   type PlanCadence,
 } from '@/constants/planner';
 import { colors, fonts, radius, space, typography } from '@/constants/theme';
+import { parseMoneyInput } from '@/lib/money';
 import { formatDateOnly, parseDateOnly } from '@/lib/plannerMath';
 import type { PlannerGoalInput } from '@/lib/plannerGoals';
 
@@ -87,11 +88,11 @@ export function GoalForm({
 
   function handleSubmit() {
     setLocalError(null);
-    const target_amount = Number(targetAmount);
+    const target_amount = parseMoneyInput(targetAmount);
     const current_saved =
-      currentSaved.trim() === '' ? 0 : Number(currentSaved);
+      currentSaved.trim() === '' ? 0 : parseMoneyInput(currentSaved);
     const planRaw = planAmount.trim();
-    const plan_amount = planRaw === '' ? null : Number(planRaw);
+    const plan_amount = planRaw === '' ? null : parseMoneyInput(planRaw);
 
     if (!name.trim()) {
       setLocalError('Name is required.');

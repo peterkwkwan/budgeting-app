@@ -10,3 +10,28 @@ export function formatUsd(amount: number): string {
   const grouped = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   return `$${grouped}.${frac}`;
 }
+
+/**
+ * Parse a typed money or rate field.
+ * Strips thousands commas, `$`, spaces, and a trailing/leading `USD` before Number.
+ * Display still uses {@link formatUsd} commas — this is input-only.
+ *
+ * `557,269` → `557269`, `$1,200.50` → `1200.5`, blank → `NaN`.
+ */
+export function parseMoneyInput(raw: string): number {
+  const cleaned = raw
+    .trim()
+    .replace(/usd/gi, '')
+    .replace(/[$,\s]/g, '');
+  if (
+    cleaned === '' ||
+    cleaned === '-' ||
+    cleaned === '+' ||
+    cleaned === '.' ||
+    cleaned === '-.' ||
+    cleaned === '+.'
+  ) {
+    return Number.NaN;
+  }
+  return Number(cleaned);
+}
