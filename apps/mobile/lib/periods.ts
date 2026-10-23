@@ -175,23 +175,6 @@ export function shiftPeriodFocus(
   return { year, month };
 }
 
-/** True when next would move past the current month/year (no future periods). */
-export function canShiftPeriodFocusForward(
-  focus: PeriodFocus,
-  preset: 'month' | 'year',
-  timeZone: string,
-  now: Date = new Date()
-): boolean {
-  const current = currentPeriodFocus(timeZone, now);
-  if (preset === 'year') {
-    return focus.year < current.year;
-  }
-  return (
-    focus.year < current.year ||
-    (focus.year === current.year && focus.month < current.month)
-  );
-}
-
 /** Compact date for Period mode fields — e.g. `1/1/26`. */
 export function formatCompactDate(date: Date, timeZone: string): string {
   const { year, month, day } = zonedParts(date, timeZone);

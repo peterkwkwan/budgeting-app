@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import {
-  canShiftPeriodFocusForward,
   currentPeriodFocus,
   formatCompactDate,
   periodModeLabel,
@@ -32,7 +31,7 @@ describe('periods', () => {
     assert.equal(bounds.navLabel, 'December 2025');
   });
 
-  it('Yearly uses the focused year and steps with shiftPeriodFocus', () => {
+  it('Yearly uses the focused year and steps into future years', () => {
     const focus = { year: 2026, month: 10 };
     const bounds = resolvePeriodBounds('year', tz, { focus, now });
     assert.equal(bounds.navLabel, '2026');
@@ -40,14 +39,23 @@ describe('periods', () => {
       year: 2025,
       month: 10,
     });
-    assert.equal(
-      canShiftPeriodFocusForward(focus, 'year', tz, now),
-      false
-    );
-    assert.equal(
-      canShiftPeriodFocusForward({ year: 2025, month: 1 }, 'year', tz, now),
-      true
-    );
+    assert.deepEqual(shiftPeriodFocus(focus, 'year', 1), {
+      year: 2027,
+      month: 10,
+    });
+  });
+
+  it('Monthly next may advance into future months', () => {
+    const focus = { year: 2026, month: 10 };
+    assert.deepEqual(shiftPeriodFocus(focus, 'month', 1), {
+      year: 2026,
+      month: 11,
+    });
+    const future = resolvePeriodBounds('month', tz, {
+      focus: { year: 2026, month: 11 },
+      now,
+    });
+    assert.equal(future.navLabel, 'November');
   });
 
   it('Period (custom) formats compact dates and range bounds', () => {
