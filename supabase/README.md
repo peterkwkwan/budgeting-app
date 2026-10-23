@@ -36,4 +36,4 @@ Then schedule hourly POST to `generate-recurring` with `Authorization: Bearer <R
 npx supabase db push
 ```
 
-Applies planner migrations through `20261023130000_planner_vehicle_compound_period.sql`. No Edge Functions. Soft-delete vehicles/goals via `deleted_at`; contribution events hard-delete and adjust `planner_goals.current_saved` via trigger. `compound_period` defaults to `monthly` (rate/12 each month); `yearly` applies the full rate once per 12 projection months.
+Applies planner migrations through `20261023130000_planner_vehicle_compound_period.sql`. No Edge Functions. Soft-delete vehicles/goals via `deleted_at`; contribution events hard-delete and adjust `planner_goals.current_saved` via trigger. `compound_period` defaults to `yearly` (full rate once per 12 projection months); `monthly` applies rate/12 each month.

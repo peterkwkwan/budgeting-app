@@ -61,7 +61,7 @@ export function VehicleForm({
   const [balance, setBalance] = useState(initial?.balance ?? '');
   const [rate, setRate] = useState(initial?.annual_rate ?? '');
   const [compoundPeriod, setCompoundPeriod] = useState<CompoundPeriod>(
-    initial?.compound_period ?? 'monthly'
+    initial?.compound_period ?? 'yearly'
   );
   const [planAmount, setPlanAmount] = useState(initial?.plan_amount ?? '');
   const [planCadence, setPlanCadence] = useState<PlanCadence | null>(
@@ -189,8 +189,8 @@ export function VehicleForm({
         </ChipRow>
         <CaptionText style={styles.hint}>
           {compoundPeriod === 'yearly'
-            ? 'Full yearly rate applied once per year; contributions or payments still monthly.'
-            : 'Yearly rate divided by 12 and applied each month (default).'}
+            ? 'Full yearly rate applied once per year (default); contributions or payments still monthly.'
+            : 'Yearly rate divided by 12 and applied each month.'}
         </CaptionText>
 
         <FieldLabel>Planned {planLabel.toLowerCase()} (optional)</FieldLabel>

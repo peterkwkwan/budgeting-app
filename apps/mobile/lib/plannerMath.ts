@@ -3,8 +3,8 @@
  * No Monte Carlo. USD amounts as numbers (client-side).
  *
  * Compounding (simple):
+ * - yearly (default): apply the full annual rate only on months 12, 24, …; cashflow still monthly
  * - monthly: each month apply annualRate/12, then contribution/payment
- * - yearly: apply the full annual rate only on months 12, 24, …; cashflow still monthly
  */
 
 import type { CompoundPeriod, PlanCadence } from '@/constants/planner';
@@ -31,7 +31,7 @@ export type ProjectVehicleInput = {
   balance: number;
   annualRatePercent: number;
   growthMode: 'grow' | 'shrink';
-  /** monthly (default): rate/12 each month; yearly: full rate every 12th month. */
+  /** yearly (default): full rate every 12th month; monthly: rate/12 each month. */
   compoundPeriod?: CompoundPeriod | null;
   /** Optional planned contribution (grow) or payment (shrink). */
   planAmount?: number | null;
@@ -56,17 +56,17 @@ export function stepVehicleMonth(
   annualRatePercent: number,
   growthMode: 'grow' | 'shrink',
   monthlyCashflow: number,
-  compoundPeriod: CompoundPeriod = 'monthly',
+  compoundPeriod: CompoundPeriod = 'yearly',
   monthIndex = 1
 ): number {
   const annual = Math.max(0, annualRatePercent) / 100;
-  // Monthly: rate/12 every step. Yearly: full rate only when monthIndex % 12 === 0.
+  // Yearly (default): full rate when monthIndex % 12 === 0. Monthly: rate/12 every step.
   const periodRate =
-    compoundPeriod === 'yearly'
-      ? monthIndex % 12 === 0
+    compoundPeriod === 'monthly'
+      ? annual / 12
+      : monthIndex % 12 === 0
         ? annual
-        : 0
-      : annual / 12;
+        : 0;
 
   if (growthMode === 'grow') {
     const grown = balance * (1 + periodRate);
@@ -85,7 +85,7 @@ export function projectVehicleBalances(
 ): number[] {
   const n = Math.max(0, Math.floor(months));
   const monthly = monthlyCashflow(vehicle);
-  const period = vehicle.compoundPeriod ?? 'monthly';
+  const period = vehicle.compoundPeriod ?? 'yearly';
   const out: number[] = [round2(Math.max(0, vehicle.balance))];
   let bal = out[0]!;
   for (let m = 1; m <= n; m++) {

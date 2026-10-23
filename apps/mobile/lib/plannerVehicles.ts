@@ -42,7 +42,7 @@ export type PlannerVehicleInput = {
 
 function mapRow(row: Record<string, unknown>): PlannerVehicle {
   const type = String(row.vehicle_type);
-  const period = String(row.compound_period ?? 'monthly');
+  const period = String(row.compound_period ?? 'yearly');
   return {
     id: String(row.id),
     user_id: String(row.user_id),
@@ -51,7 +51,7 @@ function mapRow(row: Record<string, unknown>): PlannerVehicle {
     balance: Number(row.balance),
     annual_rate: Number(row.annual_rate),
     growth_mode: row.growth_mode === 'shrink' ? 'shrink' : 'grow',
-    compound_period: isCompoundPeriod(period) ? period : 'monthly',
+    compound_period: isCompoundPeriod(period) ? period : 'yearly',
     plan_amount:
       row.plan_amount == null ? null : Number(row.plan_amount),
     plan_cadence:
@@ -145,7 +145,7 @@ export async function createPlannerVehicle(
   if (validationError) throw new Error(validationError);
 
   const growth_mode = growthFor(input);
-  const compound_period = input.compound_period ?? 'monthly';
+  const compound_period = input.compound_period ?? 'yearly';
   const notes = input.notes?.trim() ? input.notes.trim() : null;
 
   const { data, error } = await supabase
@@ -177,7 +177,7 @@ export async function updatePlannerVehicle(
   if (validationError) throw new Error(validationError);
 
   const growth_mode = growthFor(input);
-  const compound_period = input.compound_period ?? 'monthly';
+  const compound_period = input.compound_period ?? 'yearly';
   const notes = input.notes?.trim() ? input.notes.trim() : null;
 
   const { data, error } = await supabase
