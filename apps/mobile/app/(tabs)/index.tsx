@@ -1,4 +1,5 @@
-import { useRouter } from 'expo-router';
+import { useNavigation, useRouter } from 'expo-router';
+import { useLayoutEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -7,16 +8,53 @@ import {
   View,
 } from 'react-native';
 
+import { PeriodSelector } from '@/components/stats/PeriodSelector';
 import { CaptionText, TitleText } from '@/components/StyledText';
 import { TransactionRow } from '@/components/TransactionRow';
 import { UpcomingRepeatsBar } from '@/components/UpcomingRepeatsBar';
 import { colors, fonts, radius, space, typography } from '@/constants/theme';
 import { useTransactionList } from '@/hooks/useTransactions';
+import { useAuth } from '@/lib/auth';
+import { periodNavHeaderOptions } from '@/lib/periodHeader';
+import {
+  currentPeriodFocus,
+  resolvePeriodBounds,
+  type PeriodFocus,
+} from '@/lib/periods';
 
 export default function TransactionsScreen() {
   const router = useRouter();
+  const navigation = useNavigation();
+  const { profile } = useAuth();
+  const timeZone = profile?.timezone || 'UTC';
+
+  const [focus, setFocus] = useState<PeriodFocus>(() =>
+    currentPeriodFocus(timeZone)
+  );
+
+  const period = useMemo(
+    () => resolvePeriodBounds('month', timeZone, { focus }),
+    [timeZone, focus]
+  );
+
   const { data, upcoming, isLoading, isError, error, refetch, isRefetching } =
-    useTransactionList();
+    useTransactionList(focus);
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      ...periodNavHeaderOptions,
+      headerTitle: () => (
+        <PeriodSelector
+          preset="month"
+          navLabel={period.navLabel}
+          focus={focus}
+          timeZone={timeZone}
+          showModeMenu={false}
+          onFocusChange={setFocus}
+        />
+      ),
+    });
+  }, [navigation, period.navLabel, focus, timeZone]);
 
   return (
     <View style={styles.container}>
@@ -71,14 +109,14 @@ export default function TransactionsScreen() {
             upcoming ? (
               <View style={styles.emptyBelowBar}>
                 <CaptionText style={styles.emptyBody}>
-                  No transactions for today or earlier. Upcoming repeats for
-                  this month are listed above.
+                  No transactions for today or earlier in {period.navLabel}.
+                  Upcoming repeats are listed above.
                 </CaptionText>
               </View>
             ) : (
               <View style={styles.empty}>
                 <TitleText style={styles.emptyTitle}>
-                  No transactions yet
+                  No transactions in {period.navLabel}
                 </TitleText>
                 <CaptionText style={styles.emptyBody}>
                   Tap + to add an expense or income. On the Add screen you can

@@ -53,13 +53,17 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
+          // Page title hidden — period month nav lives in headerTitle (screen).
           title: 'Transactions',
+          headerTitle: '',
         }}
       />
       <Tabs.Screen
         name="stats"
         options={{
+          // Page title hidden — period nav lives in headerTitle (screen).
           title: 'Stats',
+          headerTitle: '',
         }}
       />
       <Tabs.Screen

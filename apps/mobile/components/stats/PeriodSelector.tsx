@@ -23,17 +23,20 @@ import {
   type PeriodPreset,
 } from '@/lib/periods';
 
-type Props = {
+export type PeriodSelectorProps = {
   preset: PeriodPreset;
   navLabel: string;
   focus: PeriodFocus;
   timeZone: string;
-  customStart: Date;
-  customEnd: Date;
-  onPresetChange: (preset: PeriodPreset) => void;
   onFocusChange: (focus: PeriodFocus) => void;
-  onCustomStartChange: (date: Date) => void;
-  onCustomEndChange: (date: Date) => void;
+  /** Stats shows Monthly/Yearly/Period; Transactions is month-only. Default true. */
+  showModeMenu?: boolean;
+  /** Required when showModeMenu (Stats Period mode). */
+  customStart?: Date;
+  customEnd?: Date;
+  onPresetChange?: (preset: PeriodPreset) => void;
+  onCustomStartChange?: (date: Date) => void;
+  onCustomEndChange?: (date: Date) => void;
 };
 
 function startOfDay(d: Date): Date {
@@ -51,16 +54,18 @@ export function PeriodSelector({
   onFocusChange,
   onCustomStartChange,
   onCustomEndChange,
-}: Props) {
+  showModeMenu = true,
+}: PeriodSelectorProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [picking, setPicking] = useState<'start' | 'end' | null>(null);
 
   const today = startOfDay(new Date());
-  const fromDay = startOfDay(customStart);
-  const toDay = startOfDay(customEnd);
+  const fromDay = startOfDay(customStart ?? today);
+  const toDay = startOfDay(customEnd ?? today);
+  const effectivePreset = showModeMenu ? preset : 'month';
   const canGoNext =
-    preset !== 'custom' &&
-    canShiftPeriodFocusForward(focus, preset, timeZone);
+    effectivePreset !== 'custom' &&
+    canShiftPeriodFocusForward(focus, effectivePreset, timeZone);
 
   const onPickerChange = (event: DateTimePickerEvent, date?: Date) => {
     if (Platform.OS === 'android') {
@@ -73,14 +78,14 @@ export function PeriodSelector({
     const picked = startOfDay(date);
 
     if (picking === 'start') {
-      onCustomStartChange(picked);
+      onCustomStartChange?.(picked);
       if (picked.getTime() > toDay.getTime()) {
-        onCustomEndChange(picked);
+        onCustomEndChange?.(picked);
       }
     } else if (picking === 'end') {
-      onCustomEndChange(picked);
+      onCustomEndChange?.(picked);
       if (picked.getTime() < fromDay.getTime()) {
-        onCustomStartChange(picked);
+        onCustomStartChange?.(picked);
       }
     }
   };
@@ -89,23 +94,27 @@ export function PeriodSelector({
   const toMinimum = fromDay;
 
   const step = (delta: number) => {
-    if (preset === 'custom') return;
-    onFocusChange(shiftPeriodFocus(focus, preset, delta));
+    if (effectivePreset === 'custom') return;
+    onFocusChange(shiftPeriodFocus(focus, effectivePreset, delta));
   };
 
   return (
     <View style={styles.wrap}>
-      <View style={styles.bar}>
-        {preset === 'custom' ? (
+      <View
+        style={[styles.bar, !showModeMenu && styles.barMonthOnly]}
+        accessibilityRole="toolbar"
+        accessibilityLabel="Period navigation"
+      >
+        {effectivePreset === 'custom' ? (
           <View style={styles.periodRange} accessibilityRole="text">
             <Pressable
               style={styles.dateField}
               onPress={() => setPicking('start')}
               accessibilityRole="button"
-              accessibilityLabel={`Start date ${formatCompactDate(customStart, timeZone)}`}
+              accessibilityLabel={`Start date ${formatCompactDate(fromDay, timeZone)}`}
             >
               <CaptionText style={styles.dateFieldText}>
-                {formatCompactDate(customStart, timeZone)}
+                {formatCompactDate(fromDay, timeZone)}
               </CaptionText>
               <CalendarIcon color={colors.inkMuted} size={14} />
             </Pressable>
@@ -114,16 +123,18 @@ export function PeriodSelector({
               style={styles.dateField}
               onPress={() => setPicking('end')}
               accessibilityRole="button"
-              accessibilityLabel={`End date ${formatCompactDate(customEnd, timeZone)}`}
+              accessibilityLabel={`End date ${formatCompactDate(toDay, timeZone)}`}
             >
               <CaptionText style={styles.dateFieldText}>
-                {formatCompactDate(customEnd, timeZone)}
+                {formatCompactDate(toDay, timeZone)}
               </CaptionText>
               <CalendarIcon color={colors.inkMuted} size={14} />
             </Pressable>
           </View>
         ) : (
-          <View style={styles.stepper}>
+          <View
+            style={[styles.stepper, !showModeMenu && styles.stepperMonthOnly]}
+          >
             <Pressable
               onPress={() => step(-1)}
               style={({ pressed }) => [
@@ -132,7 +143,7 @@ export function PeriodSelector({
               ]}
               accessibilityRole="button"
               accessibilityLabel={
-                preset === 'month' ? 'Previous month' : 'Previous year'
+                effectivePreset === 'month' ? 'Previous month' : 'Previous year'
               }
               hitSlop={8}
             >
@@ -156,7 +167,7 @@ export function PeriodSelector({
               ]}
               accessibilityRole="button"
               accessibilityLabel={
-                preset === 'month' ? 'Next month' : 'Next year'
+                effectivePreset === 'month' ? 'Next month' : 'Next year'
               }
               accessibilityState={{ disabled: !canGoNext }}
               disabled={!canGoNext}
@@ -174,69 +185,73 @@ export function PeriodSelector({
           </View>
         )}
 
-        <Pressable
-          style={({ pressed }) => [
-            styles.modeTrigger,
-            pressed && styles.pressed,
-          ]}
-          onPress={() => setMenuOpen(true)}
-          accessibilityRole="button"
-          accessibilityLabel={`Period mode ${periodModeLabel(preset)}. Change mode.`}
-          accessibilityHint="Opens Monthly, Yearly, or Period options"
-        >
-          <CaptionText style={styles.modeTriggerText}>
-            {periodModeLabel(preset)}
-          </CaptionText>
-          <CaptionText style={styles.modeCaret}>▾</CaptionText>
-        </Pressable>
+        {showModeMenu ? (
+          <Pressable
+            style={({ pressed }) => [
+              styles.modeTrigger,
+              pressed && styles.pressed,
+            ]}
+            onPress={() => setMenuOpen(true)}
+            accessibilityRole="button"
+            accessibilityLabel={`Period mode ${periodModeLabel(preset)}. Change mode.`}
+            accessibilityHint="Opens Monthly, Yearly, or Period options"
+          >
+            <CaptionText style={styles.modeTriggerText}>
+              {periodModeLabel(preset)}
+            </CaptionText>
+            <CaptionText style={styles.modeCaret}>▾</CaptionText>
+          </Pressable>
+        ) : null}
       </View>
 
-      <Modal
-        visible={menuOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setMenuOpen(false)}
-      >
-        <Pressable
-          style={styles.menuBackdrop}
-          onPress={() => setMenuOpen(false)}
-          accessibilityRole="button"
-          accessibilityLabel="Dismiss period mode menu"
+      {showModeMenu ? (
+        <Modal
+          visible={menuOpen}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setMenuOpen(false)}
         >
-          <Pressable style={styles.menuSheet} accessibilityRole="menu">
-            {periodModeOptions().map((opt, index, arr) => {
-              const selected = preset === opt.value;
-              const last = index === arr.length - 1;
-              return (
-                <Pressable
-                  key={opt.value}
-                  style={({ pressed }) => [
-                    styles.menuItem,
-                    last && styles.menuItemLast,
-                    selected && styles.menuItemSelected,
-                    pressed && styles.pressed,
-                  ]}
-                  onPress={() => {
-                    onPresetChange(opt.value);
-                    setMenuOpen(false);
-                  }}
-                  accessibilityRole="menuitem"
-                  accessibilityState={{ selected }}
-                >
-                  <StrongText
-                    style={[
-                      styles.menuItemText,
-                      selected && styles.menuItemTextSelected,
+          <Pressable
+            style={styles.menuBackdrop}
+            onPress={() => setMenuOpen(false)}
+            accessibilityRole="button"
+            accessibilityLabel="Dismiss period mode menu"
+          >
+            <Pressable style={styles.menuSheet} accessibilityRole="menu">
+              {periodModeOptions().map((opt, index, arr) => {
+                const selected = preset === opt.value;
+                const last = index === arr.length - 1;
+                return (
+                  <Pressable
+                    key={opt.value}
+                    style={({ pressed }) => [
+                      styles.menuItem,
+                      last && styles.menuItemLast,
+                      selected && styles.menuItemSelected,
+                      pressed && styles.pressed,
                     ]}
+                    onPress={() => {
+                      onPresetChange?.(opt.value);
+                      setMenuOpen(false);
+                    }}
+                    accessibilityRole="menuitem"
+                    accessibilityState={{ selected }}
                   >
-                    {opt.label}
-                  </StrongText>
-                </Pressable>
-              );
-            })}
+                    <StrongText
+                      style={[
+                        styles.menuItemText,
+                        selected && styles.menuItemTextSelected,
+                      ]}
+                    >
+                      {opt.label}
+                    </StrongText>
+                  </Pressable>
+                );
+              })}
+            </Pressable>
           </Pressable>
-        </Pressable>
-      </Modal>
+        </Modal>
+      ) : null}
 
       {picking ? (
         <DateTimePicker
@@ -263,7 +278,8 @@ export function PeriodSelector({
 
 const styles = StyleSheet.create({
   wrap: {
-    gap: space.sm,
+    width: '100%',
+    gap: space.xs,
   },
   bar: {
     flexDirection: 'row',
@@ -271,6 +287,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: space.sm,
     minHeight: 36,
+    width: '100%',
+  },
+  barMonthOnly: {
+    justifyContent: 'center',
   },
   stepper: {
     flex: 1,
@@ -278,6 +298,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: space.xs,
     minWidth: 0,
+  },
+  stepperMonthOnly: {
+    flex: 0,
   },
   chevronBtn: {
     width: 32,
@@ -299,10 +322,11 @@ const styles = StyleSheet.create({
   navLabel: {
     flexShrink: 1,
     color: colors.ink,
-    fontSize: 16,
+    fontSize: 17,
     lineHeight: 22,
     textAlign: 'center',
     minWidth: 72,
+    fontFamily: fonts.bodyStrong,
   },
   periodRange: {
     flex: 1,

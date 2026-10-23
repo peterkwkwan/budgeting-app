@@ -1,5 +1,5 @@
-import { useRouter } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useNavigation, useRouter } from 'expo-router';
+import { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -26,6 +26,7 @@ import {
 } from '@/hooks/useStats';
 import { useAuth } from '@/lib/auth';
 import { formatUsd } from '@/lib/money';
+import { periodNavHeaderOptions } from '@/lib/periodHeader';
 import {
   currentPeriodFocus,
   resolvePeriodBounds,
@@ -41,6 +42,7 @@ function formatMoney(n: number): string {
 
 export default function StatsScreen() {
   const router = useRouter();
+  const navigation = useNavigation();
   const { profile } = useAuth();
   const timeZone = profile?.timezone || 'UTC';
   const partnerLink = usePartnerLink();
@@ -75,6 +77,45 @@ export default function StatsScreen() {
       }),
     [preset, timeZone, focus, customStart, customEnd]
   );
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      ...periodNavHeaderOptions,
+      headerTitle: () => (
+        <PeriodSelector
+          preset={preset}
+          navLabel={period.navLabel}
+          focus={focus}
+          timeZone={timeZone}
+          customStart={customStart}
+          customEnd={customEnd}
+          showModeMenu
+          onPresetChange={setPreset}
+          onFocusChange={setFocus}
+          onCustomStartChange={(date) => {
+            setCustomStart(date);
+            setCustomEnd((end) =>
+              date.getTime() > end.getTime() ? date : end
+            );
+          }}
+          onCustomEndChange={(date) => {
+            setCustomEnd(date);
+            setCustomStart((start) =>
+              date.getTime() < start.getTime() ? date : start
+            );
+          }}
+        />
+      ),
+    });
+  }, [
+    navigation,
+    preset,
+    period.navLabel,
+    focus,
+    timeZone,
+    customStart,
+    customEnd,
+  ]);
 
   const personal = usePersonalStats(period, pieType);
   const aggregate = useAggregateStats(period, pieType, isPaired && scope === 'pair');
@@ -160,27 +201,6 @@ export default function StatsScreen() {
           Category sums only — no individual transactions.
         </CaptionText>
       ) : null}
-
-      <PeriodSelector
-        preset={preset}
-        navLabel={period.navLabel}
-        focus={focus}
-        timeZone={timeZone}
-        customStart={customStart}
-        customEnd={customEnd}
-        onPresetChange={setPreset}
-        onFocusChange={setFocus}
-        onCustomStartChange={(date) => {
-          setCustomStart(date);
-          setCustomEnd((end) => (date.getTime() > end.getTime() ? date : end));
-        }}
-        onCustomEndChange={(date) => {
-          setCustomEnd(date);
-          setCustomStart((start) =>
-            date.getTime() < start.getTime() ? date : start
-          );
-        }}
-      />
 
       {loading ? (
         <View style={styles.centered}>
