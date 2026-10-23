@@ -4,9 +4,11 @@ import { describe, it } from 'node:test';
 import {
   currentPeriodFocus,
   formatCompactDate,
+  formatTrendBucketLabel,
   periodModeLabel,
   resolvePeriodBounds,
   shiftPeriodFocus,
+  trendBucketForPeriod,
 } from './periods.ts';
 
 describe('periods', () => {
@@ -83,5 +85,68 @@ describe('periods', () => {
       shiftPeriodFocus({ year: 2025, month: 12 }, 'month', 1),
       { year: 2026, month: 1 }
     );
+  });
+
+  it('trend bucket follows period mode', () => {
+    const month = resolvePeriodBounds('month', tz, {
+      focus: { year: 2026, month: 10 },
+      now,
+    });
+    const year = resolvePeriodBounds('year', tz, {
+      focus: { year: 2026, month: 10 },
+      now,
+    });
+    assert.equal(
+      trendBucketForPeriod(month.start, month.end, 'month'),
+      'day'
+    );
+    assert.equal(
+      trendBucketForPeriod(year.start, year.end, 'year'),
+      'month'
+    );
+
+    // Period (custom): ≤45 → day, ≤183 → week, else → month
+    const shortStart = new Date('2026-01-01T18:00:00.000Z');
+    const shortEnd = new Date('2026-01-20T18:00:00.000Z');
+    const short = resolvePeriodBounds('custom', tz, {
+      customStart: shortStart,
+      customEndInclusive: shortEnd,
+      now,
+    });
+    assert.equal(
+      trendBucketForPeriod(short.start, short.end, 'custom'),
+      'day'
+    );
+
+    const midStart = new Date('2026-01-01T18:00:00.000Z');
+    const midEnd = new Date('2026-04-30T18:00:00.000Z');
+    const mid = resolvePeriodBounds('custom', tz, {
+      customStart: midStart,
+      customEndInclusive: midEnd,
+      now,
+    });
+    assert.equal(
+      trendBucketForPeriod(mid.start, mid.end, 'custom'),
+      'week'
+    );
+
+    const longStart = new Date('2026-01-01T18:00:00.000Z');
+    const longEnd = new Date('2026-12-31T18:00:00.000Z');
+    const long = resolvePeriodBounds('custom', tz, {
+      customStart: longStart,
+      customEndInclusive: longEnd,
+      now,
+    });
+    assert.equal(
+      trendBucketForPeriod(long.start, long.end, 'custom'),
+      'month'
+    );
+  });
+
+  it('formats trend bucket X labels', () => {
+    const iso = '2026-10-15T07:00:00.000Z';
+    assert.match(formatTrendBucketLabel(iso, 'day', tz), /Oct/);
+    assert.match(formatTrendBucketLabel(iso, 'week', tz), /Oct/);
+    assert.equal(formatTrendBucketLabel(iso, 'month', tz), 'Oct');
   });
 });

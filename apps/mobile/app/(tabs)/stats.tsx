@@ -361,17 +361,11 @@ export default function StatsScreen() {
                 <TrendLineChart
                   data={trend.data ?? []}
                   emptyLabel="No trend data for this period."
+                  bucket={personal.bucket}
+                  timeZone={timeZone}
                   strokeColor={trendStrokeForMetric(trendMetric)}
                 />
               )}
-              <CaptionText style={styles.hint}>
-                Grouped by {personal.bucket}
-                {trendMetric === 'expense'
-                  ? ' · expenses'
-                  : trendMetric === 'income'
-                    ? ' · income'
-                    : ' · net (income − expenses)'}
-              </CaptionText>
             </View>
           ) : null}
         </>
@@ -505,8 +499,5 @@ const styles = StyleSheet.create({
   toggleTextSelected: {
     color: colors.green[700],
     fontFamily: fonts.bodyStrong,
-  },
-  hint: {
-    color: colors.inkMuted,
   },
 });

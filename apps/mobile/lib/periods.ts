@@ -263,10 +263,49 @@ export function resolvePeriodBounds(
   };
 }
 
-/** Pick trend bucket size from period length. */
-export function trendBucketForPeriod(start: Date, end: Date): TrendBucket {
+/**
+ * Trend grouping for the Stats chart, aligned with top-nav period mode:
+ * - Monthly → day within the focused month
+ * - Yearly → month within the focused year
+ * - Period (custom) → smart default by range length:
+ *   ≤45 days → day; ≤183 days → week; else → month
+ */
+export function trendBucketForPeriod(
+  start: Date,
+  end: Date,
+  preset?: PeriodPreset
+): TrendBucket {
+  if (preset === 'month') return 'day';
+  if (preset === 'year') return 'month';
+
   const days = (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24);
   if (days <= 45) return 'day';
-  if (days <= 180) return 'week';
+  if (days <= 183) return 'week';
   return 'month';
+}
+
+/** Compact X-axis tick for a trend bucket start. */
+export function formatTrendBucketLabel(
+  bucketStartIso: string,
+  bucket: TrendBucket,
+  timeZone: string
+): string {
+  const date = new Date(bucketStartIso);
+  if (Number.isNaN(date.getTime())) return '';
+  try {
+    if (bucket === 'month') {
+      return date.toLocaleDateString(undefined, {
+        timeZone,
+        month: 'short',
+      });
+    }
+    // day or week — show calendar date of the bucket start
+    return date.toLocaleDateString(undefined, {
+      timeZone,
+      month: 'short',
+      day: 'numeric',
+    });
+  } catch {
+    return bucketStartIso.slice(0, 10);
+  }
 }
