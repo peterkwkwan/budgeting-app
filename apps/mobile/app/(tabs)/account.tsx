@@ -1,4 +1,5 @@
 import { useRouter } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
 import { Pressable, ScrollView, StyleSheet } from 'react-native';
 
 import { PartnerSection } from '@/components/PartnerSection';
@@ -7,9 +8,16 @@ import { Text, View } from '@/components/Themed';
 import { colors, fonts, radius, space, typography } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 
+/** Public privacy policy (GitHub Pages → /docs). Same URL as Play Console. */
+const PRIVACY_POLICY_URL = 'https://peterkwkwan.github.io/fudget/privacy.html';
+
 export default function AccountScreen() {
   const router = useRouter();
   const { user, profile, signOut } = useAuth();
+
+  const openPrivacyPolicy = () => {
+    void WebBrowser.openBrowserAsync(PRIVACY_POLICY_URL);
+  };
 
   return (
     <ScrollView
@@ -46,6 +54,21 @@ export default function AccountScreen() {
       </Pressable>
 
       <PartnerSection />
+
+      <Pressable
+        style={({ pressed }) => [
+          styles.linkRow,
+          pressed && styles.linkRowPressed,
+        ]}
+        onPress={openPrivacyPolicy}
+        accessibilityRole="link"
+        accessibilityLabel="Open privacy policy"
+      >
+        <StrongText style={styles.linkTitle}>Privacy policy</StrongText>
+        <CaptionText style={styles.linkMeta}>
+          How Fudget handles your data · opens in your browser
+        </CaptionText>
+      </Pressable>
 
       <Text style={styles.note} lightColor={colors.inkMuted} darkColor={colors.green[200]}>
         Ledger data syncs from Supabase while online. Soft-deleted rows stay in
