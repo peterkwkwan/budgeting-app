@@ -1,6 +1,6 @@
-import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet } from 'react-native';
 
+import { MicIcon } from '@/components/icons';
 import { colors, radius } from '@/constants/theme';
 
 type Props = {
@@ -30,8 +30,7 @@ export function MicButton({ listening, onPress, disabled }: Props) {
       }
       accessibilityState={{ disabled: !!disabled, selected: listening }}
     >
-      <Ionicons
-        name="mic"
+      <MicIcon
         size={22}
         color={listening ? colors.inkInverse : colors.green[700]}
       />

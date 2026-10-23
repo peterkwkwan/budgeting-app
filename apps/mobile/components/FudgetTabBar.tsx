@@ -1,4 +1,3 @@
-import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -11,12 +10,11 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { BarsIcon, ListIcon, PlusIcon, UserIcon } from '@/components/icons';
 import { colors, fonts, space } from '@/constants/theme';
 
 const FAB_SIZE = 60;
 const FAB_GAP = 64;
-
-type TabIcon = keyof typeof Ionicons.glyphMap;
 
 type FudgetTabBarProps = {
   state: {
@@ -30,27 +28,11 @@ type FudgetTabBarProps = {
 const TABS: {
   route: string;
   label: string;
-  icon: TabIcon;
-  iconFocused: TabIcon;
+  Icon: typeof ListIcon;
 }[] = [
-  {
-    route: 'index',
-    label: 'Transactions',
-    icon: 'list-outline',
-    iconFocused: 'list',
-  },
-  {
-    route: 'stats',
-    label: 'Stats',
-    icon: 'bar-chart-outline',
-    iconFocused: 'bar-chart',
-  },
-  {
-    route: 'account',
-    label: 'Account',
-    icon: 'person-outline',
-    iconFocused: 'person',
-  },
+  { route: 'index', label: 'Transactions', Icon: ListIcon },
+  { route: 'stats', label: 'Stats', Icon: BarsIcon },
+  { route: 'account', label: 'Account', Icon: UserIcon },
 ];
 
 /**
@@ -126,6 +108,7 @@ export function FudgetTabBar({ state, onTabPress }: FudgetTabBarProps) {
     const route = state.routes[routeIndex];
     const focused = state.index === routeIndex;
     const color = focused ? colors.green[700] : colors.inkMuted;
+    const { Icon } = meta;
 
     return (
       <Pressable
@@ -138,11 +121,7 @@ export function FudgetTabBar({ state, onTabPress }: FudgetTabBarProps) {
         accessibilityState={{ selected: focused }}
         accessibilityLabel={meta.label}
       >
-        <Ionicons
-          name={focused ? meta.iconFocused : meta.icon}
-          size={22}
-          color={color}
-        />
+        <Icon color={color} size={22} />
         <Text
           style={[
             styles.tabLabel,
@@ -206,7 +185,7 @@ export function FudgetTabBar({ state, onTabPress }: FudgetTabBarProps) {
             accessibilityRole="button"
             accessibilityLabel="Add transaction"
           >
-            <Ionicons name="add" size={30} color={colors.inkInverse} />
+            <PlusIcon color={colors.inkInverse} size={30} />
           </Pressable>
         </Animated.View>
       </View>
