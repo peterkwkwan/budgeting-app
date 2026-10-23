@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 
+import { PlusIcon } from '@/components/icons';
 import { ProjectionChart } from '@/components/planner/ProjectionChart';
 import { CaptionText, StrongText, TitleText } from '@/components/StyledText';
 import {
@@ -21,6 +22,9 @@ import {
   type HorizonPresetKey,
 } from '@/constants/planner';
 import { colors, fonts, radius, space, typography } from '@/constants/theme';
+
+/** Near-white empty fill — lighter than surfaceMuted (#f5f5f7). */
+const EMPTY_FILL = '#fafafa';
 import {
   usePlannerGoals,
   usePlannerVehicles,
@@ -208,12 +212,10 @@ export default function PlannerScreen() {
           ) : null}
 
           {!hasVehicles ? (
-            <View style={styles.emptyBlock}>
-              <CaptionText style={styles.muted}>
-                Add a savings, investment, or debt vehicle to see a projection
-                curve.
-              </CaptionText>
-            </View>
+            <CaptionText style={styles.muted}>
+              Add a savings, investment, or debt vehicle to see a projection
+              curve.
+            </CaptionText>
           ) : (
             <>
               <ProjectionChart
@@ -249,28 +251,35 @@ export default function PlannerScreen() {
 
           <View style={styles.sectionHead}>
             <TitleText style={styles.sectionTitle}>Goals</TitleText>
+            {hasGoals ? (
+              <Pressable
+                style={styles.headerAdd}
+                onPress={() => router.push('/planner/goal/new')}
+                accessibilityRole="button"
+                accessibilityLabel="Add goal"
+              >
+                <CaptionText style={styles.secondaryText}>Add goal</CaptionText>
+              </Pressable>
+            ) : null}
+          </View>
+
+          {!hasGoals ? (
             <Pressable
+              style={({ pressed }) => [
+                styles.dashedEmpty,
+                pressed && styles.dashedEmptyPressed,
+              ]}
               onPress={() => router.push('/planner/goal/new')}
               accessibilityRole="button"
               accessibilityLabel="Add goal"
             >
-              <CaptionText style={styles.link}>Add</CaptionText>
-            </Pressable>
-          </View>
-
-          {!hasGoals ? (
-            <View style={styles.emptyBlock}>
-              <CaptionText style={styles.muted}>
-                No goals yet. Set a target and optional date, or link vehicles
-                so progress uses their balances.
+              <PlusIcon color={colors.green[700]} size={22} />
+              <CaptionText style={styles.dashedBody}>
+                No goals yet. Set a target amount and optional date to track
+                pace.
               </CaptionText>
-              <Pressable
-                style={styles.secondary}
-                onPress={() => router.push('/planner/goal/new')}
-              >
-                <CaptionText style={styles.secondaryText}>Add goal</CaptionText>
-              </Pressable>
-            </View>
+              <CaptionText style={styles.secondaryText}>Add goal</CaptionText>
+            </Pressable>
           ) : (
             (goals.data ?? []).map((g) => {
               const saved = goalEffectiveSaved({
@@ -325,30 +334,37 @@ export default function PlannerScreen() {
 
           <View style={styles.sectionHead}>
             <TitleText style={styles.sectionTitle}>Vehicles</TitleText>
-            <Pressable
-              onPress={() => router.push('/planner/vehicle/new')}
-              accessibilityRole="button"
-              accessibilityLabel="Add vehicle"
-            >
-              <CaptionText style={styles.link}>Add</CaptionText>
-            </Pressable>
-          </View>
-
-          {!hasVehicles ? (
-            <View style={styles.emptyBlock}>
-              <CaptionText style={styles.muted}>
-                Track savings, investments, cash, or debt with a rate and
-                optional plan.
-              </CaptionText>
+            {hasVehicles ? (
               <Pressable
-                style={styles.secondary}
+                style={styles.headerAdd}
                 onPress={() => router.push('/planner/vehicle/new')}
+                accessibilityRole="button"
+                accessibilityLabel="Add vehicle"
               >
                 <CaptionText style={styles.secondaryText}>
                   Add vehicle
                 </CaptionText>
               </Pressable>
-            </View>
+            ) : null}
+          </View>
+
+          {!hasVehicles ? (
+            <Pressable
+              style={({ pressed }) => [
+                styles.dashedEmpty,
+                pressed && styles.dashedEmptyPressed,
+              ]}
+              onPress={() => router.push('/planner/vehicle/new')}
+              accessibilityRole="button"
+              accessibilityLabel="Add vehicle"
+            >
+              <PlusIcon color={colors.green[700]} size={22} />
+              <CaptionText style={styles.dashedBody}>
+                Track savings, investments, cash, or debt with a rate and
+                optional plan.
+              </CaptionText>
+              <CaptionText style={styles.secondaryText}>Add vehicle</CaptionText>
+            </Pressable>
           ) : (
             (vehicles.data ?? []).map((v) => (
               <Pressable
@@ -410,7 +426,39 @@ const styles = StyleSheet.create({
     marginBottom: space.xs,
   },
   sectionTitle: { color: colors.green[950], fontSize: 20 },
-  link: { color: colors.green[700], fontFamily: fonts.bodyStrong },
+  headerAdd: {
+    paddingHorizontal: space.md,
+    height: 36,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
+  },
+  dashedEmpty: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: space.sm,
+    paddingVertical: space.lg,
+    paddingHorizontal: space.md,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    backgroundColor: EMPTY_FILL,
+  },
+  dashedEmptyPressed: {
+    backgroundColor: colors.green[50],
+    borderColor: colors.green[200],
+  },
+  dashedBody: {
+    color: colors.inkMuted,
+    textAlign: 'center',
+    ...typography.body,
+    fontSize: 14,
+    lineHeight: 20,
+  },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
   chip: {
     borderWidth: 1,
@@ -453,11 +501,6 @@ const styles = StyleSheet.create({
   amount: { color: colors.ink, ...typography.amount, fontSize: 18 },
   hint: { color: colors.inkMuted, marginTop: space.sm },
   muted: { color: colors.inkMuted },
-  emptyBlock: {
-    paddingVertical: space.md,
-    gap: space.sm,
-    alignItems: 'flex-start',
-  },
   secondary: {
     paddingHorizontal: space.md,
     height: 40,
