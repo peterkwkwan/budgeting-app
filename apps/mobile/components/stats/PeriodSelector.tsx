@@ -16,7 +16,6 @@ import { CalendarIcon } from '@/components/icons';
 import { CaptionText, StrongText } from '@/components/StyledText';
 import { colors, fonts, radius, space } from '@/constants/theme';
 import {
-  canShiftPeriodFocusForward,
   formatCompactDate,
   periodModeLabel,
   periodModeOptions,
@@ -68,9 +67,6 @@ export function PeriodSelector({
   const fromDay = startOfDay(customStart ?? today);
   const toDay = startOfDay(customEnd ?? today);
   const effectivePreset = showModeMenu ? preset : 'month';
-  const canGoNext =
-    effectivePreset !== 'custom' &&
-    canShiftPeriodFocusForward(focus, effectivePreset, timeZone);
 
   const openModeMenu = () => {
     const fallbackTop = insets.top + 52;
@@ -184,30 +180,18 @@ export function PeriodSelector({
               {navLabel}
             </StrongText>
             <Pressable
-              onPress={() => {
-                if (canGoNext) step(1);
-              }}
+              onPress={() => step(1)}
               style={({ pressed }) => [
                 styles.chevronBtn,
-                !canGoNext && styles.chevronDisabled,
-                pressed && canGoNext && styles.pressed,
+                pressed && styles.pressed,
               ]}
               accessibilityRole="button"
               accessibilityLabel={
                 effectivePreset === 'month' ? 'Next month' : 'Next year'
               }
-              accessibilityState={{ disabled: !canGoNext }}
-              disabled={!canGoNext}
               hitSlop={8}
             >
-              <StrongText
-                style={[
-                  styles.chevronGlyph,
-                  !canGoNext && styles.chevronGlyphDisabled,
-                ]}
-              >
-                ›
-              </StrongText>
+              <StrongText style={styles.chevronGlyph}>›</StrongText>
             </Pressable>
           </View>
         )}
@@ -353,12 +337,6 @@ const styles = StyleSheet.create({
     color: colors.ink,
     fontSize: 22,
     lineHeight: 26,
-  },
-  chevronGlyphDisabled: {
-    color: colors.inkMuted,
-  },
-  chevronDisabled: {
-    opacity: 0.45,
   },
   navLabel: {
     flexShrink: 1,
