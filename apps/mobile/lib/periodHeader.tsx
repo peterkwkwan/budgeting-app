@@ -31,11 +31,18 @@ export function PeriodNavHeader({
         },
       ]}
     >
-      <View style={styles.row}>
+      <View
+        style={[
+          styles.row,
+          // No gear: tighter right gutter so Stats mode dropdown sits nearer the edge.
+          // With gear: keep sm padding + reserved slot so the control stays clear.
+          !trailing && styles.rowNoTrailing,
+        ]}
+      >
         <View style={styles.nav}>{children}</View>
-        <View style={styles.trailingSlot}>
-          {trailing ? trailing : null}
-        </View>
+        {trailing ? (
+          <View style={styles.trailingSlot}>{trailing}</View>
+        ) : null}
       </View>
     </View>
   );
@@ -73,6 +80,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: space.sm,
+  },
+  rowNoTrailing: {
+    // Pull period chrome (esp. Stats Monthly/Yearly/Period) closer to the edge.
+    paddingRight: space.xs,
+    gap: 0,
   },
   nav: {
     flex: 1,
