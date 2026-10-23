@@ -9,6 +9,10 @@ import {
   View,
 } from 'react-native';
 
+import {
+  ScrollEdgeHost,
+  useScrollEdges,
+} from '@/components/ScrollEdgeShadows';
 import { CategoryBreakdownList } from '@/components/stats/CategoryBreakdownList';
 import { CategoryPieChart } from '@/components/stats/CategoryPieChart';
 import { PeriodSelector } from '@/components/stats/PeriodSelector';
@@ -63,6 +67,7 @@ export default function StatsScreen() {
   const [customEnd, setCustomEnd] = useState(() => new Date());
   const [pieType, setPieType] = useState<TransactionType>('expense');
   const [trendMetric, setTrendMetric] = useState<StatsMetric>('expense');
+  const { edges, scrollProps } = useScrollEdges();
 
   // Unlink → Pair scope disappears immediately; fall back to personal.
   useEffect(() => {
@@ -156,9 +161,11 @@ export default function StatsScreen() {
   };
 
   return (
+    <ScrollEdgeHost edges={edges} style={styles.container}>
     <ScrollView
-      style={styles.container}
+      style={styles.scroll}
       contentContainerStyle={styles.content}
+      {...scrollProps}
       refreshControl={
         <RefreshControl
           refreshing={refreshing}
@@ -370,6 +377,7 @@ export default function StatsScreen() {
         </>
       )}
     </ScrollView>
+    </ScrollEdgeHost>
   );
 }
 
@@ -377,6 +385,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.canvas,
+  },
+  scroll: {
+    flex: 1,
   },
   content: {
     paddingHorizontal: space.md,

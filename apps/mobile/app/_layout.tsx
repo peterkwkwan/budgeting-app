@@ -32,7 +32,7 @@ const FudgetNavTheme = {
     background: colors.canvas,
     card: colors.surface,
     text: colors.ink,
-    border: colors.border,
+    border: colors.chromeBorder,
     notification: colors.green[700],
   },
 };

@@ -2,7 +2,7 @@ import { Tabs } from 'expo-router';
 
 import { FudgetTabBar } from '@/components/FudgetTabBar';
 import { useColorScheme } from '@/components/useColorScheme';
-import { Colors, fonts } from '@/constants/theme';
+import { Colors, fonts, navHeaderStyle } from '@/constants/theme';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
@@ -32,7 +32,7 @@ export default function TabLayout() {
         tabBarInactiveTintColor: palette.tabIconDefault,
         tabBarStyle: {
           backgroundColor: palette.surface,
-          borderTopColor: palette.border,
+          borderTopColor: palette.chromeBorder,
         },
         tabBarLabelStyle: {
           fontFamily: fonts.caption,
@@ -40,7 +40,9 @@ export default function TabLayout() {
           letterSpacing: 0.2,
         },
         headerStyle: {
+          ...navHeaderStyle,
           backgroundColor: palette.background,
+          borderBottomColor: palette.chromeBorder,
         },
         headerTitleStyle: {
           fontFamily: fonts.title,

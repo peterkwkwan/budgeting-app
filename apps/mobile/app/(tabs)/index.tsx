@@ -14,6 +14,10 @@ import {
   BulkEditSheet,
   type BulkEditField,
 } from '@/components/BulkEditSheet';
+import {
+  ScrollEdgeHost,
+  useScrollEdges,
+} from '@/components/ScrollEdgeShadows';
 import { PeriodSelector } from '@/components/stats/PeriodSelector';
 import { CaptionText, StrongText, TitleText } from '@/components/StyledText';
 import { TransactionRow } from '@/components/TransactionRow';
@@ -64,6 +68,7 @@ export default function TransactionsScreen() {
   const [bulkField, setBulkField] = useState<BulkEditField | null>(null);
 
   const busy = bulkDelete.isPending || bulkPatch.isPending;
+  const { edges, scrollProps } = useScrollEdges();
 
   const selectedRows = useMemo(() => {
     const list = data ?? [];
@@ -244,59 +249,62 @@ export default function TransactionsScreen() {
           </Pressable>
         </View>
       ) : (
-        <FlatList
-          data={data ?? []}
-          keyExtractor={(item) => item.id}
-          ListHeaderComponent={
-            upcoming ? (
-              <UpcomingRepeatsBar
-                summary={upcoming}
-                onPress={() => router.push('/recurring')}
+        <ScrollEdgeHost edges={edges}>
+          <FlatList
+            data={data ?? []}
+            keyExtractor={(item) => item.id}
+            {...scrollProps}
+            ListHeaderComponent={
+              upcoming ? (
+                <UpcomingRepeatsBar
+                  summary={upcoming}
+                  onPress={() => router.push('/recurring')}
+                />
+              ) : undefined
+            }
+            renderItem={({ item }) => (
+              <TransactionRow
+                transaction={item}
+                selectionMode={selectionMode}
+                selected={selectedIds.has(item.id)}
+                onPress={() => onRowPress(item)}
+                onLongPress={() => {
+                  // Keep handler mounted while selecting so mid-gesture
+                  // re-renders don’t drop onLongPress and synthesize a press.
+                  if (!selectionMode) enterSelection(item.id);
+                }}
               />
-            ) : undefined
-          }
-          renderItem={({ item }) => (
-            <TransactionRow
-              transaction={item}
-              selectionMode={selectionMode}
-              selected={selectedIds.has(item.id)}
-              onPress={() => onRowPress(item)}
-              onLongPress={() => {
-                // Keep handler mounted while selecting so mid-gesture
-                // re-renders don’t drop onLongPress and synthesize a press.
-                if (!selectionMode) enterSelection(item.id);
-              }}
-            />
-          )}
-          refreshing={isRefetching}
-          onRefresh={() => void refetch()}
-          contentContainerStyle={
-            (data?.length ?? 0) === 0 && !upcoming
-              ? styles.emptyList
-              : styles.list
-          }
-          ListEmptyComponent={
-            upcoming ? (
-              <View style={styles.emptyBelowBar}>
-                <CaptionText style={styles.emptyBody}>
-                  No transactions for today or earlier in {period.navLabel}.
-                  Upcoming repeats are listed above.
-                </CaptionText>
-              </View>
-            ) : (
-              <View style={styles.empty}>
-                <TitleText style={styles.emptyTitle}>
-                  No transactions in {period.navLabel}
-                </TitleText>
-                <CaptionText style={styles.emptyBody}>
-                  Tap + to add an expense or income. On the Add screen you can
-                  type it, or tap the mic to speak a draft before saving. It
-                  syncs for every device on this account.
-                </CaptionText>
-              </View>
-            )
-          }
-        />
+            )}
+            refreshing={isRefetching}
+            onRefresh={() => void refetch()}
+            contentContainerStyle={
+              (data?.length ?? 0) === 0 && !upcoming
+                ? styles.emptyList
+                : styles.list
+            }
+            ListEmptyComponent={
+              upcoming ? (
+                <View style={styles.emptyBelowBar}>
+                  <CaptionText style={styles.emptyBody}>
+                    No transactions for today or earlier in {period.navLabel}.
+                    Upcoming repeats are listed above.
+                  </CaptionText>
+                </View>
+              ) : (
+                <View style={styles.empty}>
+                  <TitleText style={styles.emptyTitle}>
+                    No transactions in {period.navLabel}
+                  </TitleText>
+                  <CaptionText style={styles.emptyBody}>
+                    Tap + to add an expense or income. On the Add screen you can
+                    type it, or tap the mic to speak a draft before saving. It
+                    syncs for every device on this account.
+                  </CaptionText>
+                </View>
+              )
+            }
+          />
+        </ScrollEdgeHost>
       )}
 
       <Modal

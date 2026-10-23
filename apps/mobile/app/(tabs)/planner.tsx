@@ -13,6 +13,10 @@ import {
 import { PlusIcon } from '@/components/icons';
 import { ProjectionChart } from '@/components/planner/ProjectionChart';
 import { ProjectionEmptyWell } from '@/components/planner/ProjectionEmptyWell';
+import {
+  ScrollEdgeHost,
+  useScrollEdges,
+} from '@/components/ScrollEdgeShadows';
 import { CaptionText, StrongText, TitleText } from '@/components/StyledText';
 import {
   DISCLAIMER,
@@ -102,6 +106,7 @@ export default function PlannerScreen() {
     null
   );
   const [prefsReady, setPrefsReady] = useState(false);
+  const { edges, scrollProps } = useScrollEdges();
 
   useEffect(() => {
     let cancelled = false;
@@ -197,9 +202,11 @@ export default function PlannerScreen() {
   }
 
   return (
+    <ScrollEdgeHost edges={edges} style={styles.container}>
     <ScrollView
-      style={styles.container}
+      style={styles.scroll}
       contentContainerStyle={styles.content}
+      {...scrollProps}
       refreshControl={
         <RefreshControl
           refreshing={refreshing}
@@ -534,11 +541,13 @@ export default function PlannerScreen() {
         </>
       )}
     </ScrollView>
+    </ScrollEdgeHost>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.canvas },
+  scroll: { flex: 1 },
   content: { padding: space.md, paddingBottom: space.xxl, gap: space.sm },
   centered: {
     paddingVertical: space.xxl,
