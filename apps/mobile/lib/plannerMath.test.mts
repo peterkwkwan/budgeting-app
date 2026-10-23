@@ -17,16 +17,23 @@ test('monthlyFromCadence converts weekly and biweekly', () => {
 });
 
 test('grow compounds monthly and adds contributions', () => {
-  const bal = stepVehicleMonth(1000, 12, 'grow', 100);
+  const bal = stepVehicleMonth(1000, 12, 'grow', 100, 'monthly', 1);
   // 1000 * 1.01 + 100 = 1110
   assert.equal(bal, 1110);
 });
 
 test('shrink applies interest then payment and floors at zero', () => {
-  const bal = stepVehicleMonth(1000, 12, 'shrink', 200);
+  const bal = stepVehicleMonth(1000, 12, 'shrink', 200, 'monthly', 1);
   // 1000 * 1.01 - 200 = 810
   assert.equal(bal, 810);
-  assert.equal(stepVehicleMonth(50, 0, 'shrink', 100), 0);
+  assert.equal(stepVehicleMonth(50, 0, 'shrink', 100, 'monthly', 1), 0);
+});
+
+test('yearly compound applies full rate only on month 12', () => {
+  const m1 = stepVehicleMonth(1000, 12, 'grow', 0, 'yearly', 1);
+  assert.equal(m1, 1000); // no interest yet
+  const m12 = stepVehicleMonth(1000, 12, 'grow', 0, 'yearly', 12);
+  assert.equal(m12, 1120); // 1000 * 1.12
 });
 
 test('projectVehicleBalances length is months+1', () => {

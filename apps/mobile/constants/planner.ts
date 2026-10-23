@@ -1,4 +1,4 @@
-/** Planner P0 enums — keep in sync with supabase/migrations/20261023120000_planner.sql */
+/** Planner P0 enums — keep in sync with supabase/migrations/20261023120000_planner.sql (+ compound_period follow-up). */
 
 export const GOAL_TYPES = [
   'emergency',
@@ -44,6 +44,15 @@ export const VEHICLE_TYPE_LABELS: Record<VehicleType, string> = {
 
 export type GrowthMode = 'grow' | 'shrink';
 
+export const COMPOUND_PERIODS = ['monthly', 'yearly'] as const;
+
+export type CompoundPeriod = (typeof COMPOUND_PERIODS)[number];
+
+export const COMPOUND_PERIOD_LABELS: Record<CompoundPeriod, string> = {
+  monthly: 'Monthly',
+  yearly: 'Yearly',
+};
+
 export const PLAN_CADENCES = ['weekly', 'biweekly', 'monthly'] as const;
 
 export type PlanCadence = (typeof PLAN_CADENCES)[number];
@@ -69,6 +78,10 @@ export function isVehicleType(v: string): v is VehicleType {
 
 export function isPlanCadence(v: string): v is PlanCadence {
   return (PLAN_CADENCES as readonly string[]).includes(v);
+}
+
+export function isCompoundPeriod(v: string): v is CompoundPeriod {
+  return (COMPOUND_PERIODS as readonly string[]).includes(v);
 }
 
 export const HORIZON_PRESETS = [

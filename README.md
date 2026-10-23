@@ -82,8 +82,9 @@ npx supabase db push
 | `supabase/migrations/20261022120000_recurring_ends.sql` | **M3** `ends_on` + `ends_after_count` (Never / On date / After N) |
 | `supabase/migrations/20261022140000_partner_links.sql` | **M4** `partner_links` + invite/accept/unlink RPCs + `stats_aggregate_*` (aggregates only) |
 | `supabase/migrations/20261023120000_planner.sql` | **Planner P0** `planner_vehicles` + `planner_goals` + `planner_contribution_events` (own-row RLS; soft-delete vehicles/goals) |
+| `supabase/migrations/20261023130000_planner_vehicle_compound_period.sql` | **Planner P0** `planner_vehicles.compound_period` (`monthly` \| `yearly`, default monthly) |
 
-**Founder step (Planner P0):** apply `20261023120000_planner.sql` (`npx supabase db push`). No new Edge Functions. Until applied, the Planner tab’s goals/vehicles CRUD will error. **EAS rebuild: no** (JS + SQL; View-only projection chart). Contributions stay Planner-local (do **not** create Transactions). Tab order: Transactions · Add FAB · Stats · Planner · Account.
+**Founder step (Planner P0):** apply both planner migrations (`npx supabase db push`). No new Edge Functions. Until applied, the Planner tab’s goals/vehicles CRUD will error. **EAS rebuild: no** (JS + SQL; View-only projection chart). Contributions stay Planner-local (do **not** create Transactions). Tab order: Transactions · Add FAB · Stats · Planner · Account. Vehicles use plain-language yearly growth/interest labels + Monthly/Yearly compounding.
 
 **Founder step (M3):** after pulling this branch, run the recurring migrations, deploy Edge Functions, set `RECURRING_CRON_SECRET`, and schedule hourly cron (see below). Until migrations + functions are live, Add → Repeat / catch-up will error. Recurring is **not** a bottom tab — create via Add transaction → Repeat; manage via Upcoming repeats or Account → Recurring rules.
 

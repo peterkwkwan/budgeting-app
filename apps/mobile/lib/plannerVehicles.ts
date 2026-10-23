@@ -1,7 +1,9 @@
 import {
   defaultGrowthMode,
+  isCompoundPeriod,
   isPlanCadence,
   isVehicleType,
+  type CompoundPeriod,
   type GrowthMode,
   type PlanCadence,
   type VehicleType,
@@ -17,6 +19,7 @@ export type PlannerVehicle = {
   balance: number;
   annual_rate: number;
   growth_mode: GrowthMode;
+  compound_period: CompoundPeriod;
   plan_amount: number | null;
   plan_cadence: PlanCadence | null;
   notes: string | null;
@@ -31,6 +34,7 @@ export type PlannerVehicleInput = {
   balance: number;
   annual_rate: number;
   growth_mode?: GrowthMode;
+  compound_period?: CompoundPeriod;
   plan_amount?: number | null;
   plan_cadence?: PlanCadence | null;
   notes?: string | null;
@@ -38,6 +42,7 @@ export type PlannerVehicleInput = {
 
 function mapRow(row: Record<string, unknown>): PlannerVehicle {
   const type = String(row.vehicle_type);
+  const period = String(row.compound_period ?? 'monthly');
   return {
     id: String(row.id),
     user_id: String(row.user_id),
@@ -46,6 +51,7 @@ function mapRow(row: Record<string, unknown>): PlannerVehicle {
     balance: Number(row.balance),
     annual_rate: Number(row.annual_rate),
     growth_mode: row.growth_mode === 'shrink' ? 'shrink' : 'grow',
+    compound_period: isCompoundPeriod(period) ? period : 'monthly',
     plan_amount:
       row.plan_amount == null ? null : Number(row.plan_amount),
     plan_cadence:
@@ -76,6 +82,12 @@ function validateInput(input: PlannerVehicleInput): string | null {
     Number.isNaN(input.annual_rate)
   ) {
     return 'Rate must be between 0 and 100%.';
+  }
+  if (
+    input.compound_period != null &&
+    !isCompoundPeriod(input.compound_period)
+  ) {
+    return 'Choose monthly or yearly compounding.';
   }
   const planAmount = input.plan_amount ?? null;
   const planCadence = input.plan_cadence ?? null;
@@ -133,6 +145,7 @@ export async function createPlannerVehicle(
   if (validationError) throw new Error(validationError);
 
   const growth_mode = growthFor(input);
+  const compound_period = input.compound_period ?? 'monthly';
   const notes = input.notes?.trim() ? input.notes.trim() : null;
 
   const { data, error } = await supabase
@@ -144,6 +157,7 @@ export async function createPlannerVehicle(
       balance: input.balance,
       annual_rate: input.annual_rate,
       growth_mode,
+      compound_period,
       plan_amount: input.plan_amount ?? null,
       plan_cadence: input.plan_cadence ?? null,
       notes,
@@ -163,6 +177,7 @@ export async function updatePlannerVehicle(
   if (validationError) throw new Error(validationError);
 
   const growth_mode = growthFor(input);
+  const compound_period = input.compound_period ?? 'monthly';
   const notes = input.notes?.trim() ? input.notes.trim() : null;
 
   const { data, error } = await supabase
@@ -173,6 +188,7 @@ export async function updatePlannerVehicle(
       balance: input.balance,
       annual_rate: input.annual_rate,
       growth_mode,
+      compound_period,
       plan_amount: input.plan_amount ?? null,
       plan_cadence: input.plan_cadence ?? null,
       notes,

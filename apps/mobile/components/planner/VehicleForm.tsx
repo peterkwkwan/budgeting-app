@@ -10,11 +10,14 @@ import {
 
 import { CaptionText, StrongText } from '@/components/StyledText';
 import {
+  COMPOUND_PERIODS,
+  COMPOUND_PERIOD_LABELS,
   PLAN_CADENCES,
   PLAN_CADENCE_LABELS,
   VEHICLE_TYPES,
   VEHICLE_TYPE_LABELS,
   defaultGrowthMode,
+  type CompoundPeriod,
   type PlanCadence,
   type VehicleType,
 } from '@/constants/planner';
@@ -26,6 +29,7 @@ export type VehicleFormValues = {
   vehicle_type: VehicleType;
   balance: string;
   annual_rate: string;
+  compound_period: CompoundPeriod;
   plan_amount: string;
   plan_cadence: PlanCadence | null;
   notes: string;
@@ -56,6 +60,9 @@ export function VehicleForm({
   );
   const [balance, setBalance] = useState(initial?.balance ?? '');
   const [rate, setRate] = useState(initial?.annual_rate ?? '');
+  const [compoundPeriod, setCompoundPeriod] = useState<CompoundPeriod>(
+    initial?.compound_period ?? 'monthly'
+  );
   const [planAmount, setPlanAmount] = useState(initial?.plan_amount ?? '');
   const [planCadence, setPlanCadence] = useState<PlanCadence | null>(
     initial?.plan_cadence ?? null
@@ -65,6 +72,12 @@ export function VehicleForm({
 
   const growth = defaultGrowthMode(vehicleType);
   const planLabel = growth === 'shrink' ? 'Payment' : 'Contribution';
+  const rateLabel =
+    growth === 'shrink' ? 'Yearly interest (%)' : 'Yearly growth (%)';
+  const rateHelper =
+    growth === 'shrink'
+      ? 'What the loan charges per year (APR). Example: 6 = about 6%.'
+      : 'What you expect to earn in a year (like a savings APY). Example: 4 = about 4%.';
 
   function handleSubmit() {
     setLocalError(null);
@@ -100,6 +113,7 @@ export function VehicleForm({
       balance: bal,
       annual_rate,
       growth_mode: growth,
+      compound_period: compoundPeriod,
       plan_amount,
       plan_cadence: planCadence,
       notes: notes.trim() || null,
@@ -136,7 +150,7 @@ export function VehicleForm({
         <CaptionText style={styles.hint}>
           {growth === 'shrink'
             ? 'Debt / mortgage — balance shrinks with payments.'
-            : 'Grows with monthly compounding at your rate.'}
+            : 'Grows with compounding at your yearly rate.'}
         </CaptionText>
 
         <FieldLabel>
@@ -151,7 +165,7 @@ export function VehicleForm({
           placeholderTextColor={colors.inkMuted}
         />
 
-        <FieldLabel>APR / APY (%)</FieldLabel>
+        <FieldLabel>{rateLabel}</FieldLabel>
         <TextInput
           style={styles.input}
           value={rate}
@@ -160,6 +174,24 @@ export function VehicleForm({
           placeholder="0"
           placeholderTextColor={colors.inkMuted}
         />
+        <CaptionText style={styles.hint}>{rateHelper}</CaptionText>
+
+        <FieldLabel>Compounds</FieldLabel>
+        <ChipRow>
+          {COMPOUND_PERIODS.map((p) => (
+            <Chip
+              key={p}
+              label={COMPOUND_PERIOD_LABELS[p]}
+              selected={compoundPeriod === p}
+              onPress={() => setCompoundPeriod(p)}
+            />
+          ))}
+        </ChipRow>
+        <CaptionText style={styles.hint}>
+          {compoundPeriod === 'yearly'
+            ? 'Full yearly rate applied once per year; contributions or payments still monthly.'
+            : 'Yearly rate divided by 12 and applied each month (default).'}
+        </CaptionText>
 
         <FieldLabel>Planned {planLabel.toLowerCase()} (optional)</FieldLabel>
         <TextInput

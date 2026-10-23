@@ -93,6 +93,7 @@ export default function VehicleDetailScreen() {
           vehicle_type: vehicle.vehicle_type,
           balance: String(vehicle.balance),
           annual_rate: String(vehicle.annual_rate),
+          compound_period: vehicle.compound_period,
           plan_amount:
             vehicle.plan_amount != null ? String(vehicle.plan_amount) : '',
           plan_cadence: vehicle.plan_cadence,

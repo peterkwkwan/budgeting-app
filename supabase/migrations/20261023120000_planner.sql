@@ -59,7 +59,7 @@ create table if not exists public.planner_vehicles (
 comment on table public.planner_vehicles is
   'Personal financial vehicles for Planner projections; soft-delete via deleted_at';
 comment on column public.planner_vehicles.annual_rate is
-  'User-entered APR/APY percent (e.g. 5.25); monthly compound / amortization-lite';
+  'User-entered yearly rate percent (growth ≈ APY, debt ≈ APR). See compound_period migration for Monthly|Yearly.';
 comment on column public.planner_vehicles.plan_amount is
   'Planned contribution (grow) or payment (shrink); does not create Transactions';
 

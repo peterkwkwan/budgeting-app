@@ -1,9 +1,13 @@
 /**
- * Planner P0 projection math — monthly compound (grow) and amortization-lite (shrink).
+ * Planner P0 projection math — compound growth and amortization-lite debt.
  * No Monte Carlo. USD amounts as numbers (client-side).
+ *
+ * Compounding (simple):
+ * - monthly: each month apply annualRate/12, then contribution/payment
+ * - yearly: apply the full annual rate only on months 12, 24, …; cashflow still monthly
  */
 
-import type { PlanCadence } from '@/constants/planner';
+import type { CompoundPeriod, PlanCadence } from '@/constants/planner';
 
 export type PaceStatus = 'on_track' | 'behind' | 'ahead' | 'unknown';
 
@@ -27,6 +31,8 @@ export type ProjectVehicleInput = {
   balance: number;
   annualRatePercent: number;
   growthMode: 'grow' | 'shrink';
+  /** monthly (default): rate/12 each month; yearly: full rate every 12th month. */
+  compoundPeriod?: CompoundPeriod | null;
   /** Optional planned contribution (grow) or payment (shrink). */
   planAmount?: number | null;
   planCadence?: PlanCadence | null;
@@ -42,21 +48,32 @@ export type ProjectionPoint = {
 };
 
 /**
- * One month of grow (compound) or shrink (payment after interest).
+ * One projection month of grow (compound) or shrink (payment after interest).
+ * `monthIndex` is 1-based (1 = first month after now) so yearly hits at 12, 24, …
  */
 export function stepVehicleMonth(
   balance: number,
   annualRatePercent: number,
   growthMode: 'grow' | 'shrink',
-  monthlyCashflow: number
+  monthlyCashflow: number,
+  compoundPeriod: CompoundPeriod = 'monthly',
+  monthIndex = 1
 ): number {
-  const r = Math.max(0, annualRatePercent) / 100 / 12;
+  const annual = Math.max(0, annualRatePercent) / 100;
+  // Monthly: rate/12 every step. Yearly: full rate only when monthIndex % 12 === 0.
+  const periodRate =
+    compoundPeriod === 'yearly'
+      ? monthIndex % 12 === 0
+        ? annual
+        : 0
+      : annual / 12;
+
   if (growthMode === 'grow') {
-    const grown = balance * (1 + r);
+    const grown = balance * (1 + periodRate);
     return round2(grown + Math.max(0, monthlyCashflow));
   }
-  // shrink: interest accrues, then payment applied
-  const withInterest = balance * (1 + r);
+  // shrink: interest accrues (when due), then payment applied
+  const withInterest = balance * (1 + periodRate);
   const next = withInterest - Math.max(0, monthlyCashflow);
   return round2(Math.max(0, next));
 }
@@ -68,6 +85,7 @@ export function projectVehicleBalances(
 ): number[] {
   const n = Math.max(0, Math.floor(months));
   const monthly = monthlyCashflow(vehicle);
+  const period = vehicle.compoundPeriod ?? 'monthly';
   const out: number[] = [round2(Math.max(0, vehicle.balance))];
   let bal = out[0]!;
   for (let m = 1; m <= n; m++) {
@@ -75,7 +93,9 @@ export function projectVehicleBalances(
       bal,
       vehicle.annualRatePercent,
       vehicle.growthMode,
-      monthly
+      monthly,
+      period,
+      m
     );
     out.push(bal);
   }

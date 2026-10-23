@@ -98,6 +98,7 @@ export default function PlannerScreen() {
         balance: v.balance,
         annualRatePercent: v.annual_rate,
         growthMode: v.growth_mode,
+        compoundPeriod: v.compound_period,
         planAmount: v.plan_amount,
         planCadence: v.plan_cadence,
       })),
@@ -354,7 +355,8 @@ export default function PlannerScreen() {
                   <CaptionText style={styles.muted}>
                     {VEHICLE_TYPE_LABELS[v.vehicle_type]} ·{' '}
                     {v.growth_mode === 'grow' ? 'Grows' : 'Shrinks'} ·{' '}
-                    {v.annual_rate}%
+                    {v.annual_rate}%{' '}
+                    {v.compound_period === 'yearly' ? 'yearly' : 'monthly'}
                   </CaptionText>
                   <CaptionText style={styles.muted}>
                     {formatUsd(v.balance)}
