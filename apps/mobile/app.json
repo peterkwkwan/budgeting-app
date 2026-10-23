@@ -15,7 +15,7 @@
     "android": {
       "package": "com.koolkrib.fudget",
       "adaptiveIcon": {
-        "backgroundColor": "#0f1c14",
+        "backgroundColor": "#e0f7f1",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
@@ -54,7 +54,7 @@
         {
           "image": "./assets/images/splash-icon.png",
           "resizeMode": "contain",
-          "backgroundColor": "#0f1c14"
+          "backgroundColor": "#e0f7f1"
         }
       ],
       [
