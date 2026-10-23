@@ -6,14 +6,14 @@ export default function StatsStackLayout() {
   return (
     <Stack
       screenOptions={{
-        headerStyle: { backgroundColor: colors.green[50] },
+        headerStyle: { backgroundColor: colors.canvas },
         headerTitleStyle: {
           fontFamily: fonts.title,
           color: colors.ink,
         },
         headerTintColor: colors.green[700],
         headerShadowVisible: false,
-        contentStyle: { backgroundColor: colors.green[50] },
+        contentStyle: { backgroundColor: colors.canvas },
       }}
     >
       <Stack.Screen

@@ -94,7 +94,7 @@ export default function RecurringManageScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.green[50],
+    backgroundColor: colors.canvas,
   },
   hint: {
     paddingHorizontal: space.md,
@@ -139,7 +139,7 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: colors.green[700],
+    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },

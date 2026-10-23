@@ -94,7 +94,7 @@ export default function AccountScreen() {
 const styles = StyleSheet.create({
   scroll: {
     flex: 1,
-    backgroundColor: colors.green[50],
+    backgroundColor: colors.canvas,
   },
   container: {
     paddingHorizontal: space.md,
@@ -108,7 +108,7 @@ const styles = StyleSheet.create({
   block: {
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: colors.green[200],
+    borderColor: colors.border,
     padding: space.md,
     gap: space.xs,
   },
@@ -128,7 +128,7 @@ const styles = StyleSheet.create({
   linkRow: {
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: colors.green[200],
+    borderColor: colors.border,
     backgroundColor: colors.surface,
     padding: space.md,
     gap: space.xs,

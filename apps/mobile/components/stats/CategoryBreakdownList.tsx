@@ -87,7 +87,7 @@ const styles = StyleSheet.create({
     gap: space.sm,
     paddingVertical: space.sm + 2,
     borderBottomWidth: 1,
-    borderBottomColor: colors.green[200],
+    borderBottomColor: colors.border,
   },
   pressed: {
     backgroundColor: colors.surfaceMuted,

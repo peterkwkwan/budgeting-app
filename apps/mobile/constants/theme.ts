@@ -1,5 +1,6 @@
 /**
  * Fudget design tokens — source of truth aligned with docs/design-system.md
+ * Paper-white canvas; forest green accent; Apple-clean chrome.
  */
 
 export const colors = {
@@ -8,6 +9,7 @@ export const colors = {
     700: '#007a33',
     400: '#66b3a1',
     200: '#b2e0d4',
+    /** Brand tint only — never page background. */
     50: '#e0f7f1',
   },
   /** Warm rust scale for expense charts (spend). */
@@ -18,18 +20,21 @@ export const colors = {
     400: '#ea580c',
     200: '#fdba74',
   },
-  ink: '#0a1f14',
-  inkMuted: '#3d5c4a',
+  /** Page / screen background (paper white). */
+  canvas: '#ffffff',
+  ink: '#1c1c1e',
+  inkMuted: '#8e8e93',
   inkInverse: '#ffffff',
   surface: '#ffffff',
-  surfaceMuted: '#f3faf7',
+  surfaceMuted: '#f5f5f7',
+  border: '#e5e5ea',
   danger: '#b42318',
   warning: '#b54708',
   /** Ledger / totals amount color for income (aligns with green.700). */
   income: '#007a33',
   /** Ledger / totals amount color for expense (aligns with rust.700). */
   expense: '#9a3412',
-  overlay: 'rgba(10, 31, 20, 0.45)',
+  overlay: 'rgba(28, 28, 30, 0.45)',
   /** @deprecated Use colors.rust[500] — kept for any stray imports. */
   chartWarm: '#c2410c',
 } as const;
@@ -45,15 +50,16 @@ export const space = {
 
 export const radius = {
   sm: 8,
-  md: 12,
-  lg: 20,
+  md: 10,
+  lg: 16,
   full: 999,
 } as const;
 
 /** Loaded via @expo-google-fonts — family names match useFonts keys. */
 export const fonts = {
   display: 'Fraunces_600SemiBold',
-  title: 'Fraunces_600SemiBold',
+  /** Screen titles — DM Sans (Apple-clean chrome; Fraunces is brand/display only). */
+  title: 'DMSans_600SemiBold',
   body: 'DMSans_400Regular',
   bodyStrong: 'DMSans_600SemiBold',
   caption: 'DMSans_500Medium',
@@ -85,6 +91,7 @@ export const typography = {
     fontFamily: fonts.caption,
     fontSize: 13,
     lineHeight: 18,
+    letterSpacing: 0.2,
   },
   amount: {
     fontFamily: fonts.amount,
@@ -94,20 +101,14 @@ export const typography = {
   },
 } as const;
 
+/** Optional elevation only — default UI uses 1px border hairline, no shadow. */
 export const shadow = {
   sm: {
-    shadowColor: colors.ink,
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
+    shadowOpacity: 0.04,
     shadowRadius: 2,
     elevation: 1,
-  },
-  md: {
-    shadowColor: colors.ink,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 3,
   },
 } as const;
 
@@ -115,11 +116,11 @@ export const shadow = {
 export const Colors = {
   light: {
     text: colors.ink,
-    background: colors.green[50],
+    background: colors.canvas,
     tint: colors.green[700],
     tabIconDefault: colors.inkMuted,
     tabIconSelected: colors.green[700],
-    border: colors.green[200],
+    border: colors.border,
     surface: colors.surface,
     surfaceMuted: colors.surfaceMuted,
     danger: colors.danger,

@@ -61,7 +61,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: space.sm,
     borderBottomWidth: 1,
-    borderBottomColor: colors.green[200],
+    borderBottomColor: colors.border,
   },
   pressed: {
     backgroundColor: colors.surfaceMuted,

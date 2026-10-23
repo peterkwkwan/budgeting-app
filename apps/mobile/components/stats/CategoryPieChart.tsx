@@ -97,7 +97,7 @@ const styles = StyleSheet.create({
     height: SIZE,
     borderRadius: SIZE / 2,
     overflow: 'hidden',
-    backgroundColor: colors.green[50],
+    backgroundColor: colors.canvas,
   },
   wedge: {
     position: 'absolute',
@@ -107,7 +107,7 @@ const styles = StyleSheet.create({
     width: SIZE * INNER_RATIO,
     height: SIZE * INNER_RATIO,
     borderRadius: (SIZE * INNER_RATIO) / 2,
-    backgroundColor: colors.green[50],
+    backgroundColor: colors.canvas,
     top: (SIZE * (1 - INNER_RATIO)) / 2,
     left: (SIZE * (1 - INNER_RATIO)) / 2,
   },

@@ -418,7 +418,7 @@ export function RecurringForm(props: Props) {
 const styles = StyleSheet.create({
   scroll: {
     flex: 1,
-    backgroundColor: colors.green[50],
+    backgroundColor: colors.canvas,
   },
   content: {
     paddingHorizontal: space.md,
@@ -444,7 +444,7 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: colors.green[700],
+    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.surface,
@@ -460,9 +460,9 @@ const styles = StyleSheet.create({
   },
   input: {
     minHeight: 48,
-    borderRadius: radius.sm,
+    borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: colors.green[200],
+    borderColor: colors.border,
     backgroundColor: colors.surfaceMuted,
     paddingHorizontal: space.md,
     justifyContent: 'center',
@@ -495,12 +495,12 @@ const styles = StyleSheet.create({
     paddingVertical: space.sm,
     borderRadius: radius.sm,
     borderWidth: 1,
-    borderColor: colors.green[200],
+    borderColor: colors.border,
     backgroundColor: colors.surface,
   },
   chipSelected: {
     borderColor: colors.green[700],
-    backgroundColor: colors.green[200],
+    backgroundColor: colors.green[50],
   },
   chipText: {
     ...typography.caption,
@@ -532,7 +532,7 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: colors.green[700],
+    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.surface,

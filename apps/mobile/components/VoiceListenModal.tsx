@@ -362,7 +362,7 @@ const styles = StyleSheet.create({
     paddingTop: space.lg,
     paddingBottom: space.xl,
     borderWidth: 1,
-    borderColor: colors.green[200],
+    borderColor: colors.border,
     gap: space.sm,
   },
   title: {
@@ -375,7 +375,7 @@ const styles = StyleSheet.create({
   transcriptBox: {
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: colors.green[200],
+    borderColor: colors.border,
     backgroundColor: colors.surfaceMuted,
     padding: space.md,
     gap: space.xs,
@@ -428,7 +428,7 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: colors.green[700],
+    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.surface,
