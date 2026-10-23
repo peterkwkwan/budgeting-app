@@ -69,6 +69,7 @@ function RootNavigator() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="transaction" options={{ headerShown: false }} />
         <Stack.Screen name="stats" options={{ headerShown: false }} />
+        <Stack.Screen name="planner" options={{ headerShown: false }} />
         <Stack.Screen name="recurring" options={{ headerShown: false }} />
       </Stack.Protected>
       <Stack.Protected guard={!session}>

@@ -31,6 +31,10 @@ import { RepeatCustomSheet } from '@/components/RepeatCustomSheet';
 import { useVoiceRecognition } from '@/hooks/useVoiceRecognition';
 import { useAuth } from '@/lib/auth';
 import { formatDisplayDate } from '@/lib/dates';
+import {
+  formatAmountInput,
+  parseAmountInput,
+} from '@/lib/money';
 import { deviceTimezone } from '@/lib/profile';
 import type { TransactionInput } from '@/lib/transactions';
 import type { VoiceDraft } from '@/lib/voiceParse';
@@ -76,7 +80,9 @@ export function TransactionForm({
   onDelete,
   deleteBusy = false,
 }: Props) {
-  const [amount, setAmount] = useState(initial?.amount ?? '');
+  const [amount, setAmount] = useState(() =>
+    formatAmountInput(initial?.amount ?? '')
+  );
   const [type, setType] = useState<TransactionType>(initial?.type ?? 'expense');
   const [category, setCategory] = useState(
     initial?.category ?? defaultCategory(initial?.type ?? 'expense')
@@ -96,7 +102,7 @@ export function TransactionForm({
   const presetOptions = buildRepeatPresetOptions(occurredAt, timeZone);
 
   const applyVoiceDraft = useCallback((draft: VoiceDraft) => {
-    setAmount(draft.amount);
+    setAmount(formatAmountInput(draft.amount));
     setType(draft.type);
     setCategory(draft.category);
     setNote(draft.note);
@@ -130,7 +136,7 @@ export function TransactionForm({
 
   function handleSubmit() {
     setLocalError(null);
-    const parsed = Number.parseFloat(amount.replace(/,/g, '').trim());
+    const parsed = parseAmountInput(amount);
     if (!(parsed > 0) || Number.isNaN(parsed)) {
       setLocalError('Enter an amount greater than zero.');
       return;
@@ -220,7 +226,7 @@ export function TransactionForm({
         <TextInput
           style={[styles.input, highlightVoice && amount ? styles.inputHighlight : null]}
           value={amount}
-          onChangeText={setAmount}
+          onChangeText={(v) => setAmount(formatAmountInput(v))}
           keyboardType="decimal-pad"
           placeholder="0.00"
           placeholderTextColor={colors.inkMuted}

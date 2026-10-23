@@ -10,11 +10,19 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { BarsIcon, ListIcon, PlusIcon, UserIcon } from '@/components/icons';
+import {
+  BarsIcon,
+  FlagIcon,
+  ListIcon,
+  PlusIcon,
+  UserIcon,
+} from '@/components/icons';
 import { colors, fonts, space } from '@/constants/theme';
+import { guardedPush } from '@/lib/navGuard';
 
 const FAB_SIZE = 60;
-const FAB_GAP = 64;
+const FAB_GAP = 56;
+const ADD_TRANSACTION = '/transaction/new';
 
 type FudgetTabBarProps = {
   state: {
@@ -32,11 +40,12 @@ const TABS: {
 }[] = [
   { route: 'index', label: 'Transactions', Icon: ListIcon },
   { route: 'stats', label: 'Stats', Icon: BarsIcon },
+  { route: 'planner', label: 'Planner', Icon: FlagIcon },
   { route: 'account', label: 'Account', Icon: UserIcon },
 ];
 
 /**
- * Concept B tab bar: Transactions · raised Add FAB · Stats · Account.
+ * Concept B tab bar: Transactions · raised Add FAB · Stats · Planner · Account.
  * FAB gently pulses brand rings/scale unless reduce-motion is on.
  */
 export function FudgetTabBar({ state, onTabPress }: FudgetTabBarProps) {
@@ -181,7 +190,7 @@ export function FudgetTabBar({ state, onTabPress }: FudgetTabBarProps) {
               styles.fab,
               pressed && styles.fabPressed,
             ]}
-            onPress={() => router.push('/transaction/new')}
+            onPress={() => guardedPush(router, ADD_TRANSACTION)}
             accessibilityRole="button"
             accessibilityLabel="Add transaction"
           >
@@ -194,6 +203,7 @@ export function FudgetTabBar({ state, onTabPress }: FudgetTabBarProps) {
         {renderTab('index')}
         <View style={styles.fabGap} />
         {renderTab('stats')}
+        {renderTab('planner')}
         {renderTab('account')}
       </View>
     </View>

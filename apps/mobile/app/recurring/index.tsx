@@ -11,6 +11,7 @@ import { CaptionText, TitleText } from '@/components/StyledText';
 import { RecurringRow } from '@/components/RecurringRow';
 import { colors, fonts, radius, space, typography } from '@/constants/theme';
 import { useRecurringList } from '@/hooks/useRecurring';
+import { guardedPush } from '@/lib/navGuard';
 
 /**
  * Manage recurring rules (stack screen — not a bottom tab).
@@ -77,7 +78,7 @@ export default function RecurringManageScreen() {
                   styles.secondary,
                   pressed && styles.secondaryPressed,
                 ]}
-                onPress={() => router.push('/transaction/new')}
+                onPress={() => guardedPush(router, '/transaction/new')}
               >
                 <CaptionText style={styles.secondaryText}>
                   Add transaction

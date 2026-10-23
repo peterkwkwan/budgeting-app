@@ -105,6 +105,38 @@ export function UserIcon({ color, size = 22, style }: IconProps) {
   );
 }
 
+/** Flag / target-style mark for Planner tab. */
+export function FlagIcon({ color, size = 22, style }: IconProps) {
+  const stroke = Math.max(1.5, size * 0.09);
+  return (
+    <View style={[{ width: size, height: size }, style]}>
+      <View
+        style={{
+          position: 'absolute',
+          left: size * 0.22,
+          top: size * 0.1,
+          width: stroke,
+          height: size * 0.78,
+          borderRadius: stroke,
+          backgroundColor: color,
+        }}
+      />
+      <View
+        style={{
+          position: 'absolute',
+          left: size * 0.22 + stroke,
+          top: size * 0.12,
+          width: size * 0.48,
+          height: size * 0.36,
+          borderTopRightRadius: 4,
+          borderBottomRightRadius: 4,
+          backgroundColor: color,
+        }}
+      />
+    </View>
+  );
+}
+
 export function PlusIcon({ color, size = 30, style }: IconProps) {
   const stroke = Math.max(2.25, size * 0.1);
   return (
