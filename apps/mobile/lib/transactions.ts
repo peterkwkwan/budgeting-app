@@ -1,11 +1,15 @@
 import type { TransactionCategory, TransactionType } from '@/constants/categories';
 import { isValidCategory } from '@/constants/categories';
 import {
-  currentMonthBounds,
   formatDisplayDate,
   isOnOrBeforeLocalToday,
   localDateKey,
 } from '@/lib/dates';
+import {
+  currentPeriodFocus,
+  resolvePeriodBounds,
+  type PeriodFocus,
+} from '@/lib/periods';
 
 import { supabase } from './supabase';
 
@@ -102,6 +106,26 @@ export function filterTransactionsVisible(
   });
 }
 
+/**
+ * Visible rows whose occurred_at falls in the focused calendar month.
+ */
+export function filterTransactionsForMonth(
+  rows: Transaction[],
+  timeZone: string,
+  focus: PeriodFocus,
+  now: Date = new Date()
+): Transaction[] {
+  const bounds = resolvePeriodBounds('month', timeZone, { focus, now });
+  const startMs = bounds.start.getTime();
+  const endMs = bounds.end.getTime();
+  return filterTransactionsVisible(rows, timeZone, now).filter((t) => {
+    const occurred = new Date(t.occurred_at);
+    if (Number.isNaN(occurred.getTime())) return false;
+    const ms = occurred.getTime();
+    return ms >= startMs && ms < endMs;
+  });
+}
+
 export type UpcomingRepeatsSummary = {
   items: Transaction[];
   count: number;
@@ -114,16 +138,18 @@ export type UpcomingRepeatsSummary = {
 };
 
 /**
- * Current-month recurring instances with local date after today (still generated).
+ * Focused-month recurring instances with local date after today (still generated).
+ * Defaults to the current calendar month when `focus` is omitted.
  */
 export function summarizeUpcomingRepeatsThisMonth(
   rows: Transaction[],
   timeZone: string,
-  now: Date = new Date()
+  now: Date = new Date(),
+  focus: PeriodFocus = currentPeriodFocus(timeZone, now)
 ): UpcomingRepeatsSummary | null {
-  const { start, end } = currentMonthBounds(timeZone, now);
-  const startMs = start.getTime();
-  const endMs = end.getTime();
+  const bounds = resolvePeriodBounds('month', timeZone, { focus, now });
+  const startMs = bounds.start.getTime();
+  const endMs = bounds.end.getTime();
   const todayKey = localDateKey(now, timeZone);
 
   const items = rows
