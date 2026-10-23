@@ -39,19 +39,23 @@ cd apps/mobile
 npx eas-cli@latest login
 # Required after pulling M5 (native module + permissions):
 npx eas-cli@latest build --platform android --profile development
-# Optional internal tester APK:
-# npx eas-cli@latest build --platform android --profile preview
+# Play internal dogfood (AAB → internal track): see docs playbook
+# Optional sideload APK (not Play):
+# npx eas-cli@latest build --platform android --profile preview-apk
 ```
 
-**EAS rebuild: yes** for M5 — profile `development` (Dev Client) at minimum; also rebuild `preview` if you share APKs. JS-only reload is not enough.
+**EAS rebuild: yes** for M5 — profile `development` (Dev Client) at minimum; rebuild a store AAB (`preview` or `production`) before Play internal testing. JS-only reload is not enough.
 
 Profiles in `apps/mobile/eas.json`:
 
 | Profile       | Purpose                                      |
 |---------------|----------------------------------------------|
-| `development` | Dev Client (`developmentClient: true`)       |
-| `preview`     | Internal APK for testers                     |
-| `production`  | Play App Bundle (internal track submit later)|
+| `development` | Dev Client (`developmentClient: true`) APK   |
+| `preview`     | Play-ready AAB (dogfood; submit → internal)  |
+| `preview-apk` | Sideload APK via EAS internal link (not Play)|
+| `production`  | Play AAB (submit still **internal** track)   |
+
+**Play internal dogfood:** build `preview` (or `production`) AAB, then `eas submit --profile preview` (track `internal`, `releaseStatus: draft`). Full founder checklist: Project store doc `docs/play-internal-dogfood.md`. Do **not** promote to production track until intentionally releasing publicly.
 
 **Dev Client Android note:** the `development` profile builds **arm64-v8a only** (physical Pixel / most Android devices) and caps Gradle workers for free-tier EAS. Stats charts are View-only (no Skia). It will not install on classic x86_64 emulators unless you temporarily set `ORG_GRADLE_PROJECT_reactNativeArchitectures=x86_64` for a one-off build.
 
@@ -82,7 +86,7 @@ npx supabase db push
 
 **Founder step (M4):** apply `20261022140000_partner_links.sql` (`npx supabase db push`). No new Edge Functions — invite/accept/unlink and aggregate stats are Postgres RPCs under RLS. Until applied, Account → Partner and Stats → Pair will error. **EAS rebuild: no** (JS + SQL only; Share uses built-in React Native API).
 
-**Founder step (M5):** no new SQL. **EAS rebuild: yes** — `development` (and `preview` if used) so `expo-speech-recognition` + mic permissions land in the native binary. After install: Ledger → **Voice** → speak → confirm/edit on Add → **Save** (same ledger path as manual). Failure/permission → retry or **Enter manually**. iOS / paid cloud STT / Play Store submit remain out of scope.
+**Founder step (M5):** no new SQL. **EAS rebuild: yes** — `development` (and Play AAB via `preview` / `production`) so `expo-speech-recognition` + mic permissions land in the native binary. After install: Ledger → **Voice** → speak → confirm/edit on Add → **Save** (same ledger path as manual). Failure/permission → retry or **Enter manually**. iOS / paid cloud STT / **production** Play track remain out of scope; **Play internal testing** for founder + partner is the dogfood path (see `docs/play-internal-dogfood.md` in the Project store).
 
 Ledger columns (M1+): `amount`, `type` (`expense`\|`income`), fixed `category`, optional `note` (≤500), `currency` (USD), `occurred_at`, `deleted_at`, timestamps, `user_id`. M3 adds `recurring_series_id` + `occurrence_key` for auto-generated rows. Default app queries filter `deleted_at is null`. Soft-delete updates `deleted_at` (no hard delete from the client). Soft-deleted recurring instances are **not** regenerated.
 
@@ -158,6 +162,8 @@ Voice lands in M5.
 | `npx expo start --android` | `apps/mobile` | Open Android |
 | `npx tsc --noEmit` | `apps/mobile` | Typecheck |
 | `npx eas-cli@latest build --profile development --platform android` | `apps/mobile` | Dev Client APK |
+| `npx eas-cli@latest build --profile preview --platform android` | `apps/mobile` | Play-ready AAB (internal track) |
+| `npx eas-cli@latest submit --profile preview --platform android` | `apps/mobile` | Upload AAB to Play **internal** |
 
 ## Security notes
 
