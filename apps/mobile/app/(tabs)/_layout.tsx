@@ -2,7 +2,7 @@ import { Tabs } from 'expo-router';
 
 import { FudgetTabBar } from '@/components/FudgetTabBar';
 import { useColorScheme } from '@/components/useColorScheme';
-import { Colors, fonts, navHeaderStyle } from '@/constants/theme';
+import { Colors, fonts, navHeaderStyle, space } from '@/constants/theme';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
@@ -47,6 +47,12 @@ export default function TabLayout() {
         headerTitleStyle: {
           fontFamily: fonts.title,
           color: palette.text,
+        },
+        // Planner / Account use this title. Left edge is 16px, same inset as
+        // the Transactions / Stats period header (see PeriodNavHeader).
+        headerTitleAlign: 'left',
+        headerTitleContainerStyle: {
+          marginHorizontal: space.md,
         },
         headerShadowVisible: false,
         headerShown: true,

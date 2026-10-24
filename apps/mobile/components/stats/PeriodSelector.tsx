@@ -168,7 +168,7 @@ export function PeriodSelector({
               accessibilityLabel={
                 effectivePreset === 'month' ? 'Previous month' : 'Previous year'
               }
-              hitSlop={8}
+              hitSlop={CHEVRON_HIT_SLOP}
             >
               <StrongText style={styles.chevronGlyph}>‹</StrongText>
             </Pressable>
@@ -189,7 +189,7 @@ export function PeriodSelector({
               accessibilityLabel={
                 effectivePreset === 'month' ? 'Next month' : 'Next year'
               }
-              hitSlop={8}
+              hitSlop={CHEVRON_HIT_SLOP}
             >
               <StrongText style={styles.chevronGlyph}>›</StrongText>
             </Pressable>
@@ -299,6 +299,12 @@ export function PeriodSelector({
   );
 }
 
+/**
+ * Restores a ~32px tap target after the chevron button stopped using a fixed
+ * box. Hit slop does not move the glyph, so the mark stays on the 16px inset.
+ */
+const CHEVRON_HIT_SLOP = { top: 8, bottom: 8, left: 14, right: 14 };
+
 const styles = StyleSheet.create({
   wrap: {
     width: '100%',
@@ -328,8 +334,9 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   chevronBtn: {
-    width: 32,
-    height: 32,
+    // Hug the glyph. A fixed 32px box centered ‹ › and pushed the visible
+    // mark in from the 16px header inset used by Planner / Account titles.
+    minHeight: 32,
     alignItems: 'center',
     justifyContent: 'center',
   },
