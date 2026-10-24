@@ -22,6 +22,11 @@ export type PeriodTotals = {
   net: number;
 };
 
+export {
+  savingsRate,
+  savingsRatePercent,
+} from './savingsRate';
+
 export type TrendPoint = {
   bucketStart: string;
   total: number;

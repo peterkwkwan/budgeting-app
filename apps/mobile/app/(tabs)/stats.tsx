@@ -42,13 +42,14 @@ import {
   type PeriodFocus,
   type PeriodPreset,
 } from '@/lib/periods';
+import { savingsRatePercent } from '@/lib/savingsRate';
 import type { StatsMetric } from '@/lib/stats';
 
 const ADD_TRANSACTION = '/transaction/new';
 
 function formatMoney(n: number): string {
   const sign = n < 0 ? '−' : '';
-  return `${sign}${formatUsd(n)}`;
+  return `${sign}${formatUsd(Math.abs(n))}`;
 }
 
 export default function StatsScreen() {
@@ -158,6 +159,10 @@ export default function StatsScreen() {
   const txnCount =
     (totals.data?.expenseCount ?? 0) + (totals.data?.incomeCount ?? 0);
   const isPeriodEmpty = !loading && !error && txnCount === 0;
+  const expenseSum = totals.data?.expenseSum ?? 0;
+  const incomeSum = totals.data?.incomeSum ?? 0;
+  const netSum = totals.data?.net ?? 0;
+  const periodSavingsPct = savingsRatePercent(incomeSum, expenseSum);
 
   // Fresh each render so midnight / timezone wall-clock stays correct.
   const currentFocus = currentPeriodFocus(timeZone);
@@ -266,39 +271,8 @@ export default function StatsScreen() {
         />
       ) : (
         <>
-          <View style={styles.totals}>
-            <View style={styles.totalBlock}>
-              <CaptionText style={styles.totalLabel}>Spent</CaptionText>
-              <StrongText style={[styles.totalValue, { color: colors.expense }]}>
-                {formatMoney(totals.data?.expenseSum ?? 0)}
-              </StrongText>
-            </View>
-            <View style={styles.totalBlock}>
-              <CaptionText style={styles.totalLabel}>Earned</CaptionText>
-              <StrongText style={[styles.totalValue, { color: colors.income }]}>
-                {formatMoney(totals.data?.incomeSum ?? 0)}
-              </StrongText>
-            </View>
-            <View style={styles.totalBlock}>
-              <CaptionText style={styles.totalLabel}>Net</CaptionText>
-              <StrongText
-                style={[
-                  styles.totalValue,
-                  {
-                    color:
-                      (totals.data?.net ?? 0) >= 0
-                        ? colors.income
-                        : colors.expense,
-                  },
-                ]}
-              >
-                {formatMoney(totals.data?.net ?? 0)}
-              </StrongText>
-            </View>
-          </View>
-
           <View style={styles.section}>
-            <TitleText style={styles.sectionTitle}>By category</TitleText>
+            <StrongText style={styles.sectionTitle}>By category</StrongText>
             <View style={styles.toggleRow}>
               {(['expense', 'income'] as const).map((t) => {
                 const selected = pieType === t;
@@ -326,12 +300,47 @@ export default function StatsScreen() {
             <CategoryPieChart
               data={categories.data ?? []}
               type={pieType}
+              centerTotal={pieType === 'expense' ? expenseSum : incomeSum}
               emptyLabel={
                 pieType === 'expense'
                   ? 'No expenses in this period.'
                   : 'No income in this period.'
               }
             />
+
+            <CaptionText
+              style={styles.savingsRate}
+              accessibilityLabel={
+                periodSavingsPct == null
+                  ? 'Savings rate not available'
+                  : `Savings rate ${periodSavingsPct} percent`
+              }
+            >
+              Savings rate{' '}
+              {periodSavingsPct == null ? 'n/a' : `${periodSavingsPct}%`}
+            </CaptionText>
+
+            <View style={styles.quietPeers}>
+              {(pieType === 'expense'
+                ? [
+                    { label: 'Earned', value: formatMoney(incomeSum) },
+                    { label: 'Net', value: formatMoney(netSum) },
+                  ]
+                : [
+                    { label: 'Spent', value: formatMoney(expenseSum) },
+                    { label: 'Net', value: formatMoney(netSum) },
+                  ]
+              ).map((peer) => (
+                <View key={peer.label} style={styles.quietPeer}>
+                  <CaptionText style={styles.quietPeerLabel}>
+                    {peer.label}
+                  </CaptionText>
+                  <StrongText style={styles.quietPeerValue}>
+                    {peer.value}
+                  </StrongText>
+                </View>
+              ))}
+            </View>
 
             <CategoryBreakdownList
               data={categories.data ?? []}
@@ -357,7 +366,7 @@ export default function StatsScreen() {
 
           {!showPair ? (
             <View style={styles.section}>
-              <TitleText style={styles.sectionTitle}>Trend</TitleText>
+              <TitleText style={styles.trendTitle}>Trend</TitleText>
               <View style={styles.toggleRow}>
                 {(
                   [
@@ -490,54 +499,70 @@ const styles = StyleSheet.create({
     color: colors.green[700],
     fontFamily: fonts.bodyStrong,
   },
-  totals: {
-    flexDirection: 'row',
-    gap: space.sm,
-  },
-  totalBlock: {
-    flex: 1,
-    gap: space.xs,
-  },
-  totalLabel: {
-    color: colors.inkMuted,
-    textTransform: 'uppercase',
-  },
-  totalValue: {
-    ...typography.amount,
-    fontSize: 18,
-    lineHeight: 24,
-  },
   section: {
     gap: space.sm,
   },
   sectionTitle: {
-    color: colors.green[950],
+    color: colors.ink,
+    fontSize: 17,
+    lineHeight: 22,
+    textAlign: 'center',
+  },
+  trendTitle: {
+    color: colors.ink,
   },
   toggleRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: space.sm,
+    justifyContent: 'center',
   },
   toggle: {
-    paddingHorizontal: space.sm + 4,
-    paddingVertical: space.sm,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
     borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceMuted,
     minHeight: 36,
     justifyContent: 'center',
   },
   toggleSelected: {
-    borderColor: colors.green[700],
-    backgroundColor: colors.surface,
+    backgroundColor: colors.green[700],
   },
   toggleText: {
     color: colors.inkMuted,
+    fontFamily: fonts.bodyStrong,
   },
   toggleTextSelected: {
-    color: colors.green[700],
+    color: colors.inkInverse,
     fontFamily: fonts.bodyStrong,
+  },
+  savingsRate: {
+    color: colors.inkMuted,
+    textAlign: 'center',
+    fontSize: 12,
+    lineHeight: 16,
+    marginTop: -space.xs,
+  },
+  quietPeers: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: space.lg,
+    paddingBottom: space.xs,
+  },
+  quietPeer: {
+    alignItems: 'center',
+    gap: 2,
+  },
+  quietPeerLabel: {
+    color: colors.inkMuted,
+    fontSize: 11,
+    lineHeight: 14,
+  },
+  quietPeerValue: {
+    color: colors.inkMuted,
+    fontSize: 13,
+    lineHeight: 18,
+    fontVariant: ['tabular-nums'],
   },
   /** Break out of `content` horizontal padding so the chart is edge-to-edge. */
   chartBleed: {

@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { CaptionText, StrongText } from '@/components/StyledText';
 import type { TransactionType } from '@/constants/categories';
 import { colorForCategory } from '@/constants/chartColors';
-import { colors, radius, space, typography } from '@/constants/theme';
+import { colors, fonts, space, typography } from '@/constants/theme';
 import { formatUsd } from '@/lib/money';
 import type { CategoryTotal } from '@/lib/stats';
 
@@ -11,7 +11,7 @@ type Props = {
   data: CategoryTotal[];
   /** When omitted, rows are display-only (e.g. pair aggregates — no txn drill-down). */
   onSelect?: (row: CategoryTotal) => void;
-  /** Active Stats type — drives green (income) vs rust (expense) swatches. */
+  /** Active Stats type — drives green (income) vs rust (expense) bars. */
   type: TransactionType;
 };
 
@@ -22,29 +22,47 @@ export function CategoryBreakdownList({ data, onSelect, type }: Props) {
 
   const total = data.reduce((acc, row) => acc + row.sum, 0) || 1;
   const selectable = typeof onSelect === 'function';
+  const amountColor = type === 'expense' ? colors.expense : colors.income;
+  /** Income: bold the dominant source (RPC orders by sum desc). */
+  const emphasizeDominant = type === 'income';
 
   return (
     <View style={styles.list}>
       {data.map((row, index) => {
         const pct = Math.round((row.sum / total) * 100);
-        const label = `${row.category}, ${formatUsd(row.sum)}, ${pct} percent${
+        const emphasis = emphasizeDominant && index === 0;
+        const label = `${row.category}, ${pct} percent, ${formatUsd(row.sum)}${
           selectable ? '. Open transactions.' : '.'
         }`;
         const body = (
           <>
-            <View
-              style={[
-                styles.swatch,
-                { backgroundColor: colorForCategory(index, type) },
-              ]}
-            />
-            <View style={styles.mid}>
-              <StrongText style={styles.category}>{row.category}</StrongText>
-              <CaptionText style={styles.meta}>
-                {row.count} {row.count === 1 ? 'entry' : 'entries'} · {pct}%
-              </CaptionText>
+            <View style={styles.top}>
+              <StrongText
+                style={[styles.category, emphasis && styles.categoryEmphasis]}
+                numberOfLines={1}
+              >
+                {row.category}
+              </StrongText>
+              <View style={styles.figures}>
+                <StrongText style={[styles.pct, { color: amountColor }]}>
+                  {pct}%
+                </StrongText>
+                <CaptionText style={styles.amount}>
+                  {formatUsd(row.sum)}
+                </CaptionText>
+              </View>
             </View>
-            <StrongText style={styles.amount}>{formatUsd(row.sum)}</StrongText>
+            <View style={styles.track}>
+              <View
+                style={[
+                  styles.fill,
+                  {
+                    width: `${Math.min(100, Math.max(0, pct))}%`,
+                    backgroundColor: colorForCategory(index, type),
+                  },
+                ]}
+              />
+            </View>
           </>
         );
 
@@ -81,36 +99,57 @@ const styles = StyleSheet.create({
     gap: 0,
   },
   row: {
-    minHeight: 56,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space.sm,
-    paddingVertical: space.sm + 2,
+    paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
+    gap: 6,
   },
   pressed: {
     backgroundColor: colors.surfaceMuted,
   },
-  swatch: {
-    width: 12,
-    height: 12,
-    borderRadius: radius.sm / 2,
-  },
-  mid: {
-    flex: 1,
-    gap: 2,
+  top: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    gap: space.sm,
   },
   category: {
+    flex: 1,
     color: colors.ink,
+    fontSize: 14,
+    lineHeight: 20,
+    fontFamily: fonts.bodyStrong,
   },
-  meta: {
-    color: colors.inkMuted,
+  categoryEmphasis: {
+    fontSize: 15,
+    lineHeight: 20,
+    fontFamily: fonts.amount,
+  },
+  figures: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: space.sm,
+    flexShrink: 0,
+  },
+  pct: {
+    ...typography.amount,
+    fontSize: 13,
+    lineHeight: 18,
   },
   amount: {
-    ...typography.amount,
-    fontSize: 16,
-    lineHeight: 22,
-    color: colors.ink,
+    color: colors.inkMuted,
+    fontSize: 13,
+    lineHeight: 18,
+    fontVariant: ['tabular-nums'],
+  },
+  track: {
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.surfaceMuted,
+    overflow: 'hidden',
+  },
+  fill: {
+    height: '100%',
+    borderRadius: 3,
   },
 });

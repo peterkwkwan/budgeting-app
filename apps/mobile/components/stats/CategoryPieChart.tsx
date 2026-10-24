@@ -1,9 +1,10 @@
 import { StyleSheet, View } from 'react-native';
 
-import { CaptionText } from '@/components/StyledText';
+import { CaptionText, StrongText } from '@/components/StyledText';
 import type { TransactionType } from '@/constants/categories';
 import { colorForCategory } from '@/constants/chartColors';
-import { colors, space } from '@/constants/theme';
+import { colors, fonts, space, typography } from '@/constants/theme';
+import { formatUsd } from '@/lib/money';
 import type { CategoryTotal } from '@/lib/stats';
 
 type Props = {
@@ -11,14 +12,33 @@ type Props = {
   emptyLabel: string;
   /** Active Stats type — drives green (income) vs rust (expense) wedges. */
   type: TransactionType;
+  /**
+   * Active-mode period total shown in the donut hole
+   * (Spent for expenses, Earned for income).
+   */
+  centerTotal: number;
 };
 
-const SIZE = 200;
-const INNER_RATIO = 0.56;
+/** Matches mockup D: 168 outer / 104 hole. */
+const SIZE = 168;
+const INNER_RATIO = 104 / 168;
 /** Radial wedges — View-only donut (no Skia / SVG). */
 const WEDGES = 90;
 
-export function CategoryPieChart({ data, emptyLabel, type }: Props) {
+function formatCenterMoney(n: number): string {
+  const sign = n < 0 ? '−' : '';
+  return `${sign}${formatUsd(Math.abs(n))}`;
+}
+
+export function CategoryPieChart({
+  data,
+  emptyLabel,
+  type,
+  centerTotal,
+}: Props) {
+  const centerLabel = type === 'expense' ? 'Spent' : 'Earned';
+  const centerColor = type === 'expense' ? colors.expense : colors.income;
+
   if (data.length === 0) {
     return (
       <View style={styles.empty}>
@@ -53,7 +73,10 @@ export function CategoryPieChart({ data, emptyLabel, type }: Props) {
   const pivot = outerR / 2;
 
   return (
-    <View style={styles.wrap} accessibilityLabel="Category breakdown chart">
+    <View
+      style={styles.wrap}
+      accessibilityLabel={`${centerLabel} ${formatCenterMoney(centerTotal)}. Category breakdown chart`}
+    >
       <View style={styles.disk}>
         {Array.from({ length: WEDGES }, (_, i) => {
           const t = (i + 0.5) / WEDGES;
@@ -79,15 +102,22 @@ export function CategoryPieChart({ data, emptyLabel, type }: Props) {
             />
           );
         })}
-        <View style={styles.hole} />
+        <View style={styles.hole} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+          <CaptionText style={styles.centerLabel}>{centerLabel}</CaptionText>
+          <StrongText style={[styles.centerValue, { color: centerColor }]}>
+            {formatCenterMoney(centerTotal)}
+          </StrongText>
+        </View>
       </View>
     </View>
   );
 }
 
+const holeSize = SIZE * INNER_RATIO;
+
 const styles = StyleSheet.create({
   wrap: {
-    height: 220,
+    height: SIZE + 12,
     width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
@@ -104,15 +134,30 @@ const styles = StyleSheet.create({
   },
   hole: {
     position: 'absolute',
-    width: SIZE * INNER_RATIO,
-    height: SIZE * INNER_RATIO,
-    borderRadius: (SIZE * INNER_RATIO) / 2,
+    width: holeSize,
+    height: holeSize,
+    borderRadius: holeSize / 2,
     backgroundColor: colors.canvas,
-    top: (SIZE * (1 - INNER_RATIO)) / 2,
-    left: (SIZE * (1 - INNER_RATIO)) / 2,
+    top: (SIZE - holeSize) / 2,
+    left: (SIZE - holeSize) / 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: space.xs,
+  },
+  centerLabel: {
+    color: colors.inkMuted,
+    fontSize: 12,
+    lineHeight: 16,
+    fontFamily: fonts.caption,
+  },
+  centerValue: {
+    ...typography.amount,
+    fontSize: 18,
+    lineHeight: 22,
+    textAlign: 'center',
   },
   empty: {
-    height: 180,
+    height: 168,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: space.lg,
