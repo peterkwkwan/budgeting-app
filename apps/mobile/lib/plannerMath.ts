@@ -195,16 +195,52 @@ export function requiredContribution(args: {
 }
 
 /**
- * Linear pace vs schedule from goal `createdAt` → `targetDate`.
- * Compares current_saved to expected progress (0 → target).
+ * Months from `now` to `targetDate` (calendar days ÷ average month length).
+ * Returns 0 when the date is today or in the past; null when unparseable.
+ */
+export function monthsUntilTarget(
+  targetDate: Date | string | null | undefined,
+  now: Date = new Date()
+): number | null {
+  if (!targetDate) return null;
+  const end =
+    typeof targetDate === 'string' ? parseDateOnly(targetDate) : targetDate;
+  if (!end || Number.isNaN(end.getTime())) return null;
+  const days =
+    (end.getTime() - startOfLocalDay(now).getTime()) / (24 * 60 * 60 * 1000);
+  if (days <= 0) return 0;
+  return Math.max(0, Math.round(days / 30.4375));
+}
+
+/**
+ * Pace vs target date: project the current plan to the goal date, then compare
+ * that projected balance to the target (not “% of calendar time elapsed”).
+ *
+ * - Linked growth accounts → compound each account (rate + its contribution plan)
+ *   and sum balances at the target date.
+ * - No linked growth accounts → grow `currentSaved` at 0% with the goal’s own
+ *   planned contribution (if any).
+ *
+ * `progressPct` stays current÷target (balance progress) — separate from pace.
+ * `expectedSaved` is the projected amount at the target date.
  */
 export function goalPace(args: {
   targetAmount: number;
   currentSaved: number;
   targetDate: Date | string | null | undefined;
-  createdAt: Date | string;
+  /** Kept for call-site compatibility; pace no longer uses created→target linear time. */
+  createdAt?: Date | string;
   now?: Date;
-}): { status: PaceStatus; expectedSaved: number; progressPct: number } {
+  /** Linked growth accounts (rates + plans). Debt/shrink links should be omitted. */
+  linkedVehicles?: ProjectVehicleInput[];
+  /** Goal-level plan — used when there are no linked growth accounts. */
+  planAmount?: number | null;
+  planCadence?: PlanCadence | null;
+}): {
+  status: PaceStatus;
+  expectedSaved: number;
+  progressPct: number;
+} {
   const target = Math.max(0, args.targetAmount);
   const current = Math.max(0, args.currentSaved);
   const progressPct =
@@ -215,29 +251,43 @@ export function goalPace(args: {
   }
 
   const now = args.now ?? new Date();
-  const start = toDate(args.createdAt);
-  const end =
-    typeof args.targetDate === 'string'
-      ? parseDateOnly(args.targetDate)
-      : args.targetDate;
-  if (!start || !end || Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+  const months = monthsUntilTarget(args.targetDate, now);
+  if (months == null) {
     return { status: 'unknown', expectedSaved: 0, progressPct };
   }
 
-  const total = end.getTime() - start.getTime();
-  if (total <= 0) {
-    const status: PaceStatus =
-      current >= target ? 'ahead' : current > 0 ? 'behind' : 'behind';
-    return { status, expectedSaved: target, progressPct };
+  // Past / today: hit or miss based on current balance only.
+  if (months === 0) {
+    const status: PaceStatus = current >= target ? 'ahead' : 'behind';
+    return { status, expectedSaved: current, progressPct };
   }
 
-  const elapsed = Math.min(Math.max(now.getTime() - start.getTime(), 0), total);
-  const expectedSaved = round2(target * (elapsed / total));
+  const linked = (args.linkedVehicles ?? []).filter(
+    (v) => v.growthMode === 'grow'
+  );
+  let projected: number;
+  if (linked.length > 0) {
+    const points = projectNetWorth(linked, months);
+    projected = points[points.length - 1]!.assets;
+  } else {
+    const series = projectVehicleBalances(
+      {
+        balance: current,
+        annualRatePercent: 0,
+        growthMode: 'grow',
+        planAmount: args.planAmount,
+        planCadence: args.planCadence,
+      },
+      months
+    );
+    projected = series[series.length - 1]!;
+  }
+
   const tol = Math.max(target * 0.05, 1);
   let status: PaceStatus = 'on_track';
-  if (current >= expectedSaved + tol) status = 'ahead';
-  else if (current <= expectedSaved - tol) status = 'behind';
-  return { status, expectedSaved, progressPct };
+  if (projected >= target + tol) status = 'ahead';
+  else if (projected <= target - tol) status = 'behind';
+  return { status, expectedSaved: projected, progressPct };
 }
 
 /** Month index along a horizon when a goal target date falls (for chart markers). */
@@ -259,11 +309,6 @@ export function goalMarkerMonth(
 
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
-}
-
-function toDate(v: Date | string): Date | null {
-  const d = typeof v === 'string' ? new Date(v) : v;
-  return Number.isNaN(d.getTime()) ? null : d;
 }
 
 /** Parse `YYYY-MM-DD` as local calendar date at noon (avoid TZ edge). */

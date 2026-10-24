@@ -33,13 +33,27 @@ import {
   parseAmountInput,
 } from '@/lib/money';
 import { guardedPush } from '@/lib/navGuard';
+import { isGrowthVehicle } from '@/lib/plannerChartFocus';
 import {
   formatDateOnly,
   goalEffectiveSaved,
   goalPace,
   requiredContribution,
+  type ProjectVehicleInput,
 } from '@/lib/plannerMath';
 import type { PlannerGoalInput } from '@/lib/plannerGoals';
+import type { PlannerVehicle } from '@/lib/plannerVehicles';
+
+function toProjectInput(v: PlannerVehicle): ProjectVehicleInput {
+  return {
+    balance: v.balance,
+    annualRatePercent: v.annual_rate,
+    growthMode: v.growth_mode,
+    compoundPeriod: v.compound_period,
+    planAmount: v.plan_amount,
+    planCadence: v.plan_cadence,
+  };
+}
 
 function editParamOn(edit: string | string[] | undefined): boolean {
   if (edit == null) return false;
@@ -204,11 +218,17 @@ export default function GoalDetailScreen() {
     );
   }
 
+  const linkedGrowth = (vehicles.data ?? []).filter(
+    (v) => goal.vehicle_ids.includes(v.id) && isGrowthVehicle(v)
+  );
   const pace = goalPace({
     targetAmount: goal.target_amount,
     currentSaved: effectiveSaved,
     targetDate: goal.target_date,
     createdAt: goal.created_at,
+    linkedVehicles: linkedGrowth.map(toProjectInput),
+    planAmount: goal.plan_amount,
+    planCadence: goal.plan_cadence,
   });
   const need = requiredContribution({
     targetAmount: goal.target_amount,

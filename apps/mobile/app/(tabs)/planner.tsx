@@ -516,11 +516,15 @@ export default function PlannerScreen() {
                 vehicleIds: g.vehicle_ids,
                 vehicles: vehicleList,
               });
+              const linkedGrowth = linkedGrowthVehicles(g, vehicleList);
               const pace = goalPace({
                 targetAmount: g.target_amount,
                 currentSaved: saved,
                 targetDate: g.target_date,
                 createdAt: g.created_at,
+                linkedVehicles: linkedGrowth.map(toProjectInput),
+                planAmount: g.plan_amount,
+                planCadence: g.plan_cadence,
               });
               const need = requiredContribution({
                 targetAmount: g.target_amount,

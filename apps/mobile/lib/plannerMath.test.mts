@@ -115,34 +115,105 @@ test('goalEffectiveSaved uses linked vehicle balances (option A)', () => {
   );
 });
 
-test('goalPace ahead / behind / on_track', () => {
+test('goalPace uses projection to target date (not calendar % elapsed)', () => {
   const created = new Date(2026, 0, 1);
-  const target = new Date(2026, 11, 31);
-  const mid = new Date(2026, 6, 1);
+  const now = new Date(2026, 0, 1);
+  // 6 months out, $100 saved, no growth/plan → still $100 vs $1200 target → behind
   const behind = goalPace({
     targetAmount: 1200,
     currentSaved: 100,
-    targetDate: target,
+    targetDate: new Date(2026, 6, 1),
     createdAt: created,
-    now: mid,
+    now,
   });
   assert.equal(behind.status, 'behind');
+  assert.equal(behind.progressPct, roundish(100 / 1200 * 100));
 
+  // Same timeline with a plan that covers the gap → ahead / on_track
+  const withPlan = goalPace({
+    targetAmount: 1200,
+    currentSaved: 100,
+    targetDate: new Date(2026, 6, 1),
+    createdAt: created,
+    now,
+    planAmount: 200,
+    planCadence: 'monthly',
+  });
+  assert.ok(withPlan.status === 'ahead' || withPlan.status === 'on_track');
+  assert.ok(withPlan.expectedSaved >= 1200 - Math.max(1200 * 0.05, 1));
+
+  // Already above target today → ahead even with distant date
   const ahead = goalPace({
     targetAmount: 1200,
-    currentSaved: 1100,
-    targetDate: target,
+    currentSaved: 1500,
+    targetDate: new Date(2026, 11, 31),
     createdAt: created,
-    now: mid,
+    now,
   });
   assert.equal(ahead.status, 'ahead');
+  assert.equal(ahead.progressPct, 100);
 
   const unknown = goalPace({
     targetAmount: 1200,
     currentSaved: 200,
     targetDate: null,
     createdAt: created,
-    now: mid,
+    now,
   });
   assert.equal(unknown.status, 'unknown');
 });
+
+/** Peter repro: $500k @ 8%/yr linked, $5M target in 25y → ~$3.42M projected → Behind (not Ahead). */
+test('goalPace retirement linked IBKR: behind when projection misses target', () => {
+  const now = new Date(2026, 9, 23);
+  const target = new Date(2051, 9, 23); // 25y
+  const pace = goalPace({
+    targetAmount: 5_000_000,
+    currentSaved: 500_000,
+    targetDate: target,
+    createdAt: now, // newly created — old linear rule wrongly said Ahead
+    now,
+    linkedVehicles: [
+      {
+        balance: 500_000,
+        annualRatePercent: 8,
+        growthMode: 'grow',
+        compoundPeriod: 'yearly',
+        planAmount: null,
+        planCadence: null,
+      },
+    ],
+  });
+  assert.equal(pace.progressPct, 10); // 500k / 5M — balance progress, not pace
+  assert.ok(
+    pace.expectedSaved > 3_000_000 && pace.expectedSaved < 3_600_000,
+    `projected ~3.42M, got ${pace.expectedSaved}`
+  );
+  assert.equal(pace.status, 'behind');
+});
+
+test('goalPace linked account with contributions can be ahead', () => {
+  const now = new Date(2026, 0, 1);
+  const pace = goalPace({
+    targetAmount: 100_000,
+    currentSaved: 50_000,
+    targetDate: new Date(2028, 0, 1),
+    now,
+    linkedVehicles: [
+      {
+        balance: 50_000,
+        annualRatePercent: 8,
+        growthMode: 'grow',
+        compoundPeriod: 'yearly',
+        planAmount: 2_000,
+        planCadence: 'monthly',
+      },
+    ],
+  });
+  assert.ok(pace.expectedSaved >= 100_000);
+  assert.ok(pace.status === 'ahead' || pace.status === 'on_track');
+});
+
+function roundish(n: number): number {
+  return Math.round(n * 100) / 100;
+}
