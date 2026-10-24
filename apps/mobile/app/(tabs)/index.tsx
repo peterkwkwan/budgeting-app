@@ -52,11 +52,14 @@ import { parseTransactionsDateView } from '@/lib/profile';
 import { zonedYmd } from '@/lib/dates';
 import {
   clampDayInMonth,
-  daysWithTransactions,
+  dayNetsInMonth,
   defaultSelectedDay,
   filterTransactionsForDay,
+  formatDayNet,
   formatFocusDayHeading,
   groupTransactionsByDay,
+  netOfTransactions,
+  type DayNetTone,
 } from '@/lib/transactionsDateView';
 import type { Transaction } from '@/lib/transactions';
 
@@ -110,8 +113,8 @@ export default function TransactionsScreen() {
     [data, timeZone]
   );
 
-  const daysWithTx = useMemo(
-    () => daysWithTransactions(data ?? [], focus, timeZone),
+  const dayNets = useMemo(
+    () => dayNetsInMonth(data ?? [], focus, timeZone),
     [data, focus, timeZone]
   );
 
@@ -310,6 +313,7 @@ export default function TransactionsScreen() {
         <WeekDayStrip
           focus={focus}
           selectedDay={selectedDay}
+          dayNets={dayNets}
           onSelectDay={setSelectedDay}
         />
       ) : null}
@@ -317,7 +321,7 @@ export default function TransactionsScreen() {
         <MonthDayCalendar
           focus={focus}
           selectedDay={selectedDay}
-          daysWithTx={daysWithTx}
+          dayNets={dayNets}
           onSelectDay={setSelectedDay}
         />
       ) : null}
@@ -327,6 +331,7 @@ export default function TransactionsScreen() {
           <StrongText style={styles.dayHeadingText}>
             {selectedDayHeading}
           </StrongText>
+          <DayNetAmount net={dayNets.get(selectedDay)} />
         </View>
       ) : null}
     </View>
@@ -405,6 +410,7 @@ export default function TransactionsScreen() {
                   <StrongText style={styles.sectionHeaderText}>
                     {section.title}
                   </StrongText>
+                  <DayNetAmount net={netOfTransactions(section.data)} />
                 </View>
               )}
               renderItem={({ item }) => renderRow(item)}
@@ -498,6 +504,25 @@ export default function TransactionsScreen() {
   );
 }
 
+function dayNetColor(tone: DayNetTone): string {
+  if (tone === 'income') return colors.income;
+  if (tone === 'expense') return colors.expense;
+  return colors.inkMuted;
+}
+
+function DayNetAmount({ net }: { net: number | null | undefined }) {
+  if (net == null) return null;
+  const label = formatDayNet(net);
+  return (
+    <StrongText
+      style={[styles.dayNet, { color: dayNetColor(label.tone) }]}
+      accessibilityLabel={`Day net ${label.text}`}
+    >
+      {label.text}
+    </StrongText>
+  );
+}
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -520,6 +545,10 @@ const styles = StyleSheet.create({
     paddingVertical: space.lg,
   },
   dayHeading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: space.sm,
     paddingHorizontal: space.md,
     paddingTop: space.sm + 2,
     paddingBottom: space.xs,
@@ -527,11 +556,16 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
   },
   dayHeadingText: {
+    flexShrink: 1,
     color: colors.green[700],
     fontSize: 13,
     lineHeight: 18,
   },
   sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: space.sm,
     paddingHorizontal: space.md,
     paddingVertical: space.sm,
     backgroundColor: colors.surfaceMuted,
@@ -541,7 +575,13 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
   },
   sectionHeaderText: {
+    flexShrink: 1,
     color: colors.green[700],
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  dayNet: {
+    ...typography.amount,
     fontSize: 13,
     lineHeight: 18,
   },

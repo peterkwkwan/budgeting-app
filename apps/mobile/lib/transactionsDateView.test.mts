@@ -1,15 +1,38 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
+import type { Transaction } from './transactions.ts';
 import {
   clampDayInMonth,
   dateKeyFromFocusDay,
+  dayNetsInMonth,
   daysInMonth,
+  formatDayNet,
   monthGridCells,
+  netOfTransactions,
   weekdayMon0,
   weekdaySun0,
   weekDaysAround,
 } from './transactionsDateView.ts';
+
+function txn(
+  partial: Pick<Transaction, 'amount' | 'type' | 'occurred_at'> &
+    Partial<Transaction>
+): Transaction {
+  return {
+    id: partial.id ?? partial.occurred_at,
+    user_id: 'u',
+    category: partial.type === 'income' ? 'Salary' : 'Groceries',
+    note: null,
+    currency: 'USD',
+    recurring_series_id: null,
+    occurrence_key: null,
+    deleted_at: null,
+    created_at: partial.occurred_at,
+    updated_at: partial.occurred_at,
+    ...partial,
+  };
+}
 
 describe('transactionsDateView', () => {
   it('daysInMonth handles leap February', () => {
@@ -47,5 +70,72 @@ describe('transactionsDateView', () => {
   it('clampDayInMonth and dateKeyFromFocusDay', () => {
     assert.equal(clampDayInMonth(2026, 2, 31), 28);
     assert.equal(dateKeyFromFocusDay({ year: 2026, month: 10 }, 3), '2026-10-03');
+  });
+
+  it('netOfTransactions is income minus expenses, rounded to cents', () => {
+    assert.equal(netOfTransactions([]), null);
+    assert.equal(
+      netOfTransactions([
+        txn({ type: 'income', amount: 12, occurred_at: '2026-10-24T15:00:00Z' }),
+        txn({ type: 'expense', amount: 18.75, occurred_at: '2026-10-24T16:00:00Z' }),
+      ]),
+      -6.75
+    );
+    assert.equal(
+      netOfTransactions([
+        txn({ type: 'income', amount: 0.1, occurred_at: '2026-10-24T15:00:00Z' }),
+        txn({ type: 'income', amount: 0.2, occurred_at: '2026-10-24T16:00:00Z' }),
+      ]),
+      0.3
+    );
+  });
+
+  it('dayNetsInMonth groups by local day and skips other months', () => {
+    const rows = [
+      // 2026-10-24 03:00Z is still Oct 23 in Los Angeles.
+      txn({
+        type: 'expense',
+        amount: 18.75,
+        occurred_at: '2026-10-24T03:00:00Z',
+      }),
+      txn({
+        type: 'income',
+        amount: 12,
+        occurred_at: '2026-10-24T15:00:00Z',
+      }),
+      txn({
+        type: 'expense',
+        amount: 6.25,
+        occurred_at: '2026-10-24T18:00:00Z',
+      }),
+      txn({
+        type: 'income',
+        amount: 100,
+        occurred_at: '2026-11-01T15:00:00Z',
+      }),
+    ];
+    const nets = dayNetsInMonth(rows, { year: 2026, month: 10 }, 'America/Los_Angeles');
+    assert.equal(nets.get(23), -18.75);
+    assert.equal(nets.get(24), 5.75);
+    assert.equal(nets.has(1), false);
+    assert.equal(nets.has(25), false);
+  });
+
+  it('formatDayNet uses income and expense signs', () => {
+    assert.deepEqual(formatDayNet(18.75), { text: '+$18.75', tone: 'income' });
+    assert.deepEqual(formatDayNet(-12), { text: '−$12.00', tone: 'expense' });
+    assert.deepEqual(formatDayNet(0), { text: '$0.00', tone: 'zero' });
+    assert.deepEqual(formatDayNet(1500), {
+      text: '+$1,500.00',
+      tone: 'income',
+    });
+    assert.deepEqual(formatDayNet(1500, { compact: true }), {
+      text: '+$1.5k',
+      tone: 'income',
+    });
+    assert.deepEqual(formatDayNet(-250000, { compact: true }), {
+      text: '−$250k',
+      tone: 'expense',
+    });
   });
 });
