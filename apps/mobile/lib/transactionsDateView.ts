@@ -8,6 +8,7 @@ import {
   zonedYmd,
   type LocalYmd,
 } from './dates';
+import { formatCompactUsd, formatUsd } from './money';
 import type { PeriodFocus } from './periods';
 import type { Transaction } from './transactions';
 
@@ -108,22 +109,66 @@ export function groupTransactionsByDay(
   });
 }
 
-/** Set of day-of-month numbers that have at least one transaction in focus month. */
-export function daysWithTransactions(
-  rows: Transaction[],
+function roundCents(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
+function signedAmount(row: Transaction): number {
+  return row.type === 'expense' ? -row.amount : row.amount;
+}
+
+/**
+ * Net of a day's rows: income adds, expenses subtract.
+ * `null` when there are no rows. Rounded to cents.
+ */
+export function netOfTransactions(
+  rows: readonly Transaction[]
+): number | null {
+  if (rows.length === 0) return null;
+  let net = 0;
+  for (const row of rows) net += signedAmount(row);
+  return roundCents(net);
+}
+
+/**
+ * Day-of-month → net for rows that fall in `focus` (account timezone).
+ * Days with transactions are present even when the net is zero.
+ */
+export function dayNetsInMonth(
+  rows: readonly Transaction[],
   focus: PeriodFocus,
   timeZone: string
-): Set<number> {
-  const days = new Set<number>();
+): Map<number, number> {
+  const acc = new Map<number, number>();
   for (const row of rows) {
     const key = localDateKey(row.occurred_at, timeZone);
     if (!key) continue;
     const [y, m, d] = key.split('-').map(Number);
-    if (y === focus.year && m === focus.month && d >= 1) {
-      days.add(d);
-    }
+    if (y !== focus.year || m !== focus.month || !(d >= 1)) continue;
+    acc.set(d, (acc.get(d) ?? 0) + signedAmount(row));
   }
-  return days;
+  for (const [day, net] of acc) acc.set(day, roundCents(net));
+  return acc;
+}
+
+export type DayNetTone = 'income' | 'expense' | 'zero';
+
+/**
+ * Signed USD label for a day net.
+ * Positive `+$12.50` (income), negative `−$18.75` (expense), zero `$0.00`.
+ * `compact` abbreviates amounts at or above $1,000 so calendar chips fit.
+ */
+export function formatDayNet(
+  net: number,
+  opts?: { compact?: boolean }
+): { text: string; tone: DayNetTone } {
+  const tone: DayNetTone =
+    net > 0 ? 'income' : net < 0 ? 'expense' : 'zero';
+  const compact = Boolean(opts?.compact) && Math.abs(net) >= 1000;
+  const body = compact ? formatCompactUsd(Math.abs(net)) : formatUsd(net);
+  if (net > 0) return { text: `+${body}`, tone };
+  if (net < 0) return { text: `−${body}`, tone };
+  return { text: body, tone };
 }
 
 export function filterTransactionsForDay(

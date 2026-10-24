@@ -5,21 +5,30 @@ import { colors, radius, space } from '@/constants/theme';
 import type { PeriodFocus } from '@/lib/periods';
 import {
   WEEKDAY_LETTERS_SUN,
+  formatDayNet,
   monthGridCells,
+  type DayNetTone,
 } from '@/lib/transactionsDateView';
 
 type Props = {
   focus: PeriodFocus;
   selectedDay: number;
-  daysWithTx: Set<number>;
+  /** Day-of-month → net (income − expenses). Omitted days have no transactions. */
+  dayNets: ReadonlyMap<number, number>;
   onSelectDay: (day: number) => void;
 };
 
-/** Full month grid; dots mark days with transactions; tap filters the list. */
+function toneColor(tone: DayNetTone): string {
+  if (tone === 'income') return colors.income;
+  if (tone === 'expense') return colors.expense;
+  return colors.inkMuted;
+}
+
+/** Full month grid; each day with transactions shows that day's net. */
 export function MonthDayCalendar({
   focus,
   selectedDay,
-  daysWithTx,
+  dayNets,
   onSelectDay,
 }: Props) {
   const cells = monthGridCells(focus);
@@ -39,7 +48,8 @@ export function MonthDayCalendar({
             return <View key={`e-${i}`} style={styles.dayCell} />;
           }
           const selected = day === selectedDay;
-          const hasTx = daysWithTx.has(day);
+          const net = dayNets.get(day);
+          const label = net == null ? null : formatDayNet(net, { compact: true });
           return (
             <Pressable
               key={day}
@@ -51,25 +61,35 @@ export function MonthDayCalendar({
               onPress={() => onSelectDay(day)}
               accessibilityRole="button"
               accessibilityState={{ selected }}
-              accessibilityLabel={`${day}${hasTx ? ', has transactions' : ''}${
-                selected ? ', selected' : ''
-              }`}
+              accessibilityLabel={`${day}${
+                label ? `, net ${label.text}` : ', no transactions'
+              }${selected ? ', selected' : ''}`}
             >
               <StrongText
                 style={[styles.dayNum, selected && styles.dayNumSelected]}
               >
                 {day}
               </StrongText>
-              <View
-                style={[styles.dot, hasTx ? styles.dotOn : styles.dotOff]}
-              />
+              {label ? (
+                <CaptionText
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.7}
+                  style={[styles.amount, { color: toneColor(label.tone) }]}
+                >
+                  {label.text}
+                </CaptionText>
+              ) : (
+                <View style={styles.amountSlot} />
+              )}
             </Pressable>
           );
         })}
       </View>
       <View style={styles.hint}>
         <CaptionText style={styles.hintText}>
-          Dots = days with transactions · tap a day to filter the list
+          Amounts are each day’s net (income − expenses) · tap a day to filter
+          the list
         </CaptionText>
       </View>
     </View>
@@ -101,11 +121,11 @@ const styles = StyleSheet.create({
   },
   dayCell: {
     width: '14.2857%',
-    height: 40,
+    height: 52,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: radius.md,
-    gap: 2,
+    gap: 1,
   },
   dayCellSelected: {
     backgroundColor: colors.green[50],
@@ -121,16 +141,15 @@ const styles = StyleSheet.create({
   dayNumSelected: {
     color: colors.green[700],
   },
-  dot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
+  amount: {
+    fontSize: 9,
+    lineHeight: 12,
+    textAlign: 'center',
+    width: '100%',
+    fontVariant: ['tabular-nums'],
   },
-  dotOn: {
-    backgroundColor: colors.green[700],
-  },
-  dotOff: {
-    backgroundColor: 'transparent',
+  amountSlot: {
+    height: 12,
   },
   hint: {
     marginTop: space.sm,

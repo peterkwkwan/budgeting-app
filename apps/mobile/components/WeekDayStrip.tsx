@@ -7,20 +7,35 @@ import type { PeriodFocus } from '@/lib/periods';
 import {
   WEEKDAY_LETTERS_SUN,
   daysInMonth,
+  formatDayNet,
   weekdaySun0,
+  type DayNetTone,
 } from '@/lib/transactionsDateView';
 
-const CHIP_WIDTH = 44;
+const CHIP_WIDTH = 64;
 const CHIP_GAP = space.sm;
 
 type Props = {
   focus: PeriodFocus;
   selectedDay: number;
+  /** Day-of-month → net (income − expenses). Omitted days have no transactions. */
+  dayNets: ReadonlyMap<number, number>;
   onSelectDay: (day: number) => void;
 };
 
+function toneColor(tone: DayNetTone): string {
+  if (tone === 'income') return colors.income;
+  if (tone === 'expense') return colors.expense;
+  return colors.inkMuted;
+}
+
 /** Horizontal day strip for the focused month; tap a day to filter the list. */
-export function WeekDayStrip({ focus, selectedDay, onSelectDay }: Props) {
+export function WeekDayStrip({
+  focus,
+  selectedDay,
+  dayNets,
+  onSelectDay,
+}: Props) {
   const scrollRef = useRef<ComponentRef<typeof ScrollView>>(null);
   const count = daysInMonth(focus.year, focus.month);
 
@@ -51,6 +66,8 @@ export function WeekDayStrip({ focus, selectedDay, onSelectDay }: Props) {
           const letter =
             WEEKDAY_LETTERS_SUN[weekdaySun0(focus.year, focus.month, day)] ??
             '';
+          const net = dayNets.get(day);
+          const label = net == null ? null : formatDayNet(net, { compact: true });
           return (
             <Pressable
               key={day}
@@ -63,8 +80,8 @@ export function WeekDayStrip({ focus, selectedDay, onSelectDay }: Props) {
               accessibilityRole="button"
               accessibilityState={{ selected }}
               accessibilityLabel={`${letter} ${day}${
-                selected ? ', selected' : ''
-              }`}
+                label ? `, net ${label.text}` : ''
+              }${selected ? ', selected' : ''}`}
             >
               <CaptionText
                 style={[styles.letter, selected && styles.letterSelected]}
@@ -76,6 +93,18 @@ export function WeekDayStrip({ focus, selectedDay, onSelectDay }: Props) {
               >
                 {day}
               </StrongText>
+              {label ? (
+                <CaptionText
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.7}
+                  style={[styles.amount, { color: toneColor(label.tone) }]}
+                >
+                  {label.text}
+                </CaptionText>
+              ) : (
+                <View style={styles.amountSlot} />
+              )}
             </Pressable>
           );
         })}
@@ -129,5 +158,15 @@ const styles = StyleSheet.create({
   },
   dayNumSelected: {
     color: colors.green[700],
+  },
+  amount: {
+    fontSize: 10,
+    lineHeight: 12,
+    textAlign: 'center',
+    width: '100%',
+    fontVariant: ['tabular-nums'],
+  },
+  amountSlot: {
+    height: 12,
   },
 });
