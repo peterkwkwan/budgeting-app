@@ -50,13 +50,13 @@ export default function AccountScreen() {
           styles.linkRow,
           pressed && styles.linkRowPressed,
         ]}
-        onPress={() => router.push('/recurring')}
+        onPress={() => router.push('/settings')}
         accessibilityRole="button"
-        accessibilityLabel="Manage recurring rules"
+        accessibilityLabel="Open settings and preferences"
       >
-        <StrongText style={styles.linkTitle}>Recurring rules</StrongText>
+        <StrongText style={styles.linkTitle}>Settings</StrongText>
         <CaptionText style={styles.linkMeta}>
-          Edit or stop series · add new ones from + → Repeat
+          Preferences · Transactions date view
         </CaptionText>
       </Pressable>
 

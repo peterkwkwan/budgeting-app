@@ -4,7 +4,6 @@ import {
   useEffect,
   useLayoutEffect,
   useMemo,
-  useRef,
   useState,
 } from 'react';
 import {
@@ -22,7 +21,6 @@ import {
   BulkEditSheet,
   type BulkEditField,
 } from '@/components/BulkEditSheet';
-import { DateViewToggle } from '@/components/DateViewToggle';
 import { MonthDayCalendar } from '@/components/MonthDayCalendar';
 import {
   ScrollEdgeHost,
@@ -50,12 +48,7 @@ import {
   resolvePeriodBounds,
   type PeriodFocus,
 } from '@/lib/periods';
-import {
-  DEFAULT_TRANSACTIONS_DATE_VIEW,
-  parseTransactionsDateView,
-  updateTransactionsDateView,
-  type TransactionsDateView,
-} from '@/lib/profile';
+import { parseTransactionsDateView } from '@/lib/profile';
 import { zonedYmd } from '@/lib/dates';
 import {
   clampDayInMonth,
@@ -70,19 +63,17 @@ import type { Transaction } from '@/lib/transactions';
 export default function TransactionsScreen() {
   const router = useRouter();
   const navigation = useNavigation();
-  const { user, profile, refreshProfile } = useAuth();
+  const { profile } = useAuth();
   const timeZone = profile?.timezone || 'UTC';
+  // Layout mode is chosen in Account → Settings; honor the saved profile value.
+  const dateView = parseTransactionsDateView(profile?.transactions_date_view);
 
   const [focus, setFocus] = useState<PeriodFocus>(() =>
     currentPeriodFocus(timeZone)
   );
-  const [dateView, setDateView] = useState<TransactionsDateView>(
-    DEFAULT_TRANSACTIONS_DATE_VIEW
-  );
   const [selectedDay, setSelectedDay] = useState(() =>
     defaultSelectedDay(currentPeriodFocus(timeZone), timeZone)
   );
-  const dateViewHydrated = useRef(false);
 
   const period = useMemo(
     () => resolvePeriodBounds('month', timeZone, { focus }),
@@ -102,34 +93,6 @@ export default function TransactionsScreen() {
 
   const busy = bulkDelete.isPending || bulkPatch.isPending;
   const { edges, scrollProps } = useScrollEdges();
-
-  // Load persisted preference once profile is available.
-  useEffect(() => {
-    if (!profile || dateViewHydrated.current) return;
-    setDateView(parseTransactionsDateView(profile.transactions_date_view));
-    dateViewHydrated.current = true;
-  }, [profile]);
-
-  // Persist preference (debounced) when the user toggles.
-  useEffect(() => {
-    if (!user?.id || !dateViewHydrated.current) return;
-    if (
-      parseTransactionsDateView(profile?.transactions_date_view) === dateView
-    ) {
-      return;
-    }
-    const handle = setTimeout(() => {
-      void updateTransactionsDateView(user.id, dateView)
-        .then(() => refreshProfile())
-        .catch((err: unknown) => {
-          console.warn(
-            '[transactions] date view save failed',
-            err instanceof Error ? err.message : err
-          );
-        });
-    }, 400);
-    return () => clearTimeout(handle);
-  }, [dateView, user?.id, profile?.transactions_date_view, refreshProfile]);
 
   // Month ‹ ›: jump to today when focus is the current month; else clamp.
   useEffect(() => {
@@ -337,9 +300,6 @@ export default function TransactionsScreen() {
 
   const sharedHeader = (
     <View>
-      {monthHasTransactions ? (
-        <DateViewToggle value={dateView} onChange={setDateView} />
-      ) : null}
       {upcoming ? (
         <UpcomingRepeatsBar
           summary={upcoming}

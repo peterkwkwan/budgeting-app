@@ -75,6 +75,7 @@ function RootNavigator() {
         <Stack.Screen name="stats" options={{ headerShown: false }} />
         <Stack.Screen name="planner" options={{ headerShown: false }} />
         <Stack.Screen name="recurring" options={{ headerShown: false }} />
+        <Stack.Screen name="settings" options={{ headerShown: false }} />
       </Stack.Protected>
       <Stack.Protected guard={!session}>
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />

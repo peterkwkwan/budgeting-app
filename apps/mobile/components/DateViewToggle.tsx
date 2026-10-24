@@ -58,9 +58,6 @@ export function DateViewToggle({ value, onChange }: Props) {
 
 const styles = StyleSheet.create({
   wrap: {
-    marginHorizontal: space.md,
-    marginTop: space.sm,
-    marginBottom: space.xs,
     padding: 3,
     borderRadius: radius.lg,
     borderWidth: 1,
