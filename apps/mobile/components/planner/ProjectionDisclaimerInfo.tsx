@@ -69,7 +69,7 @@ export function ProjectionDisclaimerInfo() {
           <CaptionText
             style={[styles.triggerGlyph, open && styles.triggerGlyphOpen]}
           >
-            i
+            !
           </CaptionText>
         </Pressable>
       </View>
@@ -115,10 +115,10 @@ export function ProjectionDisclaimerInfo() {
 
 const styles = StyleSheet.create({
   trigger: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 1.5,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    borderWidth: 1.25,
     borderColor: colors.inkMuted,
     backgroundColor: colors.surface,
     alignItems: 'center',
@@ -134,9 +134,8 @@ const styles = StyleSheet.create({
   triggerGlyph: {
     color: colors.inkMuted,
     fontFamily: fonts.bodyStrong,
-    fontSize: 12,
-    lineHeight: 14,
-    fontStyle: 'italic',
+    fontSize: 10,
+    lineHeight: 12,
   },
   triggerGlyphOpen: {
     color: colors.green[700],
