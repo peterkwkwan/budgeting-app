@@ -391,13 +391,16 @@ export default function StatsScreen() {
               {trend.isLoading ? (
                 <ActivityIndicator color={colors.green[700]} />
               ) : (
-                <TrendLineChart
-                  data={trend.data ?? []}
-                  emptyLabel="No trend data for this period."
-                  bucket={personal.bucket}
-                  timeZone={timeZone}
-                  strokeColor={trendStrokeForMetric(trendMetric)}
-                />
+                /* Full-bleed: cancel content padding so Trend matches Planner Projection. */
+                <View style={styles.chartBleed}>
+                  <TrendLineChart
+                    data={trend.data ?? []}
+                    emptyLabel="No trend data for this period."
+                    bucket={personal.bucket}
+                    timeZone={timeZone}
+                    strokeColor={trendStrokeForMetric(trendMetric)}
+                  />
+                </View>
               )}
             </View>
           ) : null}
@@ -535,5 +538,10 @@ const styles = StyleSheet.create({
   toggleTextSelected: {
     color: colors.green[700],
     fontFamily: fonts.bodyStrong,
+  },
+  /** Break out of `content` horizontal padding so the chart is edge-to-edge. */
+  chartBleed: {
+    marginHorizontal: -space.md,
+    alignSelf: 'stretch',
   },
 });

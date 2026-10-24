@@ -7,7 +7,7 @@ import {
 } from 'react-native';
 
 import { BodyText, CaptionText } from '@/components/StyledText';
-import { colors, radius, space } from '@/constants/theme';
+import { colors, space } from '@/constants/theme';
 import {
   formatCompactUsd,
   niceAxisTicks,
@@ -27,6 +27,7 @@ type Props = {
   strokeColor?: string;
 };
 
+/** Shared with Planner ProjectionChart — open / full-bleed chrome. */
 const CHART_H = 176;
 const PAD_LEFT = 46;
 const PAD_RIGHT = 10;
@@ -68,8 +69,9 @@ export function TrendLineChart({
   timeZone,
   strokeColor = colors.green[700],
 }: Props) {
+  // Full-bleed ≈ window width; onLayout corrects if insets differ.
   const [chartW, setChartW] = useState(
-    () => Dimensions.get('window').width - space.md * 2
+    () => Dimensions.get('window').width
   );
 
   function onWrapLayout(e: LayoutChangeEvent) {
@@ -284,93 +286,92 @@ function InsufficientTrendPlaceholder({
       accessibilityLabel={INSUFFICIENT_COPY}
       accessibilityRole="text"
     >
-      <View style={styles.insufficientFrame}>
-        <View style={[styles.canvas, { width: chartW }]}>
-          {ticks.map((tick, i) => {
-            const y = yFor(tick);
-            return (
-              <View key={`tick-${i}`}>
-                <CaptionText
-                  style={[
-                    styles.yLabel,
-                    {
-                      top: y - 7,
-                      width: Y_LABEL_W,
-                    },
-                  ]}
-                  numberOfLines={1}
-                >
-                  {formatCompactUsd(tick)}
-                </CaptionText>
-                <View
-                  style={[
-                    styles.gridLine,
-                    { top: y },
-                    i !== ticks.length - 1 && styles.gridLineDashedHint,
-                  ]}
-                />
-              </View>
-            );
-          })}
+      {/* Open well — same chrome as the full Trend chart (no bordered card). */}
+      <View style={[styles.canvas, { width: chartW }]}>
+        {ticks.map((tick, i) => {
+          const y = yFor(tick);
+          return (
+            <View key={`tick-${i}`}>
+              <CaptionText
+                style={[
+                  styles.yLabel,
+                  {
+                    top: y - 7,
+                    width: Y_LABEL_W,
+                  },
+                ]}
+                numberOfLines={1}
+              >
+                {formatCompactUsd(tick)}
+              </CaptionText>
+              <View
+                style={[
+                  styles.gridLine,
+                  { top: y },
+                  i !== ticks.length - 1 && styles.gridLineDashedHint,
+                ]}
+              />
+            </View>
+          );
+        })}
 
-          {/* Dashed ghost continuation from the real point through future ghosts */}
-          {layoutPts.slice(0, -1).map((a, i) => (
-            <DashedSegment
-              key={`ghost-seg-${i}`}
-              from={a}
-              to={layoutPts[i + 1]!}
-              color={colors.border}
-            />
-          ))}
+        {/* Dashed ghost continuation from the real point through future ghosts */}
+        {layoutPts.slice(0, -1).map((a, i) => (
+          <DashedSegment
+            key={`ghost-seg-${i}`}
+            from={a}
+            to={layoutPts[i + 1]!}
+            color={colors.border}
+          />
+        ))}
 
-          {ghostPts.map((p, i) => (
-            <View
-              key={`ghost-dot-${i}`}
-              style={[
-                styles.ghostDot,
-                {
-                  left: p.x - GHOST_DOT / 2,
-                  top: p.y - GHOST_DOT / 2,
-                },
-              ]}
-            />
-          ))}
-
+        {ghostPts.map((p, i) => (
           <View
+            key={`ghost-dot-${i}`}
             style={[
-              styles.dot,
+              styles.ghostDot,
               {
-                left: real.x - DOT / 2,
-                top: real.y - DOT / 2,
-                backgroundColor: strokeColor,
+                left: p.x - GHOST_DOT / 2,
+                top: p.y - GHOST_DOT / 2,
               },
             ]}
           />
-        </View>
+        ))}
 
-        <View style={[styles.axisRow, { width: chartW }]}>
-          {layoutPts.map((p, i) => (
-            <CaptionText
-              key={`x-insuff-${i}`}
-              style={[
-                styles.xLabel,
-                i === 0 ? styles.xLabelReal : styles.xLabelGhost,
-                {
-                  left: Math.max(
-                    PAD_LEFT,
-                    Math.min(p.x - 28, chartW - PAD_RIGHT - 56)
-                  ),
-                },
-              ]}
-              numberOfLines={1}
-            >
-              {xLabels[i]}
-            </CaptionText>
-          ))}
-        </View>
-
-        <BodyText style={styles.insufficientCopy}>{INSUFFICIENT_COPY}</BodyText>
+        <View
+          style={[
+            styles.dot,
+            {
+              left: real.x - DOT / 2,
+              top: real.y - DOT / 2,
+              backgroundColor: strokeColor,
+            },
+          ]}
+        />
       </View>
+
+      <View style={[styles.axisRow, { width: chartW }]}>
+        {layoutPts.map((p, i) => (
+          <CaptionText
+            key={`x-insuff-${i}`}
+            style={[
+              styles.xLabel,
+              i === 0 ? styles.xLabelReal : styles.xLabelGhost,
+              {
+                left: Math.max(
+                  PAD_LEFT,
+                  Math.min(p.x - 28, chartW - PAD_RIGHT - 56)
+                ),
+              },
+            ]}
+            numberOfLines={1}
+          >
+            {xLabels[i]}
+          </CaptionText>
+        ))}
+      </View>
+
+      <BodyText style={styles.insufficientCopy}>{INSUFFICIENT_COPY}</BodyText>
     </View>
   );
 }
@@ -469,6 +470,8 @@ const styles = StyleSheet.create({
     height: CHART_H,
     overflow: 'hidden',
     backgroundColor: colors.surface,
+    // Full-bleed: square to screen edges (no side gutters / radius).
+    borderRadius: 0,
   },
   yLabel: {
     position: 'absolute',
@@ -550,20 +553,9 @@ const styles = StyleSheet.create({
     color: colors.inkMuted,
     textAlign: 'center',
   },
-  insufficientFrame: {
-    width: '100%',
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg - 4,
-    paddingTop: space.md,
-    paddingBottom: space.md,
-    paddingHorizontal: space.sm,
-    backgroundColor: colors.surface,
-    gap: space.sm,
-  },
   insufficientCopy: {
     marginTop: space.sm,
-    paddingHorizontal: space.sm,
+    paddingHorizontal: space.md,
     textAlign: 'center',
     color: colors.inkMuted,
     fontSize: 13,

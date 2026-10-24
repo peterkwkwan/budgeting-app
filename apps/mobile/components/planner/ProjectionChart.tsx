@@ -293,10 +293,13 @@ const styles = StyleSheet.create({
   },
   axis: {
     color: colors.inkMuted,
+    fontSize: 11,
+    lineHeight: 14,
   },
   targetHint: {
     color: colors.green[400],
-    fontSize: 12,
+    fontSize: 11,
+    lineHeight: 14,
   },
   empty: {
     width: '100%',
