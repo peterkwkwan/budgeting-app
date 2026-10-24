@@ -87,12 +87,27 @@ describe('periods', () => {
     );
   });
 
-  it('Trend buckets follow period mode (not range length)', () => {
-    assert.equal(trendBucketForPeriod('month'), 'month');
-    assert.equal(trendBucketForPeriod('year'), 'year');
-    assert.equal(trendBucketForPeriod('custom'), 'month');
+  it('trend bucket follows period mode so multi-period data can form a line', () => {
+    const month = resolvePeriodBounds('month', tz, {
+      focus: { year: 2026, month: 10 },
+      now,
+    });
+    const year = resolvePeriodBounds('year', tz, {
+      focus: { year: 2026, month: 10 },
+      now,
+    });
+    // Monthly window → day grain (not one month-point).
+    assert.equal(
+      trendBucketForPeriod(month.start, month.end, 'month'),
+      'day'
+    );
+    // Yearly window → month grain (Sep/Oct/Nov spend → multiple points).
+    assert.equal(
+      trendBucketForPeriod(year.start, year.end, 'year'),
+      'month'
+    );
 
-    // Short custom ranges still use month buckets (no day/week smart split).
+    // Period (custom): ≤45 → day, ≤183 → week, else → month
     const shortStart = new Date('2026-01-01T18:00:00.000Z');
     const shortEnd = new Date('2026-01-20T18:00:00.000Z');
     const short = resolvePeriodBounds('custom', tz, {
@@ -100,8 +115,34 @@ describe('periods', () => {
       customEndInclusive: shortEnd,
       now,
     });
-    assert.equal(short.preset, 'custom');
-    assert.equal(trendBucketForPeriod(short.preset), 'month');
+    assert.equal(
+      trendBucketForPeriod(short.start, short.end, 'custom'),
+      'day'
+    );
+
+    const midStart = new Date('2026-01-01T18:00:00.000Z');
+    const midEnd = new Date('2026-04-30T18:00:00.000Z');
+    const mid = resolvePeriodBounds('custom', tz, {
+      customStart: midStart,
+      customEndInclusive: midEnd,
+      now,
+    });
+    assert.equal(
+      trendBucketForPeriod(mid.start, mid.end, 'custom'),
+      'week'
+    );
+
+    const longStart = new Date('2026-01-01T18:00:00.000Z');
+    const longEnd = new Date('2026-12-31T18:00:00.000Z');
+    const long = resolvePeriodBounds('custom', tz, {
+      customStart: longStart,
+      customEndInclusive: longEnd,
+      now,
+    });
+    assert.equal(
+      trendBucketForPeriod(long.start, long.end, 'custom'),
+      'month'
+    );
   });
 
   it('formats trend bucket X labels', () => {

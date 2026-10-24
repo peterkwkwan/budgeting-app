@@ -264,11 +264,26 @@ export function resolvePeriodBounds(
 }
 
 /**
- * Trend aggregation grain from period mode (not range length):
- * Monthly → month, Yearly → year, Period (custom) → month.
+ * Trend grouping for the Stats chart, aligned with top-nav period mode:
+ * - Monthly → day within the focused month
+ * - Yearly → month within the focused year
+ * - Period (custom) → smart default by range length:
+ *   ≤45 days → day; ≤183 days → week; else → month
+ *
+ * Grain must be finer than the selected window so multiple real totals can
+ * form a line (Monthly+month or Yearly+year collapses to ≤1 point).
  */
-export function trendBucketForPeriod(preset: PeriodPreset): TrendBucket {
-  if (preset === 'year') return 'year';
+export function trendBucketForPeriod(
+  start: Date,
+  end: Date,
+  preset?: PeriodPreset
+): TrendBucket {
+  if (preset === 'month') return 'day';
+  if (preset === 'year') return 'month';
+
+  const days = (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24);
+  if (days <= 45) return 'day';
+  if (days <= 183) return 'week';
   return 'month';
 }
 
