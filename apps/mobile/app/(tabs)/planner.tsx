@@ -13,6 +13,7 @@ import {
 import { PlusIcon } from '@/components/icons';
 import { LinkedAccountLinks } from '@/components/planner/LinkedAccountLinks';
 import { ProjectionChart } from '@/components/planner/ProjectionChart';
+import { ProjectionDisclaimerInfo } from '@/components/planner/ProjectionDisclaimerInfo';
 import { ProjectionEmptyWell } from '@/components/planner/ProjectionEmptyWell';
 import {
   ScrollEdgeHost,
@@ -20,7 +21,6 @@ import {
 } from '@/components/ScrollEdgeShadows';
 import { CaptionText, StrongText, TitleText } from '@/components/StyledText';
 import {
-  DISCLAIMER,
   GOAL_TYPE_LABELS,
   HORIZON_PRESETS,
   PLAN_CADENCE_LABELS,
@@ -239,10 +239,11 @@ export default function PlannerScreen() {
         </View>
       ) : (
         <>
-          <CaptionText style={styles.disclaimer}>{DISCLAIMER}</CaptionText>
-
-          <View style={styles.sectionHead}>
-            <TitleText style={styles.sectionTitle}>Projection</TitleText>
+          <View style={[styles.sectionHead, styles.sectionHeadFirst]}>
+            <View style={styles.projectionTitleRow}>
+              <TitleText style={styles.sectionTitle}>Projection</TitleText>
+              <ProjectionDisclaimerInfo />
+            </View>
           </View>
 
           <View style={styles.chips}>
@@ -595,17 +596,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: space.sm,
   },
-  disclaimer: {
-    color: colors.inkMuted,
-    ...typography.caption,
-    marginBottom: space.sm,
-  },
   sectionHead: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginTop: space.lg,
     marginBottom: space.xs,
+  },
+  sectionHeadFirst: {
+    marginTop: 0,
+  },
+  projectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
   },
   sectionTitle: { color: colors.green[950], fontSize: 20 },
   headerAdd: {
