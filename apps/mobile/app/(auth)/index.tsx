@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   Pressable,
   StyleSheet,
   Text,
@@ -11,6 +12,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors, fonts, radius, space, typography } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
+
+const MARK = require('../../assets/images/fudget-mark-g.png');
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -36,37 +39,45 @@ export default function LoginScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.container}>
-        <Text style={styles.brand}>Fudget</Text>
-        <Text style={styles.sub}>
-          Sign in with Google to sync your transactions across devices.
-        </Text>
-
-        {!configured ? (
-          <Text style={styles.hint}>
-            Env not set yet. Copy apps/mobile/.env.example → .env and add your
-            Supabase URL + anon key. See the root README founder checklist.
+        <View style={styles.hero}>
+          <Image
+            source={MARK}
+            style={styles.mark}
+            accessibilityLabel="Fudget"
+            accessibilityRole="image"
+          />
+          <Text style={styles.brand}>Fudget</Text>
+          <Text style={styles.sub}>
+            Sign in with Google to sync your transactions across devices.
           </Text>
-        ) : null}
 
-        <Pressable
-          style={({ pressed }) => [
-            styles.button,
-            busy && styles.buttonDisabled,
-            pressed && !busy && styles.buttonPressed,
-          ]}
-          onPress={onGooglePress}
-          disabled={busy}
-          accessibilityRole="button"
-          accessibilityLabel="Sign in with Google"
-        >
-          {busy ? (
-            <ActivityIndicator color={colors.inkInverse} />
-          ) : (
-            <Text style={styles.buttonText}>Continue with Google</Text>
-          )}
-        </Pressable>
+          {!configured ? (
+            <Text style={styles.hint}>
+              Env not set yet. Copy apps/mobile/.env.example → .env and add your
+              Supabase URL + anon key. See the root README founder checklist.
+            </Text>
+          ) : null}
 
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+          <Pressable
+            style={({ pressed }) => [
+              styles.button,
+              busy && styles.buttonDisabled,
+              pressed && !busy && styles.buttonPressed,
+            ]}
+            onPress={onGooglePress}
+            disabled={busy}
+            accessibilityRole="button"
+            accessibilityLabel="Sign in with Google"
+          >
+            {busy ? (
+              <ActivityIndicator color={colors.inkInverse} />
+            ) : (
+              <Text style={styles.buttonText}>Continue with Google</Text>
+            )}
+          </Pressable>
+
+          {error ? <Text style={styles.error}>{error}</Text> : null}
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -79,20 +90,34 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    paddingHorizontal: space.md,
+    paddingHorizontal: 28,
+    paddingTop: space.lg,
+  },
+  hero: {
+    flex: 1,
+    alignItems: 'center',
     justifyContent: 'center',
-    gap: space.md,
+    // Nudge the cluster slightly above true center (Centered Mark mockup).
+    marginTop: -24,
+  },
+  mark: {
+    width: 148,
+    height: 148,
+    marginBottom: space.md,
   },
   brand: {
     ...typography.display,
-    fontSize: 40,
-    lineHeight: 46,
     color: colors.green[950],
+    textAlign: 'center',
+    marginBottom: 10,
   },
   sub: {
     ...typography.body,
+    fontSize: 15,
+    lineHeight: 22,
     color: colors.inkMuted,
-    marginBottom: space.sm,
+    textAlign: 'center',
+    maxWidth: 260,
   },
   hint: {
     ...typography.caption,
@@ -102,9 +127,13 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     padding: space.sm + 4,
     borderRadius: radius.sm,
+    marginTop: space.md,
+    alignSelf: 'stretch',
+    textAlign: 'center',
   },
   button: {
-    marginTop: space.sm,
+    marginTop: 28,
+    alignSelf: 'stretch',
     backgroundColor: colors.green[700],
     height: 48,
     borderRadius: radius.md,
@@ -123,9 +152,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 24,
     color: colors.inkInverse,
+    letterSpacing: 0.1,
   },
   error: {
     ...typography.caption,
     color: colors.danger,
+    textAlign: 'center',
+    marginTop: space.sm,
   },
 });
