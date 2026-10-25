@@ -1,8 +1,8 @@
 import { useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
-import { Pressable, ScrollView, StyleSheet } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View as RNView } from 'react-native';
 
-import { ChevronRightIcon, SettingsIcon } from '@/components/icons';
+import { ChevronRightIcon } from '@/components/icons';
 import { PartnerSection } from '@/components/PartnerSection';
 import { RestoreBackupBanner } from '@/components/RestoreBackupBanner';
 import {
@@ -58,15 +58,12 @@ export default function AccountScreen() {
         accessibilityRole="button"
         accessibilityLabel="Open settings and preferences"
       >
-        <View style={styles.settingsIconTile} lightColor={colors.green[50]} darkColor="#1a2a1f">
-          <SettingsIcon color={colors.green[700]} size={22} />
-        </View>
-        <View style={styles.settingsCopy}>
+        <RNView style={styles.settingsCopy}>
           <StrongText style={styles.settingsTitle}>Settings</StrongText>
           <CaptionText style={styles.settingsSubtitle}>
             Open preferences and account tools
           </CaptionText>
-        </View>
+        </RNView>
         <ChevronRightIcon color={colors.inkMuted} size={18} />
       </Pressable>
 
@@ -152,22 +149,15 @@ const styles = StyleSheet.create({
   settingsEntry: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: space.md,
+    gap: space.sm,
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: colors.surfaceMuted,
+    backgroundColor: colors.surface,
     padding: space.md,
   },
   settingsEntryPressed: {
-    backgroundColor: colors.border,
-  },
-  settingsIconTile: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.sm,
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: colors.surfaceMuted,
   },
   settingsCopy: {
     flex: 1,

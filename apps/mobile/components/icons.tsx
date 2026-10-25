@@ -306,63 +306,6 @@ export function MoreIcon({ color, size = 22, style }: IconProps) {
   );
 }
 
-/** Gear / preferences mark for Account → Settings entry. */
-export function SettingsIcon({ color, size = 22, style }: IconProps) {
-  const stroke = Math.max(1.5, size * 0.09);
-  const ring = size * 0.5;
-  const toothW = size * 0.15;
-  const toothH = size * 0.22;
-  const cx = size / 2;
-  const cy = size / 2;
-  const r = size * 0.38;
-  const teeth = [0, 45, 90, 135, 180, 225, 270, 315];
-  return (
-    <View style={[{ width: size, height: size }, style]}>
-      {teeth.map((deg) => {
-        const rad = (deg * Math.PI) / 180;
-        return (
-          <View
-            key={deg}
-            style={{
-              position: 'absolute',
-              left: cx + Math.cos(rad) * r - toothW / 2,
-              top: cy + Math.sin(rad) * r - toothH / 2,
-              width: toothW,
-              height: toothH,
-              borderRadius: toothW / 2,
-              backgroundColor: color,
-              transform: [{ rotate: `${deg + 90}deg` }],
-            }}
-          />
-        );
-      })}
-      <View
-        style={{
-          position: 'absolute',
-          left: (size - ring) / 2,
-          top: (size - ring) / 2,
-          width: ring,
-          height: ring,
-          borderRadius: ring / 2,
-          borderWidth: stroke,
-          borderColor: color,
-        }}
-      />
-      <View
-        style={{
-          position: 'absolute',
-          left: (size - ring * 0.32) / 2,
-          top: (size - ring * 0.32) / 2,
-          width: ring * 0.32,
-          height: ring * 0.32,
-          borderRadius: (ring * 0.32) / 2,
-          backgroundColor: color,
-        }}
-      />
-    </View>
-  );
-}
-
 /** Right chevron for tappable rows. */
 export function ChevronRightIcon({ color, size = 18, style }: IconProps) {
   const stroke = Math.max(1.75, size * 0.12);
