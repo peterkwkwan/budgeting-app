@@ -4,8 +4,10 @@ import { useCallback } from 'react';
 
 import type { TransactionType } from '@/constants/categories';
 import { useAuth } from '@/lib/auth';
-import type { PeriodBounds, TrendBucket } from '@/lib/periods';
+import type { PeriodBounds, TrendBucket, TrendSlot } from '@/lib/periods';
 import {
+  alignCenteredTrendSlots,
+  focusFromPeriodBounds,
   resolveTrendBounds,
   trendBucketForPeriod,
 } from '@/lib/periods';
@@ -94,7 +96,7 @@ export function usePersonalTrend(
   bucket: TrendBucket,
   timeZone: string = 'UTC'
 ) {
-  // Wider than pie/totals for Monthly/Yearly so each mode can plot many nodes.
+  // Centered ±2 window for Monthly/Yearly; custom Period uses the range as-is.
   const { start, end } = resolveTrendBounds(period, timeZone);
   const startIso = start.toISOString();
   const endIso = end.toISOString();
@@ -102,6 +104,16 @@ export function usePersonalTrend(
   return useQuery({
     queryKey: statsKeys.trend(metric, startIso, endIso, bucket),
     queryFn: () => fetchPersonalTrend(metric, start, end, bucket),
+    select: (raw): TrendSlot[] => {
+      if (period.preset === 'custom') {
+        return raw.map((p) => ({
+          bucketStart: p.bucketStart,
+          total: p.total,
+        }));
+      }
+      const focus = focusFromPeriodBounds(period, timeZone);
+      return alignCenteredTrendSlots(focus, period.preset, timeZone, raw);
+    },
   });
 }
 

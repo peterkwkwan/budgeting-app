@@ -15,12 +15,13 @@ import {
 } from '@/lib/money';
 import {
   formatTrendBucketLabel,
+  TREND_CENTERED_POINTS,
   type TrendBucket,
+  type TrendSlot,
 } from '@/lib/periods';
-import type { TrendPoint } from '@/lib/stats';
 
 type Props = {
-  data: TrendPoint[];
+  data: TrendSlot[];
   emptyLabel: string;
   bucket: TrendBucket;
   timeZone: string;
@@ -32,6 +33,8 @@ const CHART_H = 176;
 const PAD_LEFT = 46;
 const PAD_RIGHT = 10;
 const PAD_Y = 16;
+/** Inward inset so first/last nodes are not flush to the plot edges. */
+const EDGE_PAD = 12;
 const STROKE = 2.5;
 const DOT = 8;
 const GHOST_DOT = 7;
@@ -44,15 +47,10 @@ const INSUFFICIENT_COPY =
   'Not enough data points to display a trend line. Add more transactions to see a pattern across more than one period.';
 
 /**
- * Ghost continuation after a single real point (normalized 0–1 in plot box).
- * First entry is the real point (leftish); rest are faint future ghosts.
+ * Ghost y offsets (0–1 in plot box) for the not-enough-data state.
+ * Five slots match the Monthly/Yearly centered window.
  */
-const INSUFFICIENT_LAYOUT = [
-  { x: 0.18, y: 0.32 },
-  { x: 0.42, y: 0.4 },
-  { x: 0.66, y: 0.26 },
-  { x: 0.9, y: 0.35 },
-] as const;
+const INSUFFICIENT_Y = [0.42, 0.3, 0.36, 0.24, 0.34] as const;
 
 const DASH_LEN = 5;
 const DASH_GAP = 6;
@@ -79,7 +77,12 @@ export function TrendLineChart({
     if (w > 0 && w !== chartW) setChartW(w);
   }
 
-  if (data.length === 0) {
+  const realIndexes = data
+    .map((p, i) => (p.total != null ? i : -1))
+    .filter((i) => i >= 0);
+  const realCount = realIndexes.length;
+
+  if (data.length === 0 || realCount === 0) {
     return (
       <View style={styles.empty} onLayout={onWrapLayout}>
         <CaptionText style={styles.emptyText}>{emptyLabel}</CaptionText>
@@ -87,11 +90,11 @@ export function TrendLineChart({
     );
   }
 
-  // One bucket (or otherwise <2 points) cannot form a trend line.
-  if (data.length < 2) {
+  // One real bucket (or otherwise <2 points) cannot form a trend line.
+  if (realCount < 2) {
     return (
       <InsufficientTrendPlaceholder
-        point={data[0]!}
+        data={data}
         bucket={bucket}
         timeZone={timeZone}
         strokeColor={strokeColor}
@@ -101,7 +104,7 @@ export function TrendLineChart({
     );
   }
 
-  const values = data.map((p) => p.total);
+  const values = realIndexes.map((i) => data[i]!.total as number);
   const dataMin = Math.min(...values, 0);
   const dataMax = Math.max(...values, 0);
   const ticks = niceAxisTicks(dataMin, dataMax, 4);
@@ -112,13 +115,15 @@ export function TrendLineChart({
   const plotH = CHART_H - PAD_Y * 2;
 
   const yFor = (v: number) => PAD_Y + (1 - (v - minV) / span) * plotH;
+  const xFor = (i: number) => plotX(i, data.length, plotW);
 
-  const points = values.map((v, i) => {
-    const x =
-      PAD_LEFT +
-      (values.length === 1 ? plotW / 2 : (i / (values.length - 1)) * plotW);
-    return { x, y: yFor(v) };
-  });
+  type PlotPt = { x: number; y: number; index: number };
+  const points: (PlotPt | null)[] = data.map((slot, i) =>
+    slot.total == null
+      ? null
+      : { x: xFor(i), y: yFor(slot.total), index: i }
+  );
+  const solidPoints = points.filter((p): p is PlotPt => p != null);
 
   const zeroY = minV < 0 && maxV > 0 ? yFor(0) : null;
 
@@ -161,8 +166,8 @@ export function TrendLineChart({
           />
         ) : null}
 
-        {points.slice(0, -1).map((a, i) => {
-          const b = points[i + 1]!;
+        {solidPoints.slice(0, -1).map((a, i) => {
+          const b = solidPoints[i + 1]!;
           const dx = b.x - a.x;
           const dy = b.y - a.y;
           const length = Math.sqrt(dx * dx + dy * dy);
@@ -171,7 +176,7 @@ export function TrendLineChart({
           const midY = (a.y + b.y) / 2;
           return (
             <View
-              key={`seg-${i}`}
+              key={`seg-${a.index}-${b.index}`}
               style={[
                 styles.segment,
                 {
@@ -187,9 +192,9 @@ export function TrendLineChart({
           );
         })}
 
-        {points.map((p, i) => (
+        {solidPoints.map((p) => (
           <View
-            key={`dot-${i}`}
+            key={`dot-${p.index}`}
             style={[
               styles.dot,
               {
@@ -204,7 +209,7 @@ export function TrendLineChart({
 
       <View style={[styles.axisRow, { width: chartW }]}>
         {xLabelIndexes.map((idx) => {
-          const point = points[idx]!;
+          const x = xFor(idx);
           const label = formatTrendBucketLabel(
             data[idx]!.bucketStart,
             bucket,
@@ -218,7 +223,7 @@ export function TrendLineChart({
                 {
                   left: Math.max(
                     PAD_LEFT,
-                    Math.min(point.x - 28, chartW - PAD_RIGHT - 56)
+                    Math.min(x - 28, chartW - PAD_RIGHT - 56)
                   ),
                 },
               ]}
@@ -234,26 +239,28 @@ export function TrendLineChart({
 }
 
 /**
- * Solid single point + dashed ghost future line + explanatory copy.
+ * Solid real point(s) + dashed ghost 5-slot line + explanatory copy.
  * No CTA — totals / categories / metric toggles stay on the parent screen.
  */
 function InsufficientTrendPlaceholder({
-  point,
+  data,
   bucket,
   timeZone,
   strokeColor,
   chartW,
   onWrapLayout,
 }: {
-  point: TrendPoint;
+  data: TrendSlot[];
   bucket: TrendBucket;
   timeZone: string;
   strokeColor: string;
   chartW: number;
   onWrapLayout: (e: LayoutChangeEvent) => void;
 }) {
-  const dataMin = Math.min(point.total, 0);
-  const dataMax = Math.max(point.total, 0);
+  const realSlots = data.filter((p) => p.total != null);
+  const anchor = realSlots[0]!;
+  const dataMin = Math.min(anchor.total as number, 0);
+  const dataMax = Math.max(anchor.total as number, 0);
   const ticks = niceAxisTicks(dataMin, dataMax, 3);
   const { min: minV, max: maxV } = tickDomain(ticks, dataMin, dataMax);
   const span = maxV - minV || 1;
@@ -262,22 +269,20 @@ function InsufficientTrendPlaceholder({
   const plotH = CHART_H - PAD_Y * 2;
   const yFor = (v: number) => PAD_Y + (1 - (v - minV) / span) * plotH;
 
-  // Layout uses fixed ghost y offsets; real point y follows the value.
-  const realY = yFor(point.total);
-  const layoutPts = INSUFFICIENT_LAYOUT.map((p, i) => ({
-    x: PAD_LEFT + p.x * plotW,
-    y: i === 0 ? realY : PAD_Y + p.y * plotH,
-  }));
-  const real = layoutPts[0]!;
-  const ghostPts = layoutPts.slice(1);
+  // Prefer the centered 5-slot series; fall back to synthesizing 5 labels.
+  const slots =
+    data.length >= TREND_CENTERED_POINTS
+      ? data.slice(0, TREND_CENTERED_POINTS)
+      : padInsufficientSlots(data, bucket);
 
-  const xLabels = layoutPts.map((_, i) =>
-    formatTrendBucketLabel(
-      advanceBucketStart(point.bucketStart, bucket, i),
-      bucket,
-      timeZone
-    )
-  );
+  const layoutPts = slots.map((slot, i) => {
+    const x = plotX(i, TREND_CENTERED_POINTS, plotW);
+    if (slot.total != null) {
+      return { x, y: yFor(slot.total), real: true as const };
+    }
+    const yNorm = INSUFFICIENT_Y[i] ?? 0.35;
+    return { x, y: PAD_Y + yNorm * plotH, real: false as const };
+  });
 
   return (
     <View
@@ -315,7 +320,6 @@ function InsufficientTrendPlaceholder({
           );
         })}
 
-        {/* Dashed ghost continuation from the real point through future ghosts */}
         {layoutPts.slice(0, -1).map((a, i) => (
           <DashedSegment
             key={`ghost-seg-${i}`}
@@ -325,29 +329,32 @@ function InsufficientTrendPlaceholder({
           />
         ))}
 
-        {ghostPts.map((p, i) => (
-          <View
-            key={`ghost-dot-${i}`}
-            style={[
-              styles.ghostDot,
-              {
-                left: p.x - GHOST_DOT / 2,
-                top: p.y - GHOST_DOT / 2,
-              },
-            ]}
-          />
-        ))}
-
-        <View
-          style={[
-            styles.dot,
-            {
-              left: real.x - DOT / 2,
-              top: real.y - DOT / 2,
-              backgroundColor: strokeColor,
-            },
-          ]}
-        />
+        {layoutPts.map((p, i) =>
+          p.real ? (
+            <View
+              key={`real-dot-${i}`}
+              style={[
+                styles.dot,
+                {
+                  left: p.x - DOT / 2,
+                  top: p.y - DOT / 2,
+                  backgroundColor: strokeColor,
+                },
+              ]}
+            />
+          ) : (
+            <View
+              key={`ghost-dot-${i}`}
+              style={[
+                styles.ghostDot,
+                {
+                  left: p.x - GHOST_DOT / 2,
+                  top: p.y - GHOST_DOT / 2,
+                },
+              ]}
+            />
+          )
+        )}
       </View>
 
       <View style={[styles.axisRow, { width: chartW }]}>
@@ -356,7 +363,7 @@ function InsufficientTrendPlaceholder({
             key={`x-insuff-${i}`}
             style={[
               styles.xLabel,
-              i === 0 ? styles.xLabelReal : styles.xLabelGhost,
+              p.real ? styles.xLabelReal : styles.xLabelGhost,
               {
                 left: Math.max(
                   PAD_LEFT,
@@ -366,7 +373,7 @@ function InsufficientTrendPlaceholder({
             ]}
             numberOfLines={1}
           >
-            {xLabels[i]}
+            {formatTrendBucketLabel(slots[i]!.bucketStart, bucket, timeZone)}
           </CaptionText>
         ))}
       </View>
@@ -374,6 +381,36 @@ function InsufficientTrendPlaceholder({
       <BodyText style={styles.insufficientCopy}>{INSUFFICIENT_COPY}</BodyText>
     </View>
   );
+}
+
+/**
+ * When custom Period yields a single point, invent 5 label slots by advancing
+ * the bucket so the ghost layout still matches the centered window.
+ */
+function padInsufficientSlots(
+  data: TrendSlot[],
+  bucket: TrendBucket
+): TrendSlot[] {
+  const anchor = data.find((p) => p.total != null) ?? data[0];
+  if (!anchor) {
+    return Array.from({ length: TREND_CENTERED_POINTS }, () => ({
+      bucketStart: new Date().toISOString(),
+      total: null,
+    }));
+  }
+  // Place the real point in the middle slot (index 2) of the 5-slot window.
+  const mid = Math.floor(TREND_CENTERED_POINTS / 2);
+  return Array.from({ length: TREND_CENTERED_POINTS }, (_, i) => ({
+    bucketStart: advanceBucketStart(anchor.bucketStart, bucket, i - mid),
+    total: i === mid ? anchor.total : null,
+  }));
+}
+
+/** X inside the plot with ≥ EDGE_PAD inset on first/last nodes. */
+function plotX(index: number, count: number, plotW: number): number {
+  if (count <= 1) return PAD_LEFT + plotW / 2;
+  const inner = Math.max(0, plotW - EDGE_PAD * 2);
+  return PAD_LEFT + EDGE_PAD + (index / (count - 1)) * inner;
 }
 
 /** Advance a trend bucket start by `steps` periods (UTC calendar math). */

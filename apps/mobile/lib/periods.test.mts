@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import {
+  alignCenteredTrendSlots,
   currentPeriodFocus,
   formatCompactDate,
   formatTrendBucketLabel,
@@ -9,9 +10,9 @@ import {
   resolvePeriodBounds,
   resolveTrendBounds,
   shiftPeriodFocus,
-  TREND_MONTHLY_POINTS,
+  TREND_CENTER_OFFSET,
+  TREND_CENTERED_POINTS,
   TREND_RPC_BUCKETS,
-  TREND_YEARLY_POINTS,
   trendBucketForPeriod,
 } from './periods.ts';
 
@@ -159,25 +160,36 @@ describe('periods', () => {
     );
   });
 
-  it('Trend widens Monthly/Yearly so multiple period nodes can plot', () => {
+  it('Trend uses a centered 5-slot window around Monthly/Yearly focus', () => {
+    assert.equal(TREND_CENTERED_POINTS, 5);
+    assert.equal(TREND_CENTER_OFFSET, 2);
+
     const focus = { year: 2026, month: 10 };
     const month = resolvePeriodBounds('month', tz, { focus, now });
     const monthTrend = resolveTrendBounds(month, tz, { focus });
-    assert.equal(monthTrend.end.getTime(), month.end.getTime());
     const expectedMonthStart = resolvePeriodBounds('month', tz, {
-      focus: shiftPeriodFocus(focus, 'month', -(TREND_MONTHLY_POINTS - 1)),
+      focus: shiftPeriodFocus(focus, 'month', -TREND_CENTER_OFFSET),
       now,
     }).start;
+    const expectedMonthEnd = resolvePeriodBounds('month', tz, {
+      focus: shiftPeriodFocus(focus, 'month', TREND_CENTER_OFFSET),
+      now,
+    }).end;
     assert.equal(monthTrend.start.getTime(), expectedMonthStart.getTime());
+    assert.equal(monthTrend.end.getTime(), expectedMonthEnd.getTime());
 
     const year = resolvePeriodBounds('year', tz, { focus, now });
     const yearTrend = resolveTrendBounds(year, tz, { focus });
-    assert.equal(yearTrend.end.getTime(), year.end.getTime());
     const expectedYearStart = resolvePeriodBounds('year', tz, {
-      focus: shiftPeriodFocus(focus, 'year', -(TREND_YEARLY_POINTS - 1)),
+      focus: shiftPeriodFocus(focus, 'year', -TREND_CENTER_OFFSET),
       now,
     }).start;
+    const expectedYearEnd = resolvePeriodBounds('year', tz, {
+      focus: shiftPeriodFocus(focus, 'year', TREND_CENTER_OFFSET),
+      now,
+    }).end;
     assert.equal(yearTrend.start.getTime(), expectedYearStart.getTime());
+    assert.equal(yearTrend.end.getTime(), expectedYearEnd.getTime());
 
     const customStart = new Date('2026-03-01T18:00:00.000Z');
     const customEnd = new Date('2026-06-15T18:00:00.000Z');
@@ -191,12 +203,34 @@ describe('periods', () => {
     assert.equal(customTrend.end.getTime(), custom.end.getTime());
   });
 
+  it('aligns Monthly slots and omits totals when a month has no rows', () => {
+    const focus = { year: 2026, month: 10 };
+    const oct = resolvePeriodBounds('month', tz, { focus, now });
+    const sep = resolvePeriodBounds('month', tz, {
+      focus: { year: 2026, month: 9 },
+      now,
+    });
+    const slots = alignCenteredTrendSlots(focus, 'month', tz, [
+      { bucketStart: sep.start.toISOString(), total: 40 },
+      { bucketStart: oct.start.toISOString(), total: 120 },
+    ]);
+    assert.equal(slots.length, 5);
+    assert.deepEqual(
+      slots.map((s) => s.total),
+      [null, 40, 120, null, null]
+    );
+    // Middle slot is the focused month.
+    assert.equal(
+      formatTrendBucketLabel(slots[2]!.bucketStart, 'month', tz),
+      'Oct'
+    );
+  });
+
   it('formats trend bucket X labels', () => {
     const iso = '2026-10-01T07:00:00.000Z';
     assert.match(formatTrendBucketLabel(iso, 'day', tz), /Oct/);
     assert.match(formatTrendBucketLabel(iso, 'week', tz), /Oct/);
-    assert.match(formatTrendBucketLabel(iso, 'month', tz), /Oct/);
-    assert.match(formatTrendBucketLabel(iso, 'month', tz), /26/);
+    assert.equal(formatTrendBucketLabel(iso, 'month', tz), 'Oct');
     assert.equal(formatTrendBucketLabel(iso, 'year', tz), '2026');
   });
 });

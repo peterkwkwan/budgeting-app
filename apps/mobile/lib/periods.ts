@@ -274,10 +274,22 @@ export function resolvePeriodBounds(
   };
 }
 
-/** How many month nodes the Monthly Trend series ends at the focused month. */
-export const TREND_MONTHLY_POINTS = 12;
-/** How many year nodes the Yearly Trend series ends at the focused year. */
-export const TREND_YEARLY_POINTS = 5;
+/**
+ * Fixed centered Trend window for Monthly / Yearly: n−2 … n+2 around focus
+ * (always 5 X slots). Empty slots keep the label but omit the node.
+ */
+export const TREND_CENTER_OFFSET = 2;
+export const TREND_CENTERED_POINTS = TREND_CENTER_OFFSET * 2 + 1;
+
+/** Alias — Monthly and Yearly share the centered 5-slot window. */
+export const TREND_MONTHLY_POINTS = TREND_CENTERED_POINTS;
+export const TREND_YEARLY_POINTS = TREND_CENTERED_POINTS;
+
+/** One X-axis slot on the Trend chart (null total = label only, no node). */
+export type TrendSlot = {
+  bucketStart: string;
+  total: number | null;
+};
 
 /**
  * Trend node grain = selected period mode:
@@ -286,8 +298,8 @@ export const TREND_YEARLY_POINTS = 5;
  * - Period (custom) → smart default by range length:
  *   ≤45 days → day; ≤183 days → week; else → month
  *
- * Pair with `resolveTrendBounds` so Monthly/Yearly query enough history
- * for multiple nodes (a single focused month/year alone collapses to ≤1 point).
+ * Pair with `resolveTrendBounds` so Monthly/Yearly query the centered
+ * 5-bucket window (a single focused month/year alone collapses to ≤1 point).
  */
 export function trendBucketForPeriod(
   start: Date,
@@ -304,42 +316,102 @@ export function trendBucketForPeriod(
 }
 
 /**
- * Date window for the Trend RPC. Pie/totals keep `period`; Trend widens so
- * Monthly can plot trailing months and Yearly trailing years ending at focus.
- * Custom Period uses the selected range as-is.
+ * Focus implied by `period.start` in the account timezone (Monthly/Yearly).
+ */
+export function focusFromPeriodBounds(
+  period: PeriodBounds,
+  timeZone: string
+): PeriodFocus {
+  const parts = zonedParts(period.start, timeZone);
+  if (period.preset === 'year') {
+    return { year: parts.year, month: 1 };
+  }
+  return { year: parts.year, month: parts.month };
+}
+
+/**
+ * Date window for the Trend RPC. Pie/totals keep `period`; Trend widens to a
+ * centered ±2 window around focus (5 months or 5 years). Custom Period uses
+ * the selected range as-is.
  */
 export function resolveTrendBounds(
   period: PeriodBounds,
   timeZone: string,
   options?: {
     focus?: PeriodFocus;
-    monthCount?: number;
-    yearCount?: number;
+    /** Half-width around focus; default TREND_CENTER_OFFSET (→ 5 slots). */
+    centerOffset?: number;
   }
 ): { start: Date; end: Date } {
   if (period.preset === 'custom') {
     return { start: period.start, end: period.end };
   }
 
-  const startParts = zonedParts(period.start, timeZone);
-  const focus =
-    options?.focus ??
-    (period.preset === 'year'
-      ? { year: startParts.year, month: 1 }
-      : { year: startParts.year, month: startParts.month });
+  const focus = options?.focus ?? focusFromPeriodBounds(period, timeZone);
+  const offset = Math.max(0, options?.centerOffset ?? TREND_CENTER_OFFSET);
 
   if (period.preset === 'year') {
-    const count = Math.max(1, options?.yearCount ?? TREND_YEARLY_POINTS);
-    const first = shiftPeriodFocus(focus, 'year', -(count - 1));
+    const first = shiftPeriodFocus(focus, 'year', -offset);
+    const last = shiftPeriodFocus(focus, 'year', offset);
     const start = resolvePeriodBounds('year', timeZone, { focus: first }).start;
-    return { start, end: period.end };
+    const end = resolvePeriodBounds('year', timeZone, { focus: last }).end;
+    return { start, end };
   }
 
   // month
-  const count = Math.max(1, options?.monthCount ?? TREND_MONTHLY_POINTS);
-  const first = shiftPeriodFocus(focus, 'month', -(count - 1));
+  const first = shiftPeriodFocus(focus, 'month', -offset);
+  const last = shiftPeriodFocus(focus, 'month', offset);
   const start = resolvePeriodBounds('month', timeZone, { focus: first }).start;
-  return { start, end: period.end };
+  const end = resolvePeriodBounds('month', timeZone, { focus: last }).end;
+  return { start, end };
+}
+
+/** Match RPC bucket_start to a calendar month or year in `timeZone`. */
+function trendBucketKey(
+  bucketStartIso: string,
+  timeZone: string,
+  grain: 'month' | 'year'
+): string {
+  const date = new Date(bucketStartIso);
+  if (Number.isNaN(date.getTime())) return '';
+  const parts = zonedParts(date, timeZone);
+  return grain === 'year'
+    ? String(parts.year)
+    : `${parts.year}-${parts.month}`;
+}
+
+/**
+ * Always 5 Monthly/Yearly slots (n−2…n+2). RPC rows that lack a bucket stay
+ * `total: null` so the chart can keep the X label and omit the node.
+ */
+export function alignCenteredTrendSlots(
+  focus: PeriodFocus,
+  preset: 'month' | 'year',
+  timeZone: string,
+  raw: { bucketStart: string; total: number }[],
+  options?: { centerOffset?: number }
+): TrendSlot[] {
+  const offset = Math.max(0, options?.centerOffset ?? TREND_CENTER_OFFSET);
+  const byKey = new Map<string, number>();
+  for (const point of raw) {
+    const key = trendBucketKey(point.bucketStart, timeZone, preset);
+    if (key) byKey.set(key, point.total);
+  }
+
+  const slots: TrendSlot[] = [];
+  for (let delta = -offset; delta <= offset; delta++) {
+    const slotFocus = shiftPeriodFocus(focus, preset, delta);
+    const bounds = resolvePeriodBounds(preset, timeZone, { focus: slotFocus });
+    const key =
+      preset === 'year'
+        ? String(slotFocus.year)
+        : `${slotFocus.year}-${slotFocus.month}`;
+    slots.push({
+      bucketStart: bounds.start.toISOString(),
+      total: byKey.has(key) ? byKey.get(key)! : null,
+    });
+  }
+  return slots;
 }
 
 /** Compact X-axis tick for a trend bucket start. */
@@ -358,14 +430,13 @@ export function formatTrendBucketLabel(
       });
     }
     if (bucket === 'month') {
-      // Include year — Monthly Trend spans ~12 months across year boundaries.
+      // Whole-month totals — month name only (not "Oct 26").
       return date.toLocaleDateString(undefined, {
         timeZone,
         month: 'short',
-        year: '2-digit',
       });
     }
-    // day or week — show calendar date of the bucket start
+    // day or week — short calendar date of the bucket start
     return date.toLocaleDateString(undefined, {
       timeZone,
       month: 'short',
@@ -374,9 +445,7 @@ export function formatTrendBucketLabel(
   } catch {
     if (bucket === 'year') return String(date.getUTCFullYear());
     if (bucket === 'month') {
-      const name = MONTH_NAMES[date.getUTCMonth()]?.slice(0, 3) ?? '';
-      const yy = String(date.getUTCFullYear()).slice(-2);
-      return name ? `${name} ${yy}` : yy;
+      return MONTH_NAMES[date.getUTCMonth()]?.slice(0, 3) ?? '';
     }
     return bucketStartIso.slice(0, 10);
   }
