@@ -47,6 +47,16 @@ export default function LoginScreen() {
             accessibilityRole="image"
           />
           <Text style={styles.brand}>Fudget</Text>
+          <View
+            style={styles.sloganRow}
+            accessible
+            accessibilityRole="text"
+            accessibilityLabel="Track. Save. Grow."
+          >
+            <Text style={[styles.sloganWord, styles.sloganTrack]}>Track.</Text>
+            <Text style={[styles.sloganWord, styles.sloganSave]}>Save.</Text>
+            <Text style={[styles.sloganWord, styles.sloganGrow]}>Grow.</Text>
+          </View>
           <Text style={styles.sub}>
             Sign in with Google to sync your transactions across devices.
           </Text>
@@ -109,7 +119,29 @@ const styles = StyleSheet.create({
     ...typography.display,
     color: colors.green[950],
     textAlign: 'center',
-    marginBottom: 10,
+    marginBottom: 8,
+  },
+  sloganRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 8,
+    marginBottom: 14,
+  },
+  sloganWord: {
+    fontFamily: fonts.bodyStrong,
+    fontSize: 15,
+    lineHeight: 22,
+    letterSpacing: 0.4,
+  },
+  sloganTrack: {
+    color: colors.green[950],
+  },
+  sloganSave: {
+    color: colors.green[700],
+  },
+  sloganGrow: {
+    color: colors.green[400],
   },
   sub: {
     ...typography.body,
