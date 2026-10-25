@@ -1,25 +1,24 @@
 import type { ReactNode } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { chromeHairline, colors, space } from '@/constants/theme';
+import { chromeHairline, colors, fonts, space } from '@/constants/theme';
 
 /** Reserve room so left-aligned period controls don’t sit under a top-right gear. */
 const TRAILING_SLOT = 44;
 
-/**
- * Shared header chrome: period nav replaces the page title on
- * Transactions + Stats. Full custom header so titles cannot linger.
- * Period cluster is left-aligned; optional `trailing` (gear) stays right.
- */
-export function PeriodNavHeader({
-  children,
-  trailing,
-}: {
+type NavHeaderChromeProps = {
   children: ReactNode;
   /** Optional top-right control (e.g. settings gear) on the same row. */
   trailing?: ReactNode;
-}) {
+};
+
+/**
+ * Shared tab header chrome (safe-area + 44pt row + bottom pad + hairline).
+ * Source of truth for header bar height across Transactions, Stats, Planner,
+ * and Account — keep padding/minHeight in sync here only.
+ */
+function NavHeaderChrome({ children, trailing }: NavHeaderChromeProps) {
   const insets = useSafeAreaInsets();
   return (
     <View
@@ -38,6 +37,41 @@ export function PeriodNavHeader({
         ) : null}
       </View>
     </View>
+  );
+}
+
+/**
+ * Period nav replaces the page title on Transactions + Stats.
+ * Full custom header so default titles cannot linger.
+ * Period cluster is left-aligned; optional `trailing` (gear) stays right.
+ */
+export function PeriodNavHeader({
+  children,
+  trailing,
+}: NavHeaderChromeProps) {
+  return <NavHeaderChrome trailing={trailing}>{children}</NavHeaderChrome>;
+}
+
+/**
+ * Titled tab header (Planner / Account) — same chrome height as PeriodNavHeader.
+ */
+export function TitleNavHeader({
+  title,
+  trailing,
+}: {
+  title: string;
+  trailing?: ReactNode;
+}) {
+  return (
+    <NavHeaderChrome trailing={trailing}>
+      <Text
+        style={styles.title}
+        numberOfLines={1}
+        accessibilityRole="header"
+      >
+        {title}
+      </Text>
+    </NavHeaderChrome>
   );
 }
 
@@ -88,5 +122,13 @@ const styles = StyleSheet.create({
     flexShrink: 0,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  title: {
+    color: colors.ink,
+    fontFamily: fonts.title,
+    // Match PeriodSelector navLabel so titled tabs share the period row height.
+    fontSize: 17,
+    lineHeight: 22,
+    textAlign: 'left',
   },
 });

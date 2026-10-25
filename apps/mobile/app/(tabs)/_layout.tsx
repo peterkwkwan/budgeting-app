@@ -2,7 +2,11 @@ import { Tabs } from 'expo-router';
 
 import { FudgetTabBar } from '@/components/FudgetTabBar';
 import { useColorScheme } from '@/components/useColorScheme';
-import { Colors, fonts, navHeaderStyle, space } from '@/constants/theme';
+import { Colors, fonts, navHeaderStyle } from '@/constants/theme';
+import {
+  periodNavScreenOptions,
+  TitleNavHeader,
+} from '@/lib/periodHeader';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
@@ -39,6 +43,7 @@ export default function TabLayout() {
           fontSize: 12,
           letterSpacing: 0.2,
         },
+        // Fallback for any tab that still uses the default header.
         headerStyle: {
           ...navHeaderStyle,
           backgroundColor: palette.background,
@@ -47,12 +52,6 @@ export default function TabLayout() {
         headerTitleStyle: {
           fontFamily: fonts.title,
           color: palette.text,
-        },
-        // Planner / Account use this title. Left edge is 16px, same inset as
-        // the Transactions / Stats period header (see PeriodNavHeader).
-        headerTitleAlign: 'left',
-        headerTitleContainerStyle: {
-          marginHorizontal: space.md,
         },
         headerShadowVisible: false,
         headerShown: true,
@@ -76,15 +75,15 @@ export default function TabLayout() {
       />
       <Tabs.Screen
         name="planner"
-        options={{
-          title: 'Planner',
-        }}
+        options={periodNavScreenOptions(() => (
+          <TitleNavHeader title="Planner" />
+        ))}
       />
       <Tabs.Screen
         name="account"
-        options={{
-          title: 'Account',
-        }}
+        options={periodNavScreenOptions(() => (
+          <TitleNavHeader title="Account" />
+        ))}
       />
     </Tabs>
   );
