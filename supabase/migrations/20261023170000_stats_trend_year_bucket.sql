@@ -1,4 +1,7 @@
 -- Allow yearly trend aggregation (date_trunc 'year').
+-- Required for Stats Yearly Trend (client sends p_bucket = 'year').
+-- Superseded trunc semantics: 20261025010000_stats_trend_year_tz.sql (profile TZ).
+-- Founder: npx supabase db push (apply through latest stats_trend_* migration).
 create or replace function public.stats_personal_trend(
   p_metric text,
   p_start timestamptz,

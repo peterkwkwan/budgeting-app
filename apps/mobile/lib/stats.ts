@@ -90,6 +90,7 @@ export async function fetchPersonalTotals(
   };
 }
 
+/** Trend series; `bucket` must be day|week|month|year (see TREND_RPC_BUCKETS). */
 export async function fetchPersonalTrend(
   metric: StatsMetric,
   start: Date,

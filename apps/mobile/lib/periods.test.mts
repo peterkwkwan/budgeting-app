@@ -10,6 +10,7 @@ import {
   resolveTrendBounds,
   shiftPeriodFocus,
   TREND_MONTHLY_POINTS,
+  TREND_RPC_BUCKETS,
   TREND_YEARLY_POINTS,
   trendBucketForPeriod,
 } from './periods.ts';
@@ -107,6 +108,18 @@ describe('periods', () => {
       trendBucketForPeriod(year.start, year.end, 'year'),
       'year'
     );
+    // Yearly must send a bucket the Supabase RPC allow-list accepts.
+    assert.ok(
+      (TREND_RPC_BUCKETS as readonly string[]).includes(
+        trendBucketForPeriod(year.start, year.end, 'year')
+      )
+    );
+    assert.deepEqual([...TREND_RPC_BUCKETS], [
+      'day',
+      'week',
+      'month',
+      'year',
+    ]);
 
     // Period (custom): ≤45 → day, ≤183 → week, else → month
     const shortStart = new Date('2026-01-01T18:00:00.000Z');

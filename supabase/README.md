@@ -13,6 +13,9 @@
   - Planner P0: `20261023120000_planner.sql` (`planner_vehicles`, `planner_goals`, `planner_contribution_events`; owner-only RLS)
   - Planner P0: `20261023130000_planner_vehicle_compound_period.sql` (`compound_period` monthly|yearly on vehicles)
   - Planner P0: `20261023140000_planner_goal_vehicles.sql` (goal ↔ vehicle links; progress from balances)
+  - Transactions: `20261023160000_transactions_date_view.sql` (`profiles.transactions_date_view`)
+  - Stats: `20261023170000_stats_trend_year_bucket.sql` (`p_bucket` includes `year`)
+  - Stats: `20261025010000_stats_trend_year_tz.sql` (year + profile-TZ bucket trunc)
 - `functions/`
   - `generate-recurring` — cron; all users; `RECURRING_CRON_SECRET`
   - `catch-up-recurring` — callable with user JWT; app-open catch-up
@@ -38,3 +41,11 @@ npx supabase db push
 ```
 
 Applies planner migrations through `20261023140000_planner_goal_vehicles.sql`. No Edge Functions. Soft-delete vehicles/goals via `deleted_at`; contribution events hard-delete and adjust `planner_goals.current_saved` via trigger. `compound_period` defaults to `yearly` (full rate once per 12 projection months); `monthly` applies rate/12 each month. When a goal links vehicles, displayed progress = sum of those balances (manual contribution logs disabled while linked).
+
+**Founder (Stats Yearly Trend):**
+
+```fish
+npx supabase db push
+```
+
+Applies through `20261025010000_stats_trend_year_tz.sql` so `stats_personal_trend` accepts `p_bucket = 'year'` and truncates in the profile timezone. Until then, Stats → Yearly fails with `p_bucket must be day, week, or month`.

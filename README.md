@@ -85,6 +85,10 @@ npx supabase db push
 | `supabase/migrations/20261023130000_planner_vehicle_compound_period.sql` | **Planner P0** `planner_vehicles.compound_period` (`monthly` \| `yearly`, default yearly) |
 | `supabase/migrations/20261023140000_planner_goal_vehicles.sql` | **Planner P0** `planner_goal_vehicles` join (goal ↔ vehicles; progress = sum of linked balances) |
 | `supabase/migrations/20261023160000_transactions_date_view.sql` | **Transactions** `profiles.transactions_date_view` (`list` \| `week` \| `month`, default `month`) |
+| `supabase/migrations/20261023170000_stats_trend_year_bucket.sql` | **Stats** `stats_personal_trend` allows `p_bucket` `year` (Yearly Trend) |
+| `supabase/migrations/20261025010000_stats_trend_year_tz.sql` | **Stats** re-assert `year` + truncate buckets in profile timezone |
+
+**Founder step (Stats Yearly Trend):** apply through `20261025010000_stats_trend_year_tz.sql` (`npx supabase db push`). No Edge Functions. **EAS rebuild: no.** Until applied, Stats → Yearly shows “Couldn’t load stats” / `p_bucket must be day, week, or month`.
 
 **Founder step (Transactions date views):** apply `20261023160000_transactions_date_view.sql` (`npx supabase db push`). No Edge Functions. **EAS rebuild: no.** Until applied, List · Week · Month toggle still works in-session; saving the preference fails until the column exists.
 
