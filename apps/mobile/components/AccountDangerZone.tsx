@@ -150,8 +150,8 @@ export function AccountDangerZone() {
       <CaptionText style={styles.label}>Danger zone</CaptionText>
       <StrongText style={styles.blockTitle}>Account data</StrongText>
       <CaptionText style={styles.hint}>
-        Wipe starts fresh but keeps you signed in. Delete removes your Google
-        account link and all Fudget data forever.
+        Wipe clears your data but keeps you signed in. Delete removes your
+        Google account link and all Fudget data forever.
       </CaptionText>
 
       {restoreAvailable ? (
@@ -215,7 +215,7 @@ export function AccountDangerZone() {
       >
         <StrongText style={styles.deleteBtnText}>Delete my account</StrongText>
         <CaptionText style={styles.deleteBtnMeta}>
-          Auth + all data · permanent
+          Authentication + all data
         </CaptionText>
       </Pressable>
 
