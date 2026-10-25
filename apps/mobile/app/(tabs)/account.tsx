@@ -3,6 +3,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { Pressable, ScrollView, StyleSheet } from 'react-native';
 
 import { PartnerSection } from '@/components/PartnerSection';
+import { RestoreBackupBanner } from '@/components/RestoreBackupBanner';
 import {
   ScrollEdgeHost,
   useScrollEdges,
@@ -34,6 +35,8 @@ export default function AccountScreen() {
     >
       <TitleText style={styles.title}>Account</TitleText>
 
+      <RestoreBackupBanner />
+
       <View style={styles.block} lightColor={colors.surfaceMuted} darkColor="#1a2a1f">
         <CaptionText style={styles.label}>Email</CaptionText>
         <StrongText style={styles.value}>{user?.email ?? '—'}</StrongText>
@@ -56,7 +59,7 @@ export default function AccountScreen() {
       >
         <StrongText style={styles.linkTitle}>Settings</StrongText>
         <CaptionText style={styles.linkMeta}>
-          Preferences · Transactions date view
+          Preferences · Wipe / restore · Delete account
         </CaptionText>
       </Pressable>
 
@@ -81,7 +84,9 @@ export default function AccountScreen() {
         Transactions sync from Supabase while online. Soft-deleted rows stay in
         the cloud but leave this device’s list. Recurring rules auto-add
         matching transactions about 90 days ahead (or until a series ends).
-        Partner stats are combined totals only — never each other’s rows.
+        Partner stats are combined totals only — never each other’s rows. Wipe
+        my data (Settings) clears product data with a 30-day restore; Delete my
+        account removes Auth and all data permanently.
       </Text>
 
       <Pressable

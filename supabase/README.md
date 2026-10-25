@@ -16,9 +16,12 @@
   - Transactions: `20261023160000_transactions_date_view.sql` (`profiles.transactions_date_view`)
   - Stats: `20261023170000_stats_trend_year_bucket.sql` (`p_bucket` includes `year`)
   - Stats: `20261025010000_stats_trend_year_tz.sql` (year + profile-TZ bucket trunc)
+  - Account: `20261025020000_account_wipe_restore.sql` (30-day wipe backup + wipe/restore/delete RPCs + purge)
 - `functions/`
   - `generate-recurring` — cron; all users; `RECURRING_CRON_SECRET`
   - `catch-up-recurring` — callable with user JWT; app-open catch-up
+  - `purge-account-backups` — daily cron; expired wipe backups; cron secret
+  - `delete-account` — user JWT; product wipe + Auth `deleteUser`
   - `_shared/` — occurrence math + CORS helpers
 
 Apply migrations with the Supabase CLI after linking your project (see root README).
@@ -49,3 +52,15 @@ npx supabase db push
 ```
 
 Applies through `20261025010000_stats_trend_year_tz.sql` so `stats_personal_trend` accepts `p_bucket = 'year'` and truncates in the profile timezone. Until then, Stats → Yearly fails with `p_bucket must be day, week, or month`.
+
+**Founder (Account wipe + Delete account):**
+
+```fish
+npx supabase db push
+npx supabase functions deploy purge-account-backups
+npx supabase functions deploy delete-account
+```
+
+Then schedule daily `POST` to `purge-account-backups` with `Authorization: Bearer <ACCOUNT_BACKUP_CRON_SECRET or RECURRING_CRON_SECRET>`.
+
+Wipe keeps Auth + `profiles`; product data goes into `account_data_backups` for 30 days (`wipe_my_data` / `restore_my_data`). Delete account calls `delete_my_account_data` then Auth admin delete (irreversible).

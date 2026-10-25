@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { Stack } from 'expo-router';
 
+import { AccountDangerZone } from '@/components/AccountDangerZone';
 import { DateViewToggle } from '@/components/DateViewToggle';
 import {
   ScrollEdgeHost,
@@ -19,8 +20,7 @@ import {
 
 /**
  * Account → Settings / Preferences.
- * Transactions date layout (List · Week · Month) lives here; Transactions
- * reads the saved preference from the profile.
+ * Transactions date layout + Danger zone (wipe / restore / delete account).
  */
 export default function SettingsScreen() {
   const { user, profile, refreshProfile } = useAuth();
@@ -75,6 +75,8 @@ export default function SettingsScreen() {
             </CaptionText>
             <DateViewToggle value={dateView} onChange={setDateView} />
           </View>
+
+          <AccountDangerZone />
         </ScrollView>
       </ScrollEdgeHost>
     </>

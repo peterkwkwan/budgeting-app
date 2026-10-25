@@ -87,6 +87,9 @@ npx supabase db push
 | `supabase/migrations/20261023160000_transactions_date_view.sql` | **Transactions** `profiles.transactions_date_view` (`list` \| `week` \| `month`, default `month`) |
 | `supabase/migrations/20261023170000_stats_trend_year_bucket.sql` | **Stats** `stats_personal_trend` allows `p_bucket` `year` (Yearly Trend) |
 | `supabase/migrations/20261025010000_stats_trend_year_tz.sql` | **Stats** re-assert `year` + truncate buckets in profile timezone |
+| `supabase/migrations/20261025020000_account_wipe_restore.sql` | **Account** wipe backup table + `wipe_my_data` / `restore_my_data` / `get_account_backup_status` / `delete_my_account_data` / `purge_expired_account_backups` |
+
+**Founder step (Account wipe + Delete account):** apply `20261025020000_account_wipe_restore.sql` (`npx supabase db push`), deploy Edge Functions `purge-account-backups` + `delete-account`, schedule daily purge cron (see below). **EAS rebuild: no** (JS + SQL + functions). Until applied, Settings → Wipe / Restore / Delete will error. Details: `docs/account-wipe-apply.md` in the Project store (or this README section).
 
 **Founder step (Stats Yearly Trend):** apply through `20261025010000_stats_trend_year_tz.sql` (`npx supabase db push`). No Edge Functions. **EAS rebuild: no.** Until applied, Stats → Yearly shows “Couldn’t load stats” / `p_bucket must be day, week, or month`.
 
@@ -125,6 +128,34 @@ Schedule cron (Dashboard → Edge Functions → `generate-recurring` → Schedul
 
 `generate-recurring` has `verify_jwt = false` and checks the cron secret itself. `catch-up-recurring` requires a user JWT (`verify_jwt = true`).
 
+### Account wipe backups + Delete account (Edge Functions)
+
+| Function | Trigger | Purpose |
+|----------|---------|---------|
+| `purge-account-backups` | Daily cron | Hard-delete expired 30-day wipe backups |
+| `delete-account` | App (user JWT) | Clear product data + permanently delete Auth user |
+
+```fish
+# From repo root, linked to your Supabase project:
+npx supabase db push
+npx supabase functions deploy purge-account-backups
+npx supabase functions deploy delete-account
+# Optional dedicated secret (otherwise RECURRING_CRON_SECRET is reused):
+# npx supabase secrets set ACCOUNT_BACKUP_CRON_SECRET="$(openssl rand -hex 32)"
+```
+
+Schedule cron (Dashboard → Edge Functions → `purge-account-backups` → Schedules, or Database → Cron):
+
+- Schedule: `15 6 * * *` (daily)
+- Method: `POST`
+- Header: `Authorization: Bearer <ACCOUNT_BACKUP_CRON_SECRET or RECURRING_CRON_SECRET>`
+
+`purge-account-backups` has `verify_jwt = false` and checks the cron secret. `delete-account` requires a user JWT (`verify_jwt = true`).
+
+**Wipe my data** (Settings → Danger zone): keeps Google Auth + profile; snapshots product data for 30 days; self-serve **Restore my data** replaces the app and discards post-wipe rows. After 30 days the backup is purged and Restore disappears.
+
+**Delete my account**: irreversible after typing `DELETE` — Auth user + all data (no 30-day undo).
+
 ## Founder action checklist (Google + Supabase)
 
 Do these once so sign-in works end-to-end on a physical Android device or emulator with Google Play:
@@ -158,7 +189,9 @@ Do these once so sign-in works end-to-end on a physical Android device or emulat
 
 7. **Deploy M3 Edge Functions + cron** — see “M3 Edge Functions + cron” above. M4 needs **no** new Edge Functions (RPCs only).
 
-8. **Build a Dev Client** when you leave Expo Go (required before voice STT in M5). M3/M4 add **no new native modules** — existing Dev Client / Expo Go reload is enough.
+8. **Deploy account wipe / delete functions** — after `db push` for `20261025020000_account_wipe_restore.sql`, deploy `purge-account-backups` + `delete-account` and schedule daily purge (see “Account wipe backups + Delete account” above).
+
+9. **Build a Dev Client** when you leave Expo Go (required before voice STT in M5). M3/M4 / account wipe add **no new native modules** — existing Dev Client / Expo Go reload is enough.
 
 9. **Smoke test**  
    Open the app → Continue with Google → **Transactions** tab → **+** → set **Repeat** (e.g. weekdays) → Save → confirm rows (· Recurring) and **Upcoming repeats** bar → tap bar to manage rules (edit future / stop series). One-off Add without Repeat still works. **Stats** tab: default **This month**, etc. **Account** → Recurring rules also opens manage. Soft-delete one instance; stop series from the rule screen. Bottom tabs are Transactions / Stats / Account (raised **+** FAB).  

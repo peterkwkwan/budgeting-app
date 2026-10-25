@@ -22,3 +22,11 @@ verify_jwt = false
 # App-open catch-up; requires user JWT.
 [functions.catch-up-recurring]
 verify_jwt = true
+
+# Daily purge of expired wipe backups; ACCOUNT_BACKUP_CRON_SECRET or RECURRING_CRON_SECRET.
+[functions.purge-account-backups]
+verify_jwt = false
+
+# Delete my account (Auth + data); requires user JWT.
+[functions.delete-account]
+verify_jwt = true
