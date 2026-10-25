@@ -16,6 +16,8 @@ type Props = {
   /** Day-of-month → net (income − expenses). Omitted days have no transactions. */
   dayNets: ReadonlyMap<number, number>;
   onSelectDay: (day: number) => void;
+  /** Account currency for day net chips (default HKD). */
+  currency?: string;
 };
 
 function toneColor(tone: DayNetTone): string {
@@ -30,6 +32,7 @@ export function MonthDayCalendar({
   selectedDay,
   dayNets,
   onSelectDay,
+  currency,
 }: Props) {
   const cells = monthGridCells(focus);
 
@@ -49,7 +52,10 @@ export function MonthDayCalendar({
           }
           const selected = day === selectedDay;
           const net = dayNets.get(day);
-          const label = net == null ? null : formatDayNet(net, { compact: true });
+          const label =
+            net == null
+              ? null
+              : formatDayNet(net, { compact: true, currency });
           return (
             <Pressable
               key={day}

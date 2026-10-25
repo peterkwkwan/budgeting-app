@@ -17,7 +17,6 @@ import { MicButton } from '@/components/MicButton';
 import { CaptionText, StrongText, TitleText } from '@/components/StyledText';
 import { Text } from '@/components/Themed';
 import {
-  categoriesForType,
   defaultCategory,
   type TransactionType,
 } from '@/constants/categories';
@@ -28,6 +27,7 @@ import {
 } from '@/constants/repeatPresets';
 import { colors, fonts, radius, space, typography } from '@/constants/theme';
 import { RepeatCustomSheet } from '@/components/RepeatCustomSheet';
+import { useUserCategories } from '@/hooks/useUserCategories';
 import { useVoiceRecognition } from '@/hooks/useVoiceRecognition';
 import { useAuth } from '@/lib/auth';
 import { formatDisplayDate } from '@/lib/dates';
@@ -37,6 +37,7 @@ import {
 } from '@/lib/money';
 import { deviceTimezone } from '@/lib/profile';
 import type { TransactionInput } from '@/lib/transactions';
+import { pickerCategories } from '@/lib/userCategories';
 import type { VoiceDraft } from '@/lib/voiceParse';
 
 export type TransactionFormValues = {
@@ -98,6 +99,8 @@ export function TransactionForm({
   const [voicePartial, setVoicePartial] = useState(false);
   const [lastHeard, setLastHeard] = useState<string | null>(null);
   const { profile } = useAuth();
+  const customsQuery = useUserCategories();
+  const customs = customsQuery.data ?? [];
   const timeZone = profile?.timezone || deviceTimezone();
   const presetOptions = buildRepeatPresetOptions(occurredAt, timeZone);
 
@@ -112,15 +115,25 @@ export function TransactionForm({
     setLocalError(null);
   }, []);
 
+  const voiceExtras = {
+    expense: customs
+      .filter((c) => c.type === 'expense' && !c.archived_at)
+      .map((c) => c.name),
+    income: customs
+      .filter((c) => c.type === 'income' && !c.archived_at)
+      .map((c) => c.name),
+  };
+
   const voice = useVoiceRecognition({
     active: allowVoice,
+    categoryExtras: voiceExtras,
     onDraft: applyVoiceDraft,
   });
 
   function setTypeAndCategory(next: TransactionType) {
     setType(next);
-    const allowed = categoriesForType(next);
-    if (!(allowed as readonly string[]).includes(category)) {
+    const allowed = pickerCategories(next, customs);
+    if (!allowed.includes(category)) {
       setCategory(defaultCategory(next));
     }
   }
@@ -156,7 +169,7 @@ export function TransactionForm({
     });
   }
 
-  const categories = categoriesForType(type);
+  const categories = pickerCategories(type, customs);
   const displayError = localError ?? error ?? (allowVoice ? voice.error : null);
   const highlightVoice = voiceFilled && allowVoice;
 

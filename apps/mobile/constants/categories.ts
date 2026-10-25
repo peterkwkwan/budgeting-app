@@ -1,4 +1,4 @@
-/** Fixed category lists — match pm-triage MVP contract. Do not invent customs in M1. */
+/** Fixed system category lists — customs layer on top via user_categories. */
 
 export const EXPENSE_CATEGORIES = [
   'Groceries',
@@ -31,8 +31,13 @@ export function categoriesForType(type: TransactionType): readonly string[] {
   return type === 'expense' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES;
 }
 
-export function isValidCategory(type: TransactionType, category: string): boolean {
+export function isSystemCategory(type: TransactionType, category: string): boolean {
   return (categoriesForType(type) as readonly string[]).includes(category);
+}
+
+/** System-only check (legacy name). Prefer isAllowedCategory with customs. */
+export function isValidCategory(type: TransactionType, category: string): boolean {
+  return isSystemCategory(type, category);
 }
 
 export function defaultCategory(type: TransactionType): TransactionCategory {

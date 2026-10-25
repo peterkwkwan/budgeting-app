@@ -3,13 +3,8 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { CaptionText, StrongText } from '@/components/StyledText';
 import { colors, space, typography } from '@/constants/theme';
 import { seriesRepeatLabel } from '@/constants/repeatPresets';
-import { formatUsd } from '@/lib/money';
+import { useFormatMoney } from '@/hooks/useFormatMoney';
 import type { RecurringSeries } from '@/lib/recurring';
-
-function formatAmount(series: RecurringSeries): string {
-  const sign = series.type === 'expense' ? '−' : '+';
-  return `${sign}${formatUsd(series.amount)}`;
-}
 
 type Props = {
   series: RecurringSeries;
@@ -17,15 +12,17 @@ type Props = {
 };
 
 export function RecurringRow({ series, onPress }: Props) {
+  const { format } = useFormatMoney();
   const amountColor =
     series.type === 'income' ? colors.income : colors.expense;
+  const amountLabel = `${series.type === 'expense' ? '−' : '+'}${format(series.amount)}`;
 
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [styles.row, pressed && styles.pressed]}
       accessibilityRole="button"
-      accessibilityLabel={`${series.category}, ${seriesRepeatLabel(series.cadence, series.byweekday, series.ends_on, series.ends_after_count)}, ${formatAmount(series)}`}
+      accessibilityLabel={`${series.category}, ${seriesRepeatLabel(series.cadence, series.byweekday, series.ends_on, series.ends_after_count)}, ${amountLabel}`}
     >
       <View style={styles.left}>
         <StrongText style={styles.category}>{series.category}</StrongText>
@@ -45,7 +42,7 @@ export function RecurringRow({ series, onPress }: Props) {
         </CaptionText>
       </View>
       <StrongText style={[styles.amount, { color: amountColor }]}>
-        {formatAmount(series)}
+        {amountLabel}
       </StrongText>
     </Pressable>
   );

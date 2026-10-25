@@ -3,16 +3,11 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { CaptionText, StrongText } from '@/components/StyledText';
 import { colors, space, typography } from '@/constants/theme';
+import { useFormatMoney } from '@/hooks/useFormatMoney';
 import { useAuth } from '@/lib/auth';
 import { formatDisplayDate } from '@/lib/dates';
-import { formatUsd } from '@/lib/money';
 import { deviceTimezone } from '@/lib/profile';
 import type { Transaction } from '@/lib/transactions';
-
-function formatAmount(txn: Transaction): string {
-  const sign = txn.type === 'expense' ? '−' : '+';
-  return `${sign}${formatUsd(txn.amount)}`;
-}
 
 type Props = {
   transaction: Transaction;
@@ -32,6 +27,11 @@ export function TransactionRow({
   selectionMode = false,
   hideDate = false,
 }: Props) {
+  const { format } = useFormatMoney();
+  const formatAmount = (txn: Transaction): string => {
+    const sign = txn.type === 'expense' ? '−' : '+';
+    return `${sign}${format(txn.amount)}`;
+  };
   const { profile } = useAuth();
   const timeZone = profile?.timezone || deviceTimezone();
   const amountColor =

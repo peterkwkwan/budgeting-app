@@ -8,6 +8,7 @@ import {
 import {
   parseVoiceTranscript,
   speechContextualHints,
+  type VoiceCategoryExtras,
   type VoiceDraft,
 } from '@/lib/voiceParse';
 
@@ -45,13 +46,19 @@ function friendlyError(code: string, message?: string): string {
 type Options = {
   /** When false, abort any in-flight recognition. */
   active?: boolean;
+  /** Active custom category names (best-effort match + STT hints). */
+  categoryExtras?: VoiceCategoryExtras;
   onDraft: (draft: VoiceDraft) => void;
 };
 
 /**
  * On-device Android STT → VoiceDraft. Caller confirms/edits before save.
  */
-export function useVoiceRecognition({ active = true, onDraft }: Options) {
+export function useVoiceRecognition({
+  active = true,
+  categoryExtras,
+  onDraft,
+}: Options) {
   const [phase, setPhase] = useState<VoicePhase>('idle');
   const [transcript, setTranscript] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -59,6 +66,8 @@ export function useVoiceRecognition({ active = true, onDraft }: Options) {
   const finishingRef = useRef(false);
   const onDraftRef = useRef(onDraft);
   onDraftRef.current = onDraft;
+  const extrasRef = useRef(categoryExtras);
+  extrasRef.current = categoryExtras;
 
   const reset = useCallback(() => {
     finishingRef.current = false;
@@ -84,7 +93,7 @@ export function useVoiceRecognition({ active = true, onDraft }: Options) {
 
   const finishWithTranscript = useCallback(
     (text: string) => {
-      const draft = parseVoiceTranscript(text);
+      const draft = parseVoiceTranscript(text, extrasRef.current);
       if (!draft) {
         setPhase('error');
         setError(
@@ -193,7 +202,7 @@ export function useVoiceRecognition({ active = true, onDraft }: Options) {
         continuous: false,
         maxAlternatives: 1,
         requiresOnDeviceRecognition: preferOnDevice,
-        contextualStrings: speechContextualHints(),
+        contextualStrings: speechContextualHints(extrasRef.current),
         androidIntentOptions: {
           EXTRA_LANGUAGE_MODEL: 'free_form',
           EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS: 1500,

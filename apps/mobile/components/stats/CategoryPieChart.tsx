@@ -4,7 +4,7 @@ import { CaptionText, StrongText } from '@/components/StyledText';
 import type { TransactionType } from '@/constants/categories';
 import { colorForCategory } from '@/constants/chartColors';
 import { colors, fonts, space, typography } from '@/constants/theme';
-import { formatUsd } from '@/lib/money';
+import { useFormatMoney } from '@/hooks/useFormatMoney';
 import type { CategoryTotal } from '@/lib/stats';
 
 type Props = {
@@ -25,17 +25,17 @@ const INNER_RATIO = 104 / 168;
 /** Radial wedges — View-only donut (no Skia / SVG). */
 const WEDGES = 90;
 
-function formatCenterMoney(n: number): string {
-  const sign = n < 0 ? '−' : '';
-  return `${sign}${formatUsd(Math.abs(n))}`;
-}
-
 export function CategoryPieChart({
   data,
   emptyLabel,
   type,
   centerTotal,
 }: Props) {
+  const { format } = useFormatMoney();
+  const formatCenterMoney = (n: number): string => {
+    const sign = n < 0 ? '−' : '';
+    return `${sign}${format(Math.abs(n))}`;
+  };
   const centerLabel = type === 'expense' ? 'Spent' : 'Earned';
   const centerColor = type === 'expense' ? colors.expense : colors.income;
 

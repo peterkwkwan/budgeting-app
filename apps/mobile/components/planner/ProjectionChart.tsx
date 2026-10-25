@@ -8,11 +8,8 @@ import {
 
 import { CaptionText } from '@/components/StyledText';
 import { colors, space } from '@/constants/theme';
-import {
-  formatCompactUsd,
-  niceAxisTicks,
-  tickDomain,
-} from '@/lib/money';
+import { useFormatMoney } from '@/hooks/useFormatMoney';
+import { niceAxisTicks, tickDomain } from '@/lib/money';
 import type { ProjectionPoint } from '@/lib/plannerMath';
 
 type Props = {
@@ -43,6 +40,7 @@ export function ProjectionChart({
   targetAmount = null,
   emptyLabel,
 }: Props) {
+  const { formatCompact } = useFormatMoney();
   // Full-bleed ≈ window width; onLayout corrects if insets differ.
   const [chartW, setChartW] = useState(
     () => Dimensions.get('window').width
@@ -126,7 +124,7 @@ export function ProjectionChart({
                 ]}
                 numberOfLines={1}
               >
-                {formatCompactUsd(tick)}
+                {formatCompact(tick)}
               </CaptionText>
               <View style={[styles.gridLine, { top: y }]} />
             </View>

@@ -122,20 +122,36 @@ describe('transactionsDateView', () => {
   });
 
   it('formatDayNet uses income and expense signs', () => {
-    assert.deepEqual(formatDayNet(18.75), { text: '+$18.75', tone: 'income' });
-    assert.deepEqual(formatDayNet(-12), { text: '−$12.00', tone: 'expense' });
-    assert.deepEqual(formatDayNet(0), { text: '$0.00', tone: 'zero' });
-    assert.deepEqual(formatDayNet(1500), {
+    assert.deepEqual(formatDayNet(18.75, { currency: 'USD' }), {
+      text: '+$18.75',
+      tone: 'income',
+    });
+    assert.deepEqual(formatDayNet(-12, { currency: 'USD' }), {
+      text: '−$12.00',
+      tone: 'expense',
+    });
+    assert.deepEqual(formatDayNet(0, { currency: 'USD' }), {
+      text: '$0.00',
+      tone: 'zero',
+    });
+    assert.deepEqual(formatDayNet(1500, { currency: 'USD' }), {
       text: '+$1,500.00',
       tone: 'income',
     });
-    assert.deepEqual(formatDayNet(1500, { compact: true }), {
+    assert.deepEqual(formatDayNet(1500, { compact: true, currency: 'USD' }), {
       text: '+$1.5k',
       tone: 'income',
     });
-    assert.deepEqual(formatDayNet(-250000, { compact: true }), {
-      text: '−$250k',
-      tone: 'expense',
+    assert.deepEqual(
+      formatDayNet(-250000, { compact: true, currency: 'USD' }),
+      {
+        text: '−$250k',
+        tone: 'expense',
+      }
+    );
+    assert.deepEqual(formatDayNet(18.75, { currency: 'HKD' }), {
+      text: '+HK$18.75',
+      tone: 'income',
     });
   });
 });

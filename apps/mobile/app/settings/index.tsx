@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
-import { Stack } from 'expo-router';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Stack, useRouter } from 'expo-router';
 
 import { AccountDangerZone } from '@/components/AccountDangerZone';
 import { DateViewToggle } from '@/components/DateViewToggle';
@@ -9,8 +9,10 @@ import {
   useScrollEdges,
 } from '@/components/ScrollEdgeShadows';
 import { CaptionText, StrongText } from '@/components/StyledText';
+import { currencyLabel } from '@/constants/currencies';
 import { colors, radius, space } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
+import { profileCurrency } from '@/lib/currency';
 import {
   DEFAULT_TRANSACTIONS_DATE_VIEW,
   parseTransactionsDateView,
@@ -20,15 +22,17 @@ import {
 
 /**
  * Account → Settings / Preferences.
- * Transactions date layout + Danger zone (wipe / restore / delete account).
+ * Currency, categories, date layout, danger zone.
  */
 export default function SettingsScreen() {
+  const router = useRouter();
   const { user, profile, refreshProfile } = useAuth();
   const { edges, scrollProps } = useScrollEdges();
   const [dateView, setDateView] = useState<TransactionsDateView>(
     DEFAULT_TRANSACTIONS_DATE_VIEW
   );
   const hydrated = useRef(false);
+  const currency = profileCurrency(profile);
 
   useEffect(() => {
     if (!profile || hydrated.current) return;
@@ -66,6 +70,32 @@ export default function SettingsScreen() {
           keyboardShouldPersistTaps="handled"
           {...scrollProps}
         >
+          <Pressable
+            style={styles.block}
+            onPress={() => router.push('/settings/currency')}
+            accessibilityRole="button"
+            accessibilityLabel={`Currency, ${currency}`}
+          >
+            <CaptionText style={styles.label}>Money</CaptionText>
+            <StrongText style={styles.blockTitle}>Currency</StrongText>
+            <CaptionText style={styles.hint}>
+              {currency} — {currencyLabel(currency)}. Tap to change.
+            </CaptionText>
+          </Pressable>
+
+          <Pressable
+            style={styles.block}
+            onPress={() => router.push('/settings/categories')}
+            accessibilityRole="button"
+            accessibilityLabel="Categories"
+          >
+            <CaptionText style={styles.label}>Organize</CaptionText>
+            <StrongText style={styles.blockTitle}>Categories</StrongText>
+            <CaptionText style={styles.hint}>
+              Built-in lists plus your own. Add, rename, or archive customs.
+            </CaptionText>
+          </Pressable>
+
           <View style={styles.block}>
             <CaptionText style={styles.label}>Transactions layout</CaptionText>
             <StrongText style={styles.blockTitle}>Date view</StrongText>

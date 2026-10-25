@@ -41,7 +41,7 @@ import {
   resolveChartMode,
   saveChartFocus,
 } from '@/lib/plannerChartFocus';
-import { formatUsd } from '@/lib/money';
+import { useFormatMoney } from '@/hooks/useFormatMoney';
 import { guardedPush } from '@/lib/navGuard';
 import {
   goalEffectiveSaved,
@@ -97,6 +97,7 @@ function toProjectInput(v: PlannerVehicle): ProjectVehicleInput {
 }
 
 export default function PlannerScreen() {
+  const { format } = useFormatMoney();
   const router = useRouter();
   const vehicles = usePlannerVehicles();
   const goals = usePlannerGoals();
@@ -383,13 +384,13 @@ export default function PlannerScreen() {
                 <View>
                   <CaptionText style={styles.muted}>Now</CaptionText>
                   <StrongText style={styles.amount}>
-                    {formatUsd(startNet)}
+                    {format(startNet)}
                   </StrongText>
                 </View>
                 <View style={styles.summaryEnd}>
                   <CaptionText style={styles.muted}>At horizon</CaptionText>
                   <StrongText style={styles.amount}>
-                    {formatUsd(endNet)}
+                    {format(endNet)}
                   </StrongText>
                 </View>
               </View>
@@ -463,9 +464,9 @@ export default function PlannerScreen() {
                     {v.compound_period === 'yearly' ? 'yearly' : 'monthly'}
                   </CaptionText>
                   <CaptionText style={styles.muted}>
-                    {formatUsd(v.balance)}
+                    {format(v.balance)}
                     {v.plan_amount != null && v.plan_cadence
-                      ? ` · plan ${formatUsd(v.plan_amount)} ${PLAN_CADENCE_LABELS[v.plan_cadence].toLowerCase()}`
+                      ? ` · plan ${format(v.plan_amount)} ${PLAN_CADENCE_LABELS[v.plan_cadence].toLowerCase()}`
                       : ''}
                   </CaptionText>
                 </Pressable>
@@ -568,9 +569,9 @@ export default function PlannerScreen() {
                     {paceLabel(pace.status)}
                   </CaptionText>
                   <CaptionText style={styles.muted}>
-                    {formatUsd(saved)} of {formatUsd(g.target_amount)}
+                    {format(saved)} of {format(g.target_amount)}
                     {need != null
-                      ? ` · ~${formatUsd(need)}/${g.plan_cadence ? PLAN_CADENCE_LABELS[g.plan_cadence].toLowerCase() : 'mo'} to hit date`
+                      ? ` · ~${format(need)}/${g.plan_cadence ? PLAN_CADENCE_LABELS[g.plan_cadence].toLowerCase() : 'mo'} to hit date`
                       : ''}
                   </CaptionText>
                   <LinkedAccountLinks

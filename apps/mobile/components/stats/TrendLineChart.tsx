@@ -8,11 +8,8 @@ import {
 
 import { BodyText, CaptionText } from '@/components/StyledText';
 import { colors, space } from '@/constants/theme';
-import {
-  formatCompactUsd,
-  niceAxisTicks,
-  tickDomain,
-} from '@/lib/money';
+import { useFormatMoney } from '@/hooks/useFormatMoney';
+import { niceAxisTicks, tickDomain } from '@/lib/money';
 import {
   formatTrendBucketLabel,
   TREND_CENTERED_POINTS,
@@ -67,6 +64,7 @@ export function TrendLineChart({
   timeZone,
   strokeColor = colors.green[700],
 }: Props) {
+  const { formatCompact } = useFormatMoney();
   // Full-bleed ≈ window width; onLayout corrects if insets differ.
   const [chartW, setChartW] = useState(
     () => Dimensions.get('window').width
@@ -150,7 +148,7 @@ export function TrendLineChart({
                 ]}
                 numberOfLines={1}
               >
-                {formatCompactUsd(tick)}
+                {formatCompact(tick)}
               </CaptionText>
               <View style={[styles.gridLine, { top: y }]} />
             </View>
@@ -257,6 +255,7 @@ function InsufficientTrendPlaceholder({
   chartW: number;
   onWrapLayout: (e: LayoutChangeEvent) => void;
 }) {
+  const { formatCompact } = useFormatMoney();
   const realSlots = data.filter((p) => p.total != null);
   const anchor = realSlots[0]!;
   const dataMin = Math.min(anchor.total as number, 0);
@@ -307,7 +306,7 @@ function InsufficientTrendPlaceholder({
                 ]}
                 numberOfLines={1}
               >
-                {formatCompactUsd(tick)}
+                {formatCompact(tick)}
               </CaptionText>
               <View
                 style={[

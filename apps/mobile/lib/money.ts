@@ -1,42 +1,76 @@
+import {
+  currencyFractionDigits,
+  currencySymbol,
+  parseAccountCurrency,
+  type AccountCurrency,
+} from '@/constants/currencies';
+
 /**
- * USD display with a `$` prefix, two decimals, and thousands commas.
+ * Account-currency display with symbol, fraction digits, and thousands commas.
  * The sign is left to the caller so expenses and income keep the existing
  * unicode minus (`−`) and plus prefixes instead of an ASCII hyphen.
  *
- * `12.5` → `$12.50`, `1200` → `$1,200.00`, `10000` → `$10,000.00`.
+ * HKD `12.5` → `HK$12.50`, JPY `1200` → `¥1,200`.
  */
-export function formatUsd(amount: number): string {
-  const [whole, frac = '00'] = Math.abs(amount).toFixed(2).split('.');
+export function formatMoney(
+  amount: number,
+  currency: AccountCurrency | string = 'HKD'
+): string {
+  const code = parseAccountCurrency(currency);
+  const digits = currencyFractionDigits(code);
+  const symbol = currencySymbol(code);
+  const abs = Math.abs(amount);
+  if (digits === 0) {
+    const whole = Math.round(abs).toString();
+    const grouped = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return `${symbol}${grouped}`;
+  }
+  const [whole, frac = '00'] = abs.toFixed(2).split('.');
   const grouped = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-  return `$${grouped}.${frac}`;
+  return `${symbol}${grouped}.${frac}`;
 }
 
 /**
- * Compact axis / chip labels — never full `$1,079,462.49`.
- * Under 1000 → `$n`; thousands → `$nk` / `$n.nk`; millions → `$n.nM`.
- * Includes a leading `-` for negatives (unlike formatUsd).
+ * Compact axis / chip labels — never full `HK$1,079,462.49`.
+ * Under 1000 → `HK$n`; thousands → `HK$nk`; millions → `HK$n.nM`.
+ * Includes a leading `-` for negatives (unlike formatMoney).
  */
-export function formatCompactUsd(amount: number): string {
-  if (!Number.isFinite(amount)) return '$0';
+export function formatCompactMoney(
+  amount: number,
+  currency: AccountCurrency | string = 'HKD'
+): string {
+  const code = parseAccountCurrency(currency);
+  const symbol = currencySymbol(code);
+  if (!Number.isFinite(amount)) return `${symbol}0`;
   const sign = amount < 0 ? '-' : '';
   const a = Math.abs(amount);
 
   if (a < 1000) {
-    return `${sign}$${Math.round(a)}`;
+    return `${sign}${symbol}${Math.round(a)}`;
   }
 
   if (a < 1_000_000) {
     const k = a / 1000;
     const rounded1 = Math.round(k * 10) / 10;
     if (Math.abs(rounded1 - Math.round(rounded1)) < 1e-9) {
-      return `${sign}$${Math.round(rounded1)}k`;
+      return `${sign}${symbol}${Math.round(rounded1)}k`;
     }
-    return `${sign}$${rounded1.toFixed(1)}k`;
+    return `${sign}${symbol}${rounded1.toFixed(1)}k`;
   }
 
   const m = a / 1_000_000;
   const rounded1 = Math.round(m * 10) / 10;
-  return `${sign}$${rounded1.toFixed(1)}M`;
+  return `${sign}${symbol}${rounded1.toFixed(1)}M`;
+}
+
+/** @deprecated Prefer formatMoney(amount, currency). Kept for USD-focused tests. */
+export function formatUsd(amount: number): string {
+  return formatMoney(amount, 'USD');
+}
+
+/** @deprecated Prefer formatCompactMoney(amount, currency). */
+export function formatCompactUsd(amount: number): string {
+  return formatCompactMoney(amount, 'USD');
 }
 
 /**
@@ -129,8 +163,12 @@ function roundTick(v: number): number {
 export function parseMoneyInput(raw: string): number {
   const cleaned = raw
     .trim()
-    .replace(/usd/gi, '')
-    .replace(/[$,\s]/g, '');
+    .replace(
+      /\b(hkd|usd|cny|eur|gbp|jpy|cad|aud|sgd|chf|inr|krw|twd|thb|myr|php|idr|nzd|sek|nok)\b/gi,
+      ''
+    )
+    .replace(/HK\$|NT\$|CA\$|A\$|NZ\$|S\$|RM|Rp/gi, '')
+    .replace(/[$,€£¥₩₹฿₱kr\s]/gi, '');
   if (
     cleaned === '' ||
     cleaned === '-' ||

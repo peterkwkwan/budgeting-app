@@ -27,9 +27,9 @@ import {
   useSoftDeletePlannerGoal,
   useUpdatePlannerGoal,
 } from '@/hooks/usePlanner';
+import { useFormatMoney } from '@/hooks/useFormatMoney';
 import {
   formatAmountInput,
-  formatUsd,
   parseAmountInput,
 } from '@/lib/money';
 import { guardedPush } from '@/lib/navGuard';
@@ -62,6 +62,7 @@ function editParamOn(edit: string | string[] | undefined): boolean {
 }
 
 export default function GoalDetailScreen() {
+  const { format } = useFormatMoney();
   const { id, edit } = useLocalSearchParams<{
     id: string;
     edit?: string | string[];
@@ -258,10 +259,10 @@ export default function GoalDetailScreen() {
 
       <View style={styles.progressBlock}>
         <StrongText style={styles.amount}>
-          {formatUsd(effectiveSaved)}
+          {format(effectiveSaved)}
           <CaptionText style={styles.muted}>
             {' '}
-            of {formatUsd(goal.target_amount)}
+            of {format(goal.target_amount)}
           </CaptionText>
         </StrongText>
         <View style={styles.barTrack}>
@@ -282,7 +283,7 @@ export default function GoalDetailScreen() {
                 ? 'On track'
                 : 'No target date'}
           {need != null
-            ? ` · ~${formatUsd(need)}/${goal.plan_cadence ? PLAN_CADENCE_LABELS[goal.plan_cadence].toLowerCase() : 'month'} needed`
+            ? ` · ~${format(need)}/${goal.plan_cadence ? PLAN_CADENCE_LABELS[goal.plan_cadence].toLowerCase() : 'month'} needed`
             : ''}
         </CaptionText>
         {linked ? (
@@ -297,7 +298,7 @@ export default function GoalDetailScreen() {
         ) : null}
         {goal.plan_amount != null && goal.plan_cadence ? (
           <CaptionText style={styles.muted}>
-            Plan: {formatUsd(goal.plan_amount)}{' '}
+            Plan: {format(goal.plan_amount)}{' '}
             {PLAN_CADENCE_LABELS[goal.plan_cadence].toLowerCase()}
           </CaptionText>
         ) : null}
@@ -360,7 +361,7 @@ export default function GoalDetailScreen() {
           ) : (
             (events.data ?? []).map((e) => (
               <View key={e.id} style={styles.eventRow}>
-                <StrongText>{formatUsd(e.amount)}</StrongText>
+                <StrongText>{format(e.amount)}</StrongText>
                 <CaptionText style={styles.muted}>
                   {e.contributed_at}
                   {e.note ? ` · ${e.note}` : ''}

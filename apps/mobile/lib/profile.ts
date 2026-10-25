@@ -1,6 +1,12 @@
 import * as Localization from 'expo-localization';
 import type { User } from '@supabase/supabase-js';
 
+import {
+  DEFAULT_CURRENCY,
+  parseAccountCurrency,
+  type AccountCurrency,
+} from '@/constants/currencies';
+
 import { supabase } from './supabase';
 
 /** Transactions screen date layout preference (profiles.transactions_date_view). */
@@ -23,6 +29,12 @@ export type Profile = {
   timezone: string;
   /** Last chosen Transactions date layout; default month. */
   transactions_date_view: TransactionsDateView;
+  /** One currency per account; default HKD. */
+  currency: AccountCurrency;
+  currency_converted_at: string | null;
+  last_fx_from: string | null;
+  last_fx_to: string | null;
+  last_fx_rate: number | null;
   created_at: string;
   updated_at: string;
 };
@@ -35,6 +47,15 @@ function mapProfile(row: Record<string, unknown>): Profile {
     transactions_date_view: parseTransactionsDateView(
       row.transactions_date_view
     ),
+    currency: parseAccountCurrency(row.currency ?? DEFAULT_CURRENCY),
+    currency_converted_at:
+      (row.currency_converted_at as string | null) ?? null,
+    last_fx_from: (row.last_fx_from as string | null) ?? null,
+    last_fx_to: (row.last_fx_to as string | null) ?? null,
+    last_fx_rate:
+      row.last_fx_rate == null || row.last_fx_rate === ''
+        ? null
+        : Number(row.last_fx_rate),
     created_at: String(row.created_at),
     updated_at: String(row.updated_at),
   };
@@ -95,6 +116,7 @@ export async function ensureProfile(user: User): Promise<Profile | null> {
         display_name: displayName,
         timezone,
         transactions_date_view: DEFAULT_TRANSACTIONS_DATE_VIEW,
+        currency: DEFAULT_CURRENCY,
       },
       { onConflict: 'id' }
     )

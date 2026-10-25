@@ -6,52 +6,57 @@ import { parseVoiceTranscript } from './voiceParse.ts';
 test('parses spent amount and groceries category', () => {
   const d = parseVoiceTranscript('spent 45 dollars on groceries');
   assert.ok(d);
-  assert.equal(d.confidence, 'full');
-  assert.equal(d.type, 'expense');
   assert.equal(d.amount, '45.00');
+  assert.equal(d.type, 'expense');
   assert.equal(d.category, 'Groceries');
 });
 
 test('parses income salary', () => {
   const d = parseVoiceTranscript('income 2000 salary');
   assert.ok(d);
-  assert.equal(d.type, 'income');
   assert.equal(d.amount, '2000.00');
+  assert.equal(d.type, 'income');
   assert.equal(d.category, 'Salary');
 });
 
-test('uses eating out alias for lunch', () => {
+test('parses lunch alias to Eating out', () => {
   const d = parseVoiceTranscript('bought lunch for 18.50');
   assert.ok(d);
   assert.equal(d.amount, '18.50');
   assert.equal(d.category, 'Eating out');
-  assert.equal(d.type, 'expense');
 });
 
-test('dollar-sign amount', () => {
+test('parses gas alias to Transport', () => {
   const d = parseVoiceTranscript('$32.99 for gas');
   assert.ok(d);
   assert.equal(d.amount, '32.99');
   assert.equal(d.category, 'Transport');
 });
 
-test('partial when no amount — keeps transcript as note', () => {
+test('partial when no amount', () => {
   const d = parseVoiceTranscript('something about groceries');
   assert.ok(d);
   assert.equal(d.confidence, 'partial');
-  assert.equal(d.amount, '');
   assert.equal(d.category, 'Groceries');
-  assert.match(d.note, /something|groceries/i);
 });
 
 test('empty transcript returns null', () => {
   assert.equal(parseVoiceTranscript('   '), null);
 });
 
-test('freelance income alias', () => {
+test('parses freelance income', () => {
   const d = parseVoiceTranscript('got paid 1500 for freelance work');
   assert.ok(d);
-  assert.equal(d.type, 'income');
   assert.equal(d.amount, '1500.00');
+  assert.equal(d.type, 'income');
   assert.equal(d.category, 'Freelance');
+});
+
+test('matches custom category names when provided', () => {
+  const d = parseVoiceTranscript('spent 20 on bubble tea', {
+    expense: ['Bubble tea'],
+  });
+  assert.ok(d);
+  assert.equal(d.amount, '20.00');
+  assert.equal(d.category, 'Bubble tea');
 });

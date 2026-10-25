@@ -30,7 +30,7 @@ import {
   type StatsScope,
 } from '@/hooks/useStats';
 import { useAuth } from '@/lib/auth';
-import { formatUsd } from '@/lib/money';
+import { useFormatMoney } from '@/hooks/useFormatMoney';
 import { guardedPush } from '@/lib/navGuard';
 import {
   PeriodNavHeader,
@@ -47,15 +47,15 @@ import type { StatsMetric } from '@/lib/stats';
 
 const ADD_TRANSACTION = '/transaction/new';
 
-function formatMoney(n: number): string {
-  const sign = n < 0 ? '−' : '';
-  return `${sign}${formatUsd(Math.abs(n))}`;
-}
-
 export default function StatsScreen() {
   const router = useRouter();
   const navigation = useNavigation();
   const { profile } = useAuth();
+  const { format } = useFormatMoney();
+  const formatSigned = (n: number): string => {
+    const sign = n < 0 ? '−' : '';
+    return `${sign}${format(Math.abs(n))}`;
+  };
   const timeZone = profile?.timezone || 'UTC';
   const partnerLink = usePartnerLink();
   const isPaired = partnerLink.data?.status === 'active';
@@ -323,12 +323,12 @@ export default function StatsScreen() {
             <View style={styles.quietPeers}>
               {(pieType === 'expense'
                 ? [
-                    { label: 'Earned', value: formatMoney(incomeSum) },
-                    { label: 'Net', value: formatMoney(netSum) },
+                    { label: 'Earned', value: formatSigned(incomeSum) },
+                    { label: 'Net', value: formatSigned(netSum) },
                   ]
                 : [
-                    { label: 'Spent', value: formatMoney(expenseSum) },
-                    { label: 'Net', value: formatMoney(netSum) },
+                    { label: 'Spent', value: formatSigned(expenseSum) },
+                    { label: 'Net', value: formatSigned(netSum) },
                   ]
               ).map((peer) => (
                 <View key={peer.label} style={styles.quietPeer}>

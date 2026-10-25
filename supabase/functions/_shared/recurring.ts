@@ -31,7 +31,7 @@ export type GeneratedOccurrence = {
   type: 'expense' | 'income';
   category: string;
   note: string | null;
-  currency: 'USD';
+  currency: string;
   occurred_at: string;
   recurring_series_id: string;
   occurrence_key: string;
@@ -355,13 +355,22 @@ export function enumerateOccurrences(
       type: series.type,
       category: series.category,
       note: series.note,
-      currency: 'USD',
+      currency: 'HKD',
       occurred_at: occurred.toISOString(),
       recurring_series_id: series.id,
       occurrence_key: key,
     });
   }
   return out;
+}
+
+/** Override currency on generated rows (from profiles.currency). */
+export function withCurrency(
+  rows: GeneratedOccurrence[],
+  currency: string
+): GeneratedOccurrence[] {
+  const code = currency && currency.trim() ? currency.trim() : 'HKD';
+  return rows.map((r) => ({ ...r, currency: code }));
 }
 
 export type GenerateResult = {
@@ -384,11 +393,35 @@ export async function generateForSeriesList(
     errors: [],
   };
 
+  const userIds = [...new Set(seriesList.map((s) => s.user_id))];
+  const currencyByUser = new Map<string, string>();
+  if (userIds.length > 0) {
+    const { data: profiles, error: profileError } = await client
+      .from('profiles')
+      .select('id, currency')
+      .in('id', userIds);
+    if (profileError) {
+      result.errors.push(`profiles: ${profileError.message}`);
+    } else {
+      for (const row of profiles ?? []) {
+        currencyByUser.set(
+          String(row.id),
+          typeof row.currency === 'string' && row.currency
+            ? row.currency
+            : 'HKD'
+        );
+      }
+    }
+  }
+
   for (const series of seriesList) {
     result.seriesProcessed += 1;
     let rows: GeneratedOccurrence[];
     try {
-      rows = enumerateOccurrences(series, now);
+      rows = withCurrency(
+        enumerateOccurrences(series, now),
+        currencyByUser.get(series.user_id) ?? 'HKD'
+      );
     } catch (err) {
       result.errors.push(
         `${series.id}: ${err instanceof Error ? err.message : String(err)}`

@@ -4,7 +4,7 @@ import { CaptionText, StrongText } from '@/components/StyledText';
 import type { TransactionType } from '@/constants/categories';
 import { colorForCategory } from '@/constants/chartColors';
 import { colors, fonts, space, typography } from '@/constants/theme';
-import { formatUsd } from '@/lib/money';
+import { useFormatMoney } from '@/hooks/useFormatMoney';
 import type { CategoryTotal } from '@/lib/stats';
 
 type Props = {
@@ -16,6 +16,7 @@ type Props = {
 };
 
 export function CategoryBreakdownList({ data, onSelect, type }: Props) {
+  const { format } = useFormatMoney();
   if (data.length === 0) {
     return null;
   }
@@ -31,7 +32,7 @@ export function CategoryBreakdownList({ data, onSelect, type }: Props) {
       {data.map((row, index) => {
         const pct = Math.round((row.sum / total) * 100);
         const emphasis = emphasizeDominant && index === 0;
-        const label = `${row.category}, ${pct} percent, ${formatUsd(row.sum)}${
+        const label = `${row.category}, ${pct} percent, ${format(row.sum)}${
           selectable ? '. Open transactions.' : '.'
         }`;
         const body = (
@@ -48,7 +49,7 @@ export function CategoryBreakdownList({ data, onSelect, type }: Props) {
                   {pct}%
                 </StrongText>
                 <CaptionText style={styles.amount}>
-                  {formatUsd(row.sum)}
+                  {format(row.sum)}
                 </CaptionText>
               </View>
             </View>

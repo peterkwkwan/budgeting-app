@@ -1,5 +1,5 @@
-import type { TransactionCategory, TransactionType } from '@/constants/categories';
-import { isValidCategory } from '@/constants/categories';
+import type { TransactionType } from '@/constants/categories';
+import { DEFAULT_CURRENCY } from '@/constants/currencies';
 import {
   formatDisplayDate,
   isOnOrBeforeLocalToday,
@@ -18,7 +18,7 @@ export type Transaction = {
   user_id: string;
   amount: number;
   type: TransactionType;
-  category: TransactionCategory;
+  category: string;
   note: string | null;
   currency: string;
   occurred_at: string;
@@ -43,9 +43,9 @@ function mapRow(row: Record<string, unknown>): Transaction {
     user_id: String(row.user_id),
     amount: Number(row.amount),
     type: row.type as TransactionType,
-    category: row.category as TransactionCategory,
+    category: String(row.category),
     note: (row.note as string | null) ?? null,
-    currency: String(row.currency ?? 'USD'),
+    currency: String(row.currency ?? DEFAULT_CURRENCY),
     occurred_at: String(row.occurred_at),
     recurring_series_id: (row.recurring_series_id as string | null) ?? null,
     occurrence_key: (row.occurrence_key as string | null) ?? null,
@@ -62,8 +62,9 @@ function validateInput(input: TransactionInput): string | null {
   if (input.type !== 'expense' && input.type !== 'income') {
     return 'Type must be expense or income.';
   }
-  if (!isValidCategory(input.type, input.category)) {
-    return 'Category does not match the selected type.';
+  const category = input.category?.trim() ?? '';
+  if (!category || category.length > 40) {
+    return 'Pick a category.';
   }
   const note = input.note?.trim() ?? '';
   if (note.length > 500) {
@@ -221,7 +222,8 @@ export async function getTransaction(id: string): Promise<Transaction | null> {
 
 export async function createTransaction(
   userId: string,
-  input: TransactionInput
+  input: TransactionInput,
+  currency: string = DEFAULT_CURRENCY
 ): Promise<Transaction> {
   const validationError = validateInput(input);
   if (validationError) {
@@ -236,9 +238,9 @@ export async function createTransaction(
       user_id: userId,
       amount: input.amount,
       type: input.type,
-      category: input.category,
+      category: input.category.trim(),
       note,
-      currency: 'USD',
+      currency,
       occurred_at: input.occurred_at,
     })
     .select('*')
@@ -328,12 +330,10 @@ export async function bulkPatchTransactions(
 
   await Promise.all(
     rows.map((row) => {
-      const category = patch.category ?? row.category;
+      const category = (patch.category ?? row.category).trim();
       const type = row.type;
-      if (patch.category !== undefined && !isValidCategory(type, category)) {
-        throw new Error(
-          `“${category}” is not valid for ${type === 'income' ? 'income' : 'expense'} transactions.`
-        );
+      if (patch.category !== undefined && !category) {
+        throw new Error('Pick a category.');
       }
       return updateTransaction(row.id, {
         amount: row.amount,

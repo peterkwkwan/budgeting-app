@@ -98,7 +98,7 @@ export function useTransaction(id: string | undefined) {
 }
 
 export function useCreateTransaction() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -106,7 +106,11 @@ export function useCreateTransaction() {
       if (!user?.id) {
         throw new Error('You must be signed in to add a transaction.');
       }
-      return createTransaction(user.id, input);
+      return createTransaction(
+        user.id,
+        input,
+        profile?.currency ?? 'HKD'
+      );
     },
     onSuccess: () => {
       invalidateTransactionsAndStats(queryClient);

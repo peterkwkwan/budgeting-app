@@ -1,5 +1,4 @@
-import type { TransactionCategory, TransactionType } from '@/constants/categories';
-import { isValidCategory } from '@/constants/categories';
+import type { TransactionType } from '@/constants/categories';
 import type { EndsMode, RepeatRule, Weekday } from '@/constants/repeatPresets';
 
 import { supabase } from './supabase';
@@ -18,7 +17,7 @@ export type RecurringSeries = {
   user_id: string;
   amount: number;
   type: TransactionType;
-  category: TransactionCategory;
+  category: string;
   note: string | null;
   cadence: RecurringCadence;
   byweekday: number[] | null;
@@ -78,7 +77,7 @@ function mapRow(row: Record<string, unknown>): RecurringSeries {
     user_id: String(row.user_id),
     amount: Number(row.amount),
     type: row.type as TransactionType,
-    category: row.category as TransactionCategory,
+    category: String(row.category),
     note: (row.note as string | null) ?? null,
     cadence: row.cadence as RecurringCadence,
     byweekday: mapByweekday(row.byweekday),
@@ -124,8 +123,9 @@ function validateCreate(input: RecurringSeriesInput): string | null {
   if (input.type !== 'expense' && input.type !== 'income') {
     return 'Type must be expense or income.';
   }
-  if (!isValidCategory(input.type, input.category)) {
-    return 'Category does not match the selected type.';
+  const category = input.category?.trim() ?? '';
+  if (!category || category.length > 40) {
+    return 'Pick a category.';
   }
   if (!RECURRING_CADENCES.includes(input.cadence)) {
     return 'Pick daily, weekly, monthly, or yearly.';
@@ -161,8 +161,9 @@ function validateUpdate(input: RecurringSeriesUpdateInput): string | null {
   if (input.type !== 'expense' && input.type !== 'income') {
     return 'Type must be expense or income.';
   }
-  if (!isValidCategory(input.type, input.category)) {
-    return 'Category does not match the selected type.';
+  const category = input.category?.trim() ?? '';
+  if (!category || category.length > 40) {
+    return 'Pick a category.';
   }
   if (input.endsMode != null) {
     const ends = normalizeEnds(input);

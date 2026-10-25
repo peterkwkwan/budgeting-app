@@ -15,7 +15,6 @@ import {
 import { CaptionText, StrongText } from '@/components/StyledText';
 import { Text } from '@/components/Themed';
 import {
-  categoriesForType,
   defaultCategory,
   type TransactionType,
 } from '@/constants/categories';
@@ -24,6 +23,7 @@ import {
   endsSummary,
   type EndsMode,
 } from '@/constants/repeatPresets';
+import { useUserCategories } from '@/hooks/useUserCategories';
 import { formatDisplayDate } from '@/lib/dates';
 import {
   formatAmountInput,
@@ -36,6 +36,7 @@ import {
   type RecurringSeriesInput,
   type RecurringSeriesUpdateInput,
 } from '@/lib/recurring';
+import { pickerCategories } from '@/lib/userCategories';
 
 export type RecurringFormValues = {
   amount: string;
@@ -98,11 +99,13 @@ export function RecurringForm(props: Props) {
     String(initial?.endsAfterCount ?? 12)
   );
   const [localError, setLocalError] = useState<string | null>(null);
+  const customsQuery = useUserCategories();
+  const customs = customsQuery.data ?? [];
 
   function setTypeAndCategory(next: TransactionType) {
     setType(next);
-    const allowed = categoriesForType(next);
-    if (!(allowed as readonly string[]).includes(category)) {
+    const allowed = pickerCategories(next, customs);
+    if (!allowed.includes(category)) {
       setCategory(defaultCategory(next));
     }
   }
@@ -161,7 +164,7 @@ export function RecurringForm(props: Props) {
     }
   }
 
-  const categories = categoriesForType(type);
+  const categories = pickerCategories(type, customs);
   const displayError = localError ?? error;
   const stopBusy = !isCreate && props.stopBusy ? props.stopBusy : false;
 

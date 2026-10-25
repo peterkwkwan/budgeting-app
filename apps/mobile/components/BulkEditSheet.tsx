@@ -15,14 +15,16 @@ import {
 
 import { CaptionText, StrongText, TitleText } from '@/components/StyledText';
 import {
-  categoriesForType,
+  defaultCategory,
   type TransactionType,
 } from '@/constants/categories';
 import { colors, fonts, radius, space, typography } from '@/constants/theme';
+import { useUserCategories } from '@/hooks/useUserCategories';
 import { useAuth } from '@/lib/auth';
 import { formatDisplayDate } from '@/lib/dates';
 import { deviceTimezone } from '@/lib/profile';
 import type { Transaction } from '@/lib/transactions';
+import { pickerCategories } from '@/lib/userCategories';
 
 export type BulkEditField = 'date' | 'category' | 'note';
 
@@ -75,6 +77,8 @@ export function BulkEditSheet({
 }: Props) {
   const { profile } = useAuth();
   const timeZone = profile?.timezone || deviceTimezone();
+  const customsQuery = useUserCategories();
+  const customs = customsQuery.data ?? [];
 
   const sharedType: TransactionType | null = useMemo(() => {
     if (rows.length === 0) return null;
@@ -87,7 +91,7 @@ export function BulkEditSheet({
   );
   const [showPicker, setShowPicker] = useState(Platform.OS === 'ios');
   const [category, setCategory] = useState<string>(
-    () => rows[0]?.category ?? categoriesForType('expense')[0]
+    () => rows[0]?.category ?? defaultCategory('expense')
   );
   const [note, setNote] = useState(() => rows[0]?.note ?? '');
   const [localError, setLocalError] = useState<string | null>(null);
@@ -97,7 +101,7 @@ export function BulkEditSheet({
     const seed = rows[0];
     setDate(seed ? new Date(seed.occurred_at) : new Date());
     setShowPicker(Platform.OS === 'ios');
-    setCategory(seed?.category ?? categoriesForType('expense')[0]);
+    setCategory(seed?.category ?? defaultCategory('expense'));
     setNote(seed?.note ?? '');
     setLocalError(null);
   }, [visible, field, rows]);
@@ -138,7 +142,9 @@ export function BulkEditSheet({
 
   if (!field) return null;
 
-  const categories = sharedType ? categoriesForType(sharedType) : [];
+  const categories = sharedType
+    ? pickerCategories(sharedType, customs)
+    : [];
 
   return (
     <Modal

@@ -14,6 +14,7 @@ import { plannerVehicleKeys } from '@/lib/plannerVehicles';
 import { recurringKeys } from '@/lib/recurring';
 import { statsKeys } from '@/lib/stats';
 import { transactionKeys } from '@/lib/transactions';
+import { userCategoryKeys } from '@/lib/userCategories';
 
 export const accountBackupKeys = {
   all: ['account-backup'] as const,
@@ -30,6 +31,7 @@ export function invalidateAllProductQueries(
   void queryClient.invalidateQueries({ queryKey: partnerKeys.all });
   void queryClient.invalidateQueries({ queryKey: plannerGoalKeys.all });
   void queryClient.invalidateQueries({ queryKey: plannerVehicleKeys.all });
+  void queryClient.invalidateQueries({ queryKey: userCategoryKeys.all });
   void queryClient.invalidateQueries({ queryKey: accountBackupKeys.all });
 }
 

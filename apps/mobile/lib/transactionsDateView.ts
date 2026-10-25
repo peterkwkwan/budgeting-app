@@ -8,7 +8,9 @@ import {
   zonedYmd,
   type LocalYmd,
 } from './dates';
-import { formatCompactUsd, formatUsd } from './money';
+import { DEFAULT_CURRENCY, type AccountCurrency } from '@/constants/currencies';
+
+import { formatCompactMoney, formatMoney } from './money';
 import type { PeriodFocus } from './periods';
 import type { Transaction } from './transactions';
 
@@ -154,18 +156,21 @@ export function dayNetsInMonth(
 export type DayNetTone = 'income' | 'expense' | 'zero';
 
 /**
- * Signed USD label for a day net.
- * Positive `+$12.50` (income), negative `−$18.75` (expense), zero `$0.00`.
- * `compact` abbreviates amounts at or above $1,000 so calendar chips fit.
+ * Signed money label for a day net.
+ * Positive `+HK$12.50` (income), negative `−HK$18.75` (expense), zero `HK$0.00`.
+ * `compact` abbreviates amounts at or above 1,000 so calendar chips fit.
  */
 export function formatDayNet(
   net: number,
-  opts?: { compact?: boolean }
+  opts?: { compact?: boolean; currency?: AccountCurrency | string }
 ): { text: string; tone: DayNetTone } {
+  const currency = opts?.currency ?? DEFAULT_CURRENCY;
   const tone: DayNetTone =
     net > 0 ? 'income' : net < 0 ? 'expense' : 'zero';
   const compact = Boolean(opts?.compact) && Math.abs(net) >= 1000;
-  const body = compact ? formatCompactUsd(Math.abs(net)) : formatUsd(net);
+  const body = compact
+    ? formatCompactMoney(Math.abs(net), currency)
+    : formatMoney(net, currency);
   if (net > 0) return { text: `+${body}`, tone };
   if (net < 0) return { text: `−${body}`, tone };
   return { text: body, tone };

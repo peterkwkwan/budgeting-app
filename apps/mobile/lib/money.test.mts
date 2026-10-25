@@ -4,7 +4,9 @@ import { test } from 'node:test';
 import {
   formatAmountInput,
   formatAmountInputFromNumber,
+  formatCompactMoney,
   formatCompactUsd,
+  formatMoney,
   formatUsd,
   niceAxisTicks,
   parseAmountInput,
@@ -21,6 +23,12 @@ test('adds thousands commas and keeps two decimals', () => {
   assert.equal(formatUsd(0), '$0.00');
 });
 
+test('formatMoney uses account currency symbols', () => {
+  assert.equal(formatMoney(12.5, 'HKD'), 'HK$12.50');
+  assert.equal(formatMoney(1200, 'JPY'), '¥1,200');
+  assert.equal(formatMoney(99.5, 'EUR'), '€99.50');
+});
+
 test('formatCompactUsd abbreviates axis ticks', () => {
   assert.equal(formatCompactUsd(0), '$0');
   assert.equal(formatCompactUsd(42), '$42');
@@ -30,6 +38,10 @@ test('formatCompactUsd abbreviates axis ticks', () => {
   assert.equal(formatCompactUsd(1_000_000), '$1.0M');
   assert.equal(formatCompactUsd(1_079_462.49), '$1.1M');
   assert.equal(formatCompactUsd(-250_000), '-$250k');
+});
+
+test('formatCompactMoney respects currency symbol', () => {
+  assert.equal(formatCompactMoney(250_000, 'HKD'), 'HK$250k');
 });
 
 test('niceAxisTicks returns 3–4 values spanning the range', () => {

@@ -22,9 +22,9 @@ import {
   type PlanCadence,
 } from '@/constants/planner';
 import { colors, fonts, radius, space, typography } from '@/constants/theme';
+import { useFormatMoney } from '@/hooks/useFormatMoney';
 import {
   formatAmountInput,
-  formatUsd,
   parseAmountInput,
 } from '@/lib/money';
 import { formatDateOnly, parseDateOnly } from '@/lib/plannerMath';
@@ -68,6 +68,7 @@ export function GoalForm({
   onDelete,
   deleteBusy = false,
 }: Props) {
+  const { format } = useFormatMoney();
   const [name, setName] = useState(initial?.name ?? '');
   const [goalType, setGoalType] = useState<GoalType>(
     initial?.goal_type ?? 'emergency'
@@ -236,7 +237,7 @@ export function GoalForm({
               {vehicles.map((v) => (
                 <Chip
                   key={v.id}
-                  label={`${v.name} (${formatUsd(v.balance)})`}
+                  label={`${v.name} (${format(v.balance)})`}
                   selected={vehicleIds.includes(v.id)}
                   onPress={() => toggleVehicle(v.id)}
                 />

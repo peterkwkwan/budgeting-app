@@ -68,6 +68,7 @@ export default function TransactionsScreen() {
   const navigation = useNavigation();
   const { profile } = useAuth();
   const timeZone = profile?.timezone || 'UTC';
+  const currency = profile?.currency ?? 'HKD';
   // Layout mode is chosen in Account → Settings; honor the saved profile value.
   const dateView = parseTransactionsDateView(profile?.transactions_date_view);
 
@@ -315,6 +316,7 @@ export default function TransactionsScreen() {
           selectedDay={selectedDay}
           dayNets={dayNets}
           onSelectDay={setSelectedDay}
+          currency={currency}
         />
       ) : null}
       {monthHasTransactions && dateView === 'month' ? (
@@ -323,6 +325,7 @@ export default function TransactionsScreen() {
           selectedDay={selectedDay}
           dayNets={dayNets}
           onSelectDay={setSelectedDay}
+          currency={currency}
         />
       ) : null}
       {monthHasTransactions &&
@@ -331,7 +334,7 @@ export default function TransactionsScreen() {
           <StrongText style={styles.dayHeadingText}>
             {selectedDayHeading}
           </StrongText>
-          <DayNetAmount net={dayNets.get(selectedDay)} />
+          <DayNetAmount net={dayNets.get(selectedDay)} currency={currency} />
         </View>
       ) : null}
     </View>
@@ -410,7 +413,10 @@ export default function TransactionsScreen() {
                   <StrongText style={styles.sectionHeaderText}>
                     {section.title}
                   </StrongText>
-                  <DayNetAmount net={netOfTransactions(section.data)} />
+                  <DayNetAmount
+                    net={netOfTransactions(section.data)}
+                    currency={currency}
+                  />
                 </View>
               )}
               renderItem={({ item }) => renderRow(item)}
@@ -510,9 +516,15 @@ function dayNetColor(tone: DayNetTone): string {
   return colors.inkMuted;
 }
 
-function DayNetAmount({ net }: { net: number | null | undefined }) {
+function DayNetAmount({
+  net,
+  currency,
+}: {
+  net: number | null | undefined;
+  currency?: string;
+}) {
   if (net == null) return null;
-  const label = formatDayNet(net);
+  const label = formatDayNet(net, { currency });
   return (
     <StrongText
       style={[styles.dayNet, { color: dayNetColor(label.tone) }]}

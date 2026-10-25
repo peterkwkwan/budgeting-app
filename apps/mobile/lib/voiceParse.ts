@@ -123,11 +123,25 @@ function extractAmount(text: string): { value: number; raw: string } | null {
   return null;
 }
 
+export type VoiceCategoryExtras = {
+  expense?: readonly string[];
+  income?: readonly string[];
+};
+
+function categoriesWithExtras(
+  type: TransactionType,
+  extras?: VoiceCategoryExtras
+): string[] {
+  const custom = extras?.[type] ?? [];
+  return [...categoriesForType(type), ...custom];
+}
+
 function matchCategory(
   lower: string,
-  type: TransactionType
+  type: TransactionType,
+  extras?: VoiceCategoryExtras
 ): { category: string; matched: string | null } {
-  const cats = categoriesForType(type);
+  const cats = categoriesWithExtras(type, extras);
   let best: string | null = null;
   let bestLen = 0;
   for (const cat of cats) {
@@ -144,7 +158,7 @@ function matchCategory(
   let aliasLen = 0;
   let aliasKey: string | null = null;
   for (const [key, cat] of Object.entries(aliases)) {
-    if (!(cats as readonly string[]).includes(cat)) continue;
+    if (!cats.includes(cat)) continue;
     const re = new RegExp(`\\b${key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
     if (re.test(lower) && key.length > aliasLen) {
       aliasHit = cat;
@@ -182,14 +196,17 @@ function buildNote(
 }
 
 /** Parse free-form speech into a draft. Always returns a draft object when transcript is non-empty. */
-export function parseVoiceTranscript(raw: string): VoiceDraft | null {
+export function parseVoiceTranscript(
+  raw: string,
+  extras?: VoiceCategoryExtras
+): VoiceDraft | null {
   const transcript = raw.trim().replace(/\s+/g, ' ');
   if (!transcript) return null;
 
   const lower = transcript.toLowerCase();
   const type = detectType(lower);
   const amount = extractAmount(transcript);
-  const { category, matched } = matchCategory(lower, type);
+  const { category, matched } = matchCategory(lower, type, extras);
   const note = buildNote(transcript, amount?.raw ?? null, matched);
 
   if (!amount) {
@@ -214,10 +231,10 @@ export function parseVoiceTranscript(raw: string): VoiceDraft | null {
 }
 
 /** Short phrases to bias Android STT toward Fudget categories + money words. */
-export function speechContextualHints(): string[] {
+export function speechContextualHints(extras?: VoiceCategoryExtras): string[] {
   return [
-    ...categoriesForType('expense'),
-    ...categoriesForType('income'),
+    ...categoriesWithExtras('expense', extras),
+    ...categoriesWithExtras('income', extras),
     'dollars',
     'spent',
     'income',
