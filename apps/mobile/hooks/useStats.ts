@@ -5,7 +5,10 @@ import { useCallback } from 'react';
 import type { TransactionType } from '@/constants/categories';
 import { useAuth } from '@/lib/auth';
 import type { PeriodBounds, TrendBucket } from '@/lib/periods';
-import { trendBucketForPeriod } from '@/lib/periods';
+import {
+  resolveTrendBounds,
+  trendBucketForPeriod,
+} from '@/lib/periods';
 import { deviceTimezone } from '@/lib/profile';
 import {
   fetchAggregateCategoryTotals,
@@ -88,15 +91,17 @@ export function useAggregateStats(
 export function usePersonalTrend(
   period: PeriodBounds,
   metric: StatsMetric,
-  bucket: TrendBucket
+  bucket: TrendBucket,
+  timeZone: string = 'UTC'
 ) {
-  const startIso = period.start.toISOString();
-  const endIso = period.end.toISOString();
+  // Wider than pie/totals for Monthly/Yearly so each mode can plot many nodes.
+  const { start, end } = resolveTrendBounds(period, timeZone);
+  const startIso = start.toISOString();
+  const endIso = end.toISOString();
 
   return useQuery({
     queryKey: statsKeys.trend(metric, startIso, endIso, bucket),
-    queryFn: () =>
-      fetchPersonalTrend(metric, period.start, period.end, bucket),
+    queryFn: () => fetchPersonalTrend(metric, start, end, bucket),
   });
 }
 

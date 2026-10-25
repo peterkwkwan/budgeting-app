@@ -133,7 +133,7 @@ export default function StatsScreen() {
 
   const personal = usePersonalStats(period, pieType);
   const aggregate = useAggregateStats(period, pieType, isPaired && scope === 'pair');
-  const trend = usePersonalTrend(period, trendMetric, personal.bucket);
+  const trend = usePersonalTrend(period, trendMetric, personal.bucket, timeZone);
 
   const showPair = scope === 'pair' && isPaired;
   const totals = showPair ? aggregate.totals : personal.totals;

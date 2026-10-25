@@ -7,7 +7,10 @@ import {
   formatTrendBucketLabel,
   periodModeLabel,
   resolvePeriodBounds,
+  resolveTrendBounds,
   shiftPeriodFocus,
+  TREND_MONTHLY_POINTS,
+  TREND_YEARLY_POINTS,
   trendBucketForPeriod,
 } from './periods.ts';
 
@@ -87,7 +90,7 @@ describe('periods', () => {
     );
   });
 
-  it('trend bucket follows period mode so multi-period data can form a line', () => {
+  it('trend nodes match period mode (month / year totals)', () => {
     const month = resolvePeriodBounds('month', tz, {
       focus: { year: 2026, month: 10 },
       now,
@@ -96,15 +99,13 @@ describe('periods', () => {
       focus: { year: 2026, month: 10 },
       now,
     });
-    // Monthly window → day grain (not one month-point).
     assert.equal(
       trendBucketForPeriod(month.start, month.end, 'month'),
-      'day'
+      'month'
     );
-    // Yearly window → month grain (Sep/Oct/Nov spend → multiple points).
     assert.equal(
       trendBucketForPeriod(year.start, year.end, 'year'),
-      'month'
+      'year'
     );
 
     // Period (custom): ≤45 → day, ≤183 → week, else → month
@@ -145,11 +146,44 @@ describe('periods', () => {
     );
   });
 
+  it('Trend widens Monthly/Yearly so multiple period nodes can plot', () => {
+    const focus = { year: 2026, month: 10 };
+    const month = resolvePeriodBounds('month', tz, { focus, now });
+    const monthTrend = resolveTrendBounds(month, tz, { focus });
+    assert.equal(monthTrend.end.getTime(), month.end.getTime());
+    const expectedMonthStart = resolvePeriodBounds('month', tz, {
+      focus: shiftPeriodFocus(focus, 'month', -(TREND_MONTHLY_POINTS - 1)),
+      now,
+    }).start;
+    assert.equal(monthTrend.start.getTime(), expectedMonthStart.getTime());
+
+    const year = resolvePeriodBounds('year', tz, { focus, now });
+    const yearTrend = resolveTrendBounds(year, tz, { focus });
+    assert.equal(yearTrend.end.getTime(), year.end.getTime());
+    const expectedYearStart = resolvePeriodBounds('year', tz, {
+      focus: shiftPeriodFocus(focus, 'year', -(TREND_YEARLY_POINTS - 1)),
+      now,
+    }).start;
+    assert.equal(yearTrend.start.getTime(), expectedYearStart.getTime());
+
+    const customStart = new Date('2026-03-01T18:00:00.000Z');
+    const customEnd = new Date('2026-06-15T18:00:00.000Z');
+    const custom = resolvePeriodBounds('custom', tz, {
+      customStart,
+      customEndInclusive: customEnd,
+      now,
+    });
+    const customTrend = resolveTrendBounds(custom, tz);
+    assert.equal(customTrend.start.getTime(), custom.start.getTime());
+    assert.equal(customTrend.end.getTime(), custom.end.getTime());
+  });
+
   it('formats trend bucket X labels', () => {
     const iso = '2026-10-01T07:00:00.000Z';
     assert.match(formatTrendBucketLabel(iso, 'day', tz), /Oct/);
     assert.match(formatTrendBucketLabel(iso, 'week', tz), /Oct/);
-    assert.equal(formatTrendBucketLabel(iso, 'month', tz), 'Oct');
+    assert.match(formatTrendBucketLabel(iso, 'month', tz), /Oct/);
+    assert.match(formatTrendBucketLabel(iso, 'month', tz), /26/);
     assert.equal(formatTrendBucketLabel(iso, 'year', tz), '2026');
   });
 });

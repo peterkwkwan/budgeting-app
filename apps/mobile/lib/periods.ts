@@ -263,28 +263,72 @@ export function resolvePeriodBounds(
   };
 }
 
+/** How many month nodes the Monthly Trend series ends at the focused month. */
+export const TREND_MONTHLY_POINTS = 12;
+/** How many year nodes the Yearly Trend series ends at the focused year. */
+export const TREND_YEARLY_POINTS = 5;
+
 /**
- * Trend grouping for the Stats chart, aligned with top-nav period mode:
- * - Monthly → day within the focused month
- * - Yearly → month within the focused year
+ * Trend node grain = selected period mode:
+ * - Monthly → one node per month total
+ * - Yearly → one node per year total
  * - Period (custom) → smart default by range length:
  *   ≤45 days → day; ≤183 days → week; else → month
  *
- * Grain must be finer than the selected window so multiple real totals can
- * form a line (Monthly+month or Yearly+year collapses to ≤1 point).
+ * Pair with `resolveTrendBounds` so Monthly/Yearly query enough history
+ * for multiple nodes (a single focused month/year alone collapses to ≤1 point).
  */
 export function trendBucketForPeriod(
   start: Date,
   end: Date,
   preset?: PeriodPreset
 ): TrendBucket {
-  if (preset === 'month') return 'day';
-  if (preset === 'year') return 'month';
+  if (preset === 'month') return 'month';
+  if (preset === 'year') return 'year';
 
   const days = (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24);
   if (days <= 45) return 'day';
   if (days <= 183) return 'week';
   return 'month';
+}
+
+/**
+ * Date window for the Trend RPC. Pie/totals keep `period`; Trend widens so
+ * Monthly can plot trailing months and Yearly trailing years ending at focus.
+ * Custom Period uses the selected range as-is.
+ */
+export function resolveTrendBounds(
+  period: PeriodBounds,
+  timeZone: string,
+  options?: {
+    focus?: PeriodFocus;
+    monthCount?: number;
+    yearCount?: number;
+  }
+): { start: Date; end: Date } {
+  if (period.preset === 'custom') {
+    return { start: period.start, end: period.end };
+  }
+
+  const startParts = zonedParts(period.start, timeZone);
+  const focus =
+    options?.focus ??
+    (period.preset === 'year'
+      ? { year: startParts.year, month: 1 }
+      : { year: startParts.year, month: startParts.month });
+
+  if (period.preset === 'year') {
+    const count = Math.max(1, options?.yearCount ?? TREND_YEARLY_POINTS);
+    const first = shiftPeriodFocus(focus, 'year', -(count - 1));
+    const start = resolvePeriodBounds('year', timeZone, { focus: first }).start;
+    return { start, end: period.end };
+  }
+
+  // month
+  const count = Math.max(1, options?.monthCount ?? TREND_MONTHLY_POINTS);
+  const first = shiftPeriodFocus(focus, 'month', -(count - 1));
+  const start = resolvePeriodBounds('month', timeZone, { focus: first }).start;
+  return { start, end: period.end };
 }
 
 /** Compact X-axis tick for a trend bucket start. */
@@ -303,9 +347,11 @@ export function formatTrendBucketLabel(
       });
     }
     if (bucket === 'month') {
+      // Include year — Monthly Trend spans ~12 months across year boundaries.
       return date.toLocaleDateString(undefined, {
         timeZone,
         month: 'short',
+        year: '2-digit',
       });
     }
     // day or week — show calendar date of the bucket start
@@ -317,7 +363,9 @@ export function formatTrendBucketLabel(
   } catch {
     if (bucket === 'year') return String(date.getUTCFullYear());
     if (bucket === 'month') {
-      return MONTH_NAMES[date.getUTCMonth()]?.slice(0, 3) ?? '';
+      const name = MONTH_NAMES[date.getUTCMonth()]?.slice(0, 3) ?? '';
+      const yy = String(date.getUTCFullYear()).slice(-2);
+      return name ? `${name} ${yy}` : yy;
     }
     return bucketStartIso.slice(0, 10);
   }
