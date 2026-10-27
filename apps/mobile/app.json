@@ -68,7 +68,8 @@
             "com.google.android.tts"
           ]
         }
-      ]
+      ],
+      "expo-sqlite"
     ],
     "experiments": {
       "typedRoutes": true
