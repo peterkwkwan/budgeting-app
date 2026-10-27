@@ -44,7 +44,10 @@ import {
   type PeriodFocus,
   type PeriodPreset,
 } from '@/lib/periods';
-import { STATS_OFFLINE_COPY } from '@/lib/offline/ux';
+import {
+  STATS_OFFLINE_COPY,
+  STATS_PERSONAL_OFFLINE_BANNER,
+} from '@/lib/offline/ux';
 import { savingsRatePercent } from '@/lib/savingsRate';
 import type { StatsMetric } from '@/lib/stats';
 
@@ -61,7 +64,7 @@ export default function StatsScreen() {
   };
   const timeZone = profile?.timezone || 'UTC';
   const partnerLink = usePartnerLink();
-  const { statsBlocked } = useOfflineGates();
+  const { offline, pairStatsBlocked } = useOfflineGates();
   const isPaired = partnerLink.data?.status === 'active';
 
   const [scope, setScope] = useState<StatsScope>('personal');
@@ -136,33 +139,36 @@ export default function StatsScreen() {
   ]);
 
   const personal = usePersonalStats(period, pieType);
-  const aggregate = useAggregateStats(period, pieType, isPaired && scope === 'pair');
+  const showPair = scope === 'pair' && isPaired;
+  const pairLive = showPair && !pairStatsBlocked;
+  const aggregate = useAggregateStats(period, pieType, pairLive);
   const trend = usePersonalTrend(period, trendMetric, personal.bucket, timeZone);
 
-  const showPair = scope === 'pair' && isPaired;
-  const totals = showPair ? aggregate.totals : personal.totals;
-  const categories = showPair ? aggregate.categories : personal.categories;
+  const totals = pairLive ? aggregate.totals : personal.totals;
+  const categories = pairLive ? aggregate.categories : personal.categories;
 
   const refreshing =
     totals.isRefetching ||
     categories.isRefetching ||
-    (!showPair && trend.isRefetching) ||
+    (!pairLive && trend.isRefetching) ||
     partnerLink.isRefetching;
-  const loading =
-    partnerLink.isLoading ||
-    totals.isLoading ||
-    categories.isLoading;
-  const error =
-    (totals.error instanceof Error && totals.error.message) ||
-    (categories.error instanceof Error && categories.error.message) ||
-    (!showPair &&
-      trend.error instanceof Error &&
-      trend.error.message) ||
-    null;
+  const pairBlocked = showPair && pairStatsBlocked;
+  const loading = pairBlocked
+    ? false
+    : partnerLink.isLoading || totals.isLoading || categories.isLoading;
+  const error = pairBlocked
+    ? null
+    : (totals.error instanceof Error && totals.error.message) ||
+      (categories.error instanceof Error && categories.error.message) ||
+      (!pairLive &&
+        trend.error instanceof Error &&
+        trend.error.message) ||
+      null;
 
   const txnCount =
     (totals.data?.expenseCount ?? 0) + (totals.data?.incomeCount ?? 0);
-  const isPeriodEmpty = !loading && !error && txnCount === 0;
+  const isPeriodEmpty =
+    !pairBlocked && !loading && !error && txnCount === 0;
   const expenseSum = totals.data?.expenseSum ?? 0;
   const incomeSum = totals.data?.incomeSum ?? 0;
   const netSum = totals.data?.net ?? 0;
@@ -178,9 +184,10 @@ export default function StatsScreen() {
 
   const onRefresh = () => {
     void partnerLink.refetch();
+    if (showPair && pairStatsBlocked) return;
     void totals.refetch();
     void categories.refetch();
-    if (!showPair) {
+    if (!pairLive) {
       void trend.refetch();
     }
   };
@@ -207,7 +214,15 @@ export default function StatsScreen() {
         />
       }
     >
-      {isPaired && !statsBlocked ? (
+      {offline ? (
+        <View style={styles.offlineBanner} accessibilityRole="text">
+          <CaptionText style={styles.offlineBannerText}>
+            {STATS_PERSONAL_OFFLINE_BANNER}
+          </CaptionText>
+        </View>
+      ) : null}
+
+      {isPaired ? (
         <View style={styles.scopeRow}>
           {(
             [
@@ -239,14 +254,14 @@ export default function StatsScreen() {
         </View>
       ) : null}
 
-      {!statsBlocked && showPair ? (
+      {pairLive ? (
         <CaptionText style={styles.pairHint}>
           Combined totals with {partnerLink.data?.partnerDisplayName ?? 'partner'}.
           Category sums only — no individual transactions.
         </CaptionText>
       ) : null}
 
-      {statsBlocked ? (
+      {pairBlocked ? (
         <ConnectionRequired message={STATS_OFFLINE_COPY} />
       ) : loading ? (
         <View style={styles.centered}>
@@ -352,7 +367,7 @@ export default function StatsScreen() {
               data={categories.data ?? []}
               type={pieType}
               onSelect={
-                showPair
+                pairLive
                   ? undefined
                   : (row) => {
                       router.push({
@@ -370,7 +385,7 @@ export default function StatsScreen() {
             />
           </View>
 
-          {!showPair ? (
+          {!pairLive ? (
             <View style={styles.section}>
               <TitleText style={styles.trendTitle}>Trend</TitleText>
               <View style={styles.toggleRow}>
@@ -442,6 +457,17 @@ const styles = StyleSheet.create({
   },
   contentEmpty: {
     flexGrow: 1,
+  },
+  offlineBanner: {
+    backgroundColor: colors.surfaceMuted,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    paddingHorizontal: space.md,
+    paddingVertical: space.sm,
+  },
+  offlineBannerText: {
+    color: colors.ink,
   },
   scopeRow: {
     flexDirection: 'row',

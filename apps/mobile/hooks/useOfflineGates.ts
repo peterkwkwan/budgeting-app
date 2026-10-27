@@ -43,7 +43,13 @@ export function useOfflineGates() {
     settingsBanner: settingsOfflineBannerCopy({ enabled, online }),
     repeatBlocked: offline,
     recurringBlocked: offline,
-    statsBlocked: offline,
+    /**
+     * Personal Stats work offline from the SQLite mirror.
+     * Kept false so legacy call sites do not blank the tab.
+     */
+    statsBlocked: false,
+    /** Pair aggregates stay online-only (partner rows never cached). */
+    pairStatsBlocked: offline,
     plannerBlocked: offline,
     /** Wipe, restore, delete account. Offline only. A non-empty outbox adds a discard confirm. */
     accountDataBlocked: offline,

@@ -24,6 +24,7 @@ import {
   SAVED_ON_PHONE_COPY,
   SETTINGS_OFFLINE_BANNER_COPY,
   STATS_OFFLINE_COPY,
+  STATS_PERSONAL_OFFLINE_BANNER,
   SYNCING_COPY,
   blockedActionHint,
   blockedOnlineAction,
@@ -165,7 +166,8 @@ describe('online-only gates', () => {
       null
     );
     assert.equal(REPEAT_BLOCKED_COPY.includes('repeating transactions'), true);
-    assert.equal(STATS_OFFLINE_COPY, 'Stats need a connection.');
+    assert.equal(STATS_OFFLINE_COPY, 'Partner stats need a connection.');
+    assert.match(STATS_PERSONAL_OFFLINE_BANNER, /Personal stats use data/);
   });
 
   it('blocks partner, currency, and categories while offline or pending', () => {

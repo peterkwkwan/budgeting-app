@@ -132,7 +132,8 @@ export function currentMonthBounds(
   return { start, end, ymd: parts };
 }
 
-function zonedMidnight(
+/** Instant for local midnight on Y-M-D in `timeZone`. */
+export function zonedMidnight(
   year: number,
   month: number,
   day: number,

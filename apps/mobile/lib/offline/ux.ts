@@ -15,7 +15,15 @@ export const PENDING_SYNC_COPY = 'Pending sync';
 export const REPEAT_BLOCKED_COPY =
   'Connect to the internet to set up repeating transactions.';
 
-export const STATS_OFFLINE_COPY = 'Stats need a connection.';
+/** Pair / partner Stats still need the network. */
+export const STATS_OFFLINE_COPY = 'Partner stats need a connection.';
+
+/**
+ * Banner on personal Stats while offline.
+ * Pair stays blocked; do not reuse the Transactions OfflineBanner copy.
+ */
+export const STATS_PERSONAL_OFFLINE_BANNER =
+  'Personal stats use data on this phone. Partner stats need a connection.';
 
 export const PLANNER_OFFLINE_COPY = 'Planner needs a connection.';
 
@@ -129,7 +137,8 @@ export type OnlineBlockReason = 'offline' | 'pending';
 
 /**
  * Online-only actions.
- * Repeat, recurring, stats, planner, and wipe use offline only.
+ * Repeat, recurring, pair stats, planner, and wipe use offline only.
+ * Personal Stats read the local mirror when offline (see statsLocal).
  * Partner, currency, and categories also block while the outbox is open.
  */
 export function blockedOnlineAction(input: {
