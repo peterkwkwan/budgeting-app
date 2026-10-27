@@ -5,7 +5,7 @@ import { CaptionText, StrongText } from '@/components/StyledText';
 import { colors, space, typography } from '@/constants/theme';
 import { useFormatMoney } from '@/hooks/useFormatMoney';
 import { useAuth } from '@/lib/auth';
-import { PENDING_SYNC_COPY } from '@/lib/offline/ux';
+import { CATEGORY_FIX_COPY, PENDING_SYNC_COPY } from '@/lib/offline/ux';
 import { formatDisplayDate } from '@/lib/dates';
 import { deviceTimezone } from '@/lib/profile';
 import type { Transaction } from '@/lib/transactions';
@@ -20,6 +20,8 @@ type Props = {
   hideDate?: boolean;
   /** Local edit still waiting to reach the cloud. Hidden when false. */
   pending?: boolean;
+  /** Push failed because this category is no longer allowed. */
+  categoryFix?: boolean;
 };
 
 export function TransactionRow({
@@ -30,6 +32,7 @@ export function TransactionRow({
   selectionMode = false,
   hideDate = false,
   pending = false,
+  categoryFix = false,
 }: Props) {
   const { format } = useFormatMoney();
   const formatAmount = (txn: Transaction): string => {
@@ -77,7 +80,7 @@ export function TransactionRow({
       accessibilityRole="button"
       accessibilityState={{ selected: selectionMode ? selected : undefined }}
       accessibilityLabel={`${transaction.category}, ${formatAmount(transaction)}, ${dateLabel}${
-        pending ? ', pending sync' : ''
+        categoryFix ? ', category needs a fix' : pending ? ', pending sync' : ''
       }${selectionMode ? (selected ? ', selected' : ', not selected') : ''}`}
     >
       {selectionMode ? (
@@ -95,7 +98,9 @@ export function TransactionRow({
           </CaptionText>
         ) : null}
         <CaptionText style={styles.meta}>{metaParts.join(' · ')}</CaptionText>
-        {pending ? (
+        {categoryFix ? (
+          <CaptionText style={styles.pending}>{CATEGORY_FIX_COPY}</CaptionText>
+        ) : pending ? (
           <CaptionText style={styles.pending}>{PENDING_SYNC_COPY}</CaptionText>
         ) : null}
       </View>

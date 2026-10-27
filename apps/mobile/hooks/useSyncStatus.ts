@@ -9,6 +9,7 @@ const EMPTY: OfflineUxStatus = {
   pendingIds: [],
   openCount: 0,
   lastSyncError: null,
+  categoryFixIds: [],
 };
 
 /**
@@ -35,9 +36,14 @@ export function useSyncStatus() {
     () => new Set(data.pendingIds),
     [data.pendingIds]
   );
+  const categoryFixIds = useMemo(
+    () => new Set(data.categoryFixIds ?? []),
+    [data.categoryFixIds]
+  );
 
   return {
     pendingIds,
+    categoryFixIds,
     openCount: data.openCount,
     lastSyncError: data.lastSyncError,
   };

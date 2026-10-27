@@ -8,6 +8,8 @@ import {
   type AccountBackupStatus,
 } from '@/lib/accountData';
 import { useAuth } from '@/lib/auth';
+import { OFFLINE_TXNS_ENABLED } from '@/lib/offline/flag';
+import { offlineUxKeys } from '@/lib/offline/ux';
 import { partnerKeys } from '@/lib/partner';
 import { plannerGoalKeys } from '@/lib/plannerGoals';
 import { plannerVehicleKeys } from '@/lib/plannerVehicles';
@@ -44,11 +46,36 @@ export function useAccountBackupStatus() {
   });
 }
 
+async function clearLocalIfEnabled(userId: string | undefined): Promise<void> {
+  if (!OFFLINE_TXNS_ENABLED || !userId) return;
+  const { clearOfflineUser } = await import('@/lib/offline/syncEngine');
+  await clearOfflineUser(userId);
+}
+
+async function resetAndPullIfEnabled(userId: string | undefined): Promise<void> {
+  if (!OFFLINE_TXNS_ENABLED || !userId) return;
+  const { resetLocalAndFullPull } = await import('@/lib/offline/syncEngine');
+  await resetLocalAndFullPull(userId);
+}
+
+function invalidateOfflineUx(
+  queryClient: ReturnType<typeof useQueryClient>
+): void {
+  if (!OFFLINE_TXNS_ENABLED) return;
+  void queryClient.invalidateQueries({ queryKey: offlineUxKeys.all });
+}
+
 export function useWipeMyData() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   return useMutation({
     mutationFn: wipeMyData,
-    onSuccess: (result) => {
+    onSuccess: async (result) => {
+      try {
+        await clearLocalIfEnabled(user?.id);
+      } catch (err) {
+        console.warn('[offline] wipe clear failed', err);
+      }
       queryClient.setQueryData<AccountBackupStatus>(accountBackupKeys.status(), {
         hasBackup: true,
         wipedAt: result.wipedAt,
@@ -56,15 +83,22 @@ export function useWipeMyData() {
         restoreAvailable: true,
       });
       invalidateAllProductQueries(queryClient);
+      invalidateOfflineUx(queryClient);
     },
   });
 }
 
 export function useRestoreMyData() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   return useMutation({
     mutationFn: restoreMyData,
-    onSuccess: () => {
+    onSuccess: async () => {
+      try {
+        await resetAndPullIfEnabled(user?.id);
+      } catch (err) {
+        console.warn('[offline] restore pull failed', err);
+      }
       queryClient.setQueryData<AccountBackupStatus>(accountBackupKeys.status(), {
         hasBackup: false,
         wipedAt: null,
@@ -72,15 +106,22 @@ export function useRestoreMyData() {
         restoreAvailable: false,
       });
       invalidateAllProductQueries(queryClient);
+      invalidateOfflineUx(queryClient);
     },
   });
 }
 
 export function useDeleteMyAccount() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   return useMutation({
     mutationFn: deleteMyAccount,
-    onSuccess: () => {
+    onSuccess: async () => {
+      try {
+        await clearLocalIfEnabled(user?.id);
+      } catch (err) {
+        console.warn('[offline] delete-account clear failed', err);
+      }
       queryClient.clear();
     },
   });

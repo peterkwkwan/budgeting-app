@@ -3,7 +3,7 @@
  * Versioned with SQLite `user_version`. No Supabase migration.
  */
 
-export const OFFLINE_SCHEMA_VERSION = 1;
+export const OFFLINE_SCHEMA_VERSION = 2;
 
 export type SqlValue = string | number | null;
 
@@ -70,6 +70,15 @@ CREATE TABLE IF NOT EXISTS sync_meta (
 );
 `;
 
+/** Last-known custom categories for offline transaction create. */
+export const OFFLINE_SCHEMA_V2_SQL = `
+CREATE TABLE IF NOT EXISTS category_cache (
+  user_id TEXT PRIMARY KEY NOT NULL,
+  payload_json TEXT NOT NULL,
+  saved_at TEXT NOT NULL
+);
+`;
+
 export async function readUserVersion(db: SqlExecutor): Promise<number> {
   const row = await db.first<{ user_version: number }>('PRAGMA user_version');
   const version = Number(row?.user_version ?? 0);
@@ -78,11 +87,16 @@ export async function readUserVersion(db: SqlExecutor): Promise<number> {
 
 /** Apply local schema migrations. Safe to call more than once. */
 export async function migrateOfflineSchema(db: SqlExecutor): Promise<void> {
-  const current = await readUserVersion(db);
+  let current = await readUserVersion(db);
   if (current >= OFFLINE_SCHEMA_VERSION) return;
   if (current < 1) {
     await db.exec(OFFLINE_SCHEMA_V1_SQL);
     await db.exec('PRAGMA user_version = 1');
+    current = 1;
+  }
+  if (current < 2) {
+    await db.exec(OFFLINE_SCHEMA_V2_SQL);
+    await db.exec('PRAGMA user_version = 2');
   }
 }
 

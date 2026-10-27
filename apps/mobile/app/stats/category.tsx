@@ -40,7 +40,7 @@ export default function CategoryDrilldownScreen() {
   const start = useMemo(() => new Date(startIso), [startIso]);
   const end = useMemo(() => new Date(endIso), [endIso]);
 
-  const { statsBlocked, pendingIds } = useOfflineGates();
+  const { statsBlocked, pendingIds, categoryFixIds } = useOfflineGates();
   const boundsValid =
     !Number.isNaN(start.getTime()) &&
     !Number.isNaN(end.getTime()) &&
@@ -95,6 +95,7 @@ export default function CategoryDrilldownScreen() {
               <TransactionRow
                 transaction={item}
                 pending={pendingIds.has(item.id)}
+                categoryFix={categoryFixIds.has(item.id)}
                 onPress={() => router.push(`/transaction/${item.id}`)}
               />
             )}

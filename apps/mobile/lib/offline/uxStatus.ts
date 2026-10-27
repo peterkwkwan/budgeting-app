@@ -5,7 +5,7 @@
 import { listOpenOutbox } from './outbox';
 import type { SqlExecutor } from './schema';
 import { readSyncMeta } from './syncEngine';
-import type { OfflineUxStatus } from './ux';
+import { isInvalidCategoryError, type OfflineUxStatus } from './ux';
 
 export async function readOfflineUxStatus(
   db: SqlExecutor,
@@ -25,5 +25,8 @@ export async function readOfflineUxStatus(
     pendingIds: [...pendingIds],
     openCount: open.length,
     lastSyncError: meta?.last_sync_error ?? null,
+    categoryFixIds: open
+      .filter((row) => isInvalidCategoryError(row.last_error))
+      .map((row) => row.entity_id),
   };
 }

@@ -17,7 +17,7 @@ import {
   useWipeMyData,
 } from '@/hooks/useAccountBackup';
 import { useOfflineGates } from '@/hooks/useOfflineGates';
-import { NEEDS_INTERNET_COPY } from '@/lib/offline/ux';
+import { NEEDS_INTERNET_COPY, UNSYNCED_DISCARD_COPY } from '@/lib/offline/ux';
 import { useAuth } from '@/lib/auth';
 import {
   DELETE_CONFIRM_PHRASE,
@@ -37,7 +37,7 @@ export function AccountDangerZone() {
   const wipe = useWipeMyData();
   const restore = useRestoreMyData();
   const deleteAccount = useDeleteMyAccount();
-  const { accountDataBlocked } = useOfflineGates();
+  const { accountDataBlocked, outboxPending } = useOfflineGates();
 
   const [confirmKind, setConfirmKind] = useState<ConfirmKind>(null);
   const [typed, setTyped] = useState('');
@@ -124,7 +124,9 @@ export function AccountDangerZone() {
 
   const confirmBody =
     confirmKind === 'wipe'
-      ? 'This clears transactions, recurring rules, Planner, and unlinks your partner. You stay signed in. You can restore for 30 days, then the backup is permanently deleted.'
+      ? `This clears transactions, recurring rules, Planner, and unlinks your partner. You stay signed in. You can restore for 30 days, then the backup is permanently deleted.${
+          outboxPending ? ` ${UNSYNCED_DISCARD_COPY}` : ''
+        }`
       : confirmKind === 'restore'
         ? `Bring back data from the wipe on ${wipedLabel}. Anything you created after the wipe will be discarded and cannot be recovered.`
         : confirmKind === 'delete'

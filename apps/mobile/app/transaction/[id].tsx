@@ -16,7 +16,11 @@ import {
 } from '@/components/TransactionForm';
 import { colors, radius, space } from '@/constants/theme';
 import { useOfflineGates } from '@/hooks/useOfflineGates';
-import { PENDING_SYNC_COPY, REPEAT_BLOCKED_COPY } from '@/lib/offline/ux';
+import {
+  CATEGORY_FIX_COPY,
+  PENDING_SYNC_COPY,
+  REPEAT_BLOCKED_COPY,
+} from '@/lib/offline/ux';
 import {
   useSoftDeleteTransaction,
   useTransaction,
@@ -29,8 +33,9 @@ export default function EditTransactionScreen() {
   const { data, isLoading, isError, error } = useTransaction(id);
   const update = useUpdateTransaction(id ?? '');
   const softDelete = useSoftDeleteTransaction();
-  const { pendingIds, recurringBlocked } = useOfflineGates();
+  const { pendingIds, categoryFixIds, recurringBlocked } = useOfflineGates();
   const pending = Boolean(id && pendingIds.has(id));
+  const categoryFix = Boolean(id && categoryFixIds.has(id));
   const [formError, setFormError] = useState<string | null>(null);
 
   async function onSubmit(input: TransactionFormSubmit) {
@@ -113,7 +118,9 @@ export default function EditTransactionScreen() {
     <View style={styles.container}>
       <Stack.Screen options={{ title: 'Edit transaction' }} />
       <OfflineBanner />
-      {pending ? (
+      {categoryFix ? (
+        <CaptionText style={styles.pending}>{CATEGORY_FIX_COPY}</CaptionText>
+      ) : pending ? (
         <CaptionText style={styles.pending}>{PENDING_SYNC_COPY}</CaptionText>
       ) : null}
       {data.recurring_series_id ? (

@@ -1,6 +1,8 @@
 /**
  * Local transaction repository: SQLite mirror + outbox.
  * Does not call Supabase. Hooks use this only when OFFLINE_TXNS_ENABLED.
+ * A recurring instance edit or soft-delete is a normal outbox op on that txn id.
+ * Series create, edit-future, and stop are not queued here.
  */
 import { DEFAULT_CURRENCY } from '@/constants/currencies';
 import {

@@ -25,6 +25,12 @@ import { colors, fonts, radius, space, typography } from '@/constants/theme';
 import { invalidateAllProductQueries } from '@/hooks/useAccountBackup';
 import { useOfflineGates } from '@/hooks/useOfflineGates';
 import { useAuth } from '@/lib/auth';
+import { OFFLINE_TXNS_ENABLED } from '@/lib/offline/flag';
+import {
+  currencyConvertHint,
+  offlineUxKeys,
+  SYNC_BEFORE_CONVERT_COPY,
+} from '@/lib/offline/ux';
 import { profileCurrency, setAccountCurrency } from '@/lib/currency';
 import { formatFxRateInput, suggestFxRate } from '@/lib/fx';
 import { parseMoneyInput } from '@/lib/money';
@@ -34,10 +40,15 @@ import { parseMoneyInput } from '@/lib/money';
  */
 export default function CurrencySettingsScreen() {
   const router = useRouter();
-  const { profile, refreshProfile } = useAuth();
+  const { profile, refreshProfile, user } = useAuth();
   const queryClient = useQueryClient();
   const { edges, scrollProps } = useScrollEdges();
-  const { manageBlocked, manageHint } = useOfflineGates();
+  const { manageBlocked, offline, outboxPending } = useOfflineGates();
+  const currencyHint = currencyConvertHint({
+    enabled: OFFLINE_TXNS_ENABLED,
+    online: !offline,
+    outboxPending,
+  });
   const current = profileCurrency(profile);
 
   const [pending, setPending] = useState<AccountCurrency | null>(null);
@@ -87,6 +98,10 @@ export default function CurrencySettingsScreen() {
   };
 
   const apply = async (mode: 'keep' | 'convert') => {
+    if (mode === 'convert' && outboxPending) {
+      setError(SYNC_BEFORE_CONVERT_COPY);
+      return;
+    }
     if (!pending || manageBlocked) return;
     setError(null);
     let rate: number | null = null;
@@ -105,7 +120,18 @@ export default function CurrencySettingsScreen() {
         rate,
       });
       await refreshProfile();
+      if (mode === 'convert' && OFFLINE_TXNS_ENABLED && user?.id) {
+        try {
+          const { resetLocalAndFullPull } = await import('@/lib/offline/syncEngine');
+          await resetLocalAndFullPull(user.id);
+        } catch (err) {
+          console.warn('[offline] re-pull after convert failed', err);
+        }
+      }
       invalidateAllProductQueries(queryClient);
+      if (OFFLINE_TXNS_ENABLED) {
+        void queryClient.invalidateQueries({ queryKey: offlineUxKeys.all });
+      }
       setPending(null);
       setRateText('');
       setFxHint(null);
@@ -135,8 +161,8 @@ export default function CurrencySettingsScreen() {
               All amounts use one currency. Changing it can keep numbers as-is
               or convert them with a rate you choose.
             </CaptionText>
-            {manageHint ? (
-              <CaptionText style={styles.hint}>{manageHint}</CaptionText>
+            {currencyHint ? (
+              <CaptionText style={styles.hint}>{currencyHint}</CaptionText>
             ) : null}
           </View>
 

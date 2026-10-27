@@ -30,6 +30,8 @@ export function useOfflineGates() {
     /** Flag on and the outbox still has pending or failed rows. */
     outboxPending,
     pendingIds: sync.pendingIds,
+    /** Outbox rows that failed because the category is no longer allowed. */
+    categoryFixIds: sync.categoryFixIds,
     banner: offlineBannerCopy({
       enabled,
       online,
@@ -40,7 +42,7 @@ export function useOfflineGates() {
     recurringBlocked: offline,
     statsBlocked: offline,
     plannerBlocked: offline,
-    /** Wipe, restore, delete account. Offline only — pending-outbox confirm is Phase 4. */
+    /** Wipe, restore, delete account. Offline only. A non-empty outbox adds a discard confirm. */
     accountDataBlocked: offline,
     /** Partner, currency, and category manage. */
     manageBlocked: manageReason != null,

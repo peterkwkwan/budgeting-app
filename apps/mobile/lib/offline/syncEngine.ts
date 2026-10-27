@@ -133,7 +133,7 @@ export async function readSyncMeta(
   };
 }
 
-/** Remove this user's mirror, outbox, and cursor. Other users stay. */
+/** Remove this user's mirror, outbox, category cache, and cursor. Other users stay. */
 export async function clearOfflineUserData(
   db: SqlExecutor,
   userId: string
@@ -142,7 +142,43 @@ export async function clearOfflineUserData(
     await db.run('DELETE FROM outbox WHERE user_id = ?', [userId]);
     await db.run('DELETE FROM transactions_local WHERE user_id = ?', [userId]);
     await db.run('DELETE FROM sync_meta WHERE user_id = ?', [userId]);
+    await db.run('DELETE FROM category_cache WHERE user_id = ?', [userId]);
   });
+}
+
+/**
+ * Drop this user's local mirror and pull every remote row from epoch.
+ * Used after restore and after a currency convert, when the server rewrote history.
+ */
+export async function resetLocalAndFullPull(
+  userId: string,
+  options?: SyncEngineOptions
+): Promise<PullResult> {
+  const db = options?.db ?? (await openDefaultDb());
+  const remote = options?.remote ?? (await defaultRemote());
+  await clearOfflineUserData(db, userId);
+  return pullRemote(db, userId, remote, options);
+}
+
+/**
+ * After an online stop or edit-future. Those RPCs can hard-delete future instances,
+ * which an incremental pull cannot see. Push first. A failed push keeps the outbox.
+ * A clean push is followed by a full reset and pull.
+ */
+export async function resyncAfterSeriesHardDelete(
+  userId: string,
+  options?: SyncEngineOptions
+): Promise<'reset' | 'kept'> {
+  const db = options?.db ?? (await openDefaultDb());
+  const remote = options?.remote ?? (await defaultRemote());
+  const open = await listOpenOutbox(db, userId);
+  if (open.length > 0) {
+    const push = await pushOutbox(db, userId, remote, options);
+    if (push.failed > 0) return 'kept';
+  }
+  await clearOfflineUserData(db, userId);
+  await pullRemote(db, userId, remote, options);
+  return 'reset';
 }
 
 /** Sign-out helper. Opens the device DB when `db` is omitted. */

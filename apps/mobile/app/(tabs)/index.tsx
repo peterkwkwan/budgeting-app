@@ -98,7 +98,7 @@ export default function TransactionsScreen() {
   const [bulkField, setBulkField] = useState<BulkEditField | null>(null);
 
   const busy = bulkDelete.isPending || bulkPatch.isPending;
-  const { pendingIds } = useOfflineGates();
+  const { pendingIds, categoryFixIds } = useOfflineGates();
   const { edges, scrollProps } = useScrollEdges();
 
   // Month ‹ ›: jump to today when focus is the current month; else clamp.
@@ -294,6 +294,7 @@ export default function TransactionsScreen() {
         transaction={item}
         hideDate
         pending={pendingIds.has(item.id)}
+        categoryFix={categoryFixIds.has(item.id)}
         selectionMode={selectionMode}
         selected={selectedIds.has(item.id)}
         onPress={() => onRowPress(item)}

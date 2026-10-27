@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import type { TransactionType } from '@/constants/categories';
 import { useAuth } from '@/lib/auth';
+import { OFFLINE_TXNS_ENABLED } from '@/lib/offline/flag';
 import { recurringKeys } from '@/lib/recurring';
 import { statsKeys } from '@/lib/stats';
 import { transactionKeys } from '@/lib/transactions';
@@ -16,9 +17,23 @@ import {
 
 export function useUserCategories() {
   const { session } = useAuth();
+  const userId = session?.user?.id;
   return useQuery({
     queryKey: userCategoryKeys.list(),
-    queryFn: listUserCategories,
+    queryFn: async () => {
+      if (!OFFLINE_TXNS_ENABLED || !userId) return listUserCategories();
+      const { getOfflineDb } = await import('@/lib/offline/db');
+      const { loadCachedOrFreshCategories } = await import(
+        '@/lib/offline/categoryCache'
+      );
+      const db = await getOfflineDb();
+      return loadCachedOrFreshCategories(
+        db,
+        userId,
+        () => listUserCategories(),
+        new Date().toISOString()
+      );
+    },
     enabled: Boolean(session),
   });
 }
