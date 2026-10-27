@@ -13,6 +13,7 @@ import { useOfflineGates } from '@/hooks/useOfflineGates';
 import { useCreateRecurringSeries } from '@/hooks/useRecurring';
 import { useCreateTransaction } from '@/hooks/useTransactions';
 import { useAuth } from '@/lib/auth';
+import { userFacingOfflineWriteError } from '@/lib/offline/writeError';
 import { deviceTimezone } from '@/lib/profile';
 import { takePendingVoiceDraft } from '@/lib/voiceDraft';
 
@@ -68,7 +69,7 @@ export default function NewTransactionScreen() {
       router.back();
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : 'Could not save transaction.'
+        userFacingOfflineWriteError(err, 'Could not save transaction.')
       );
     }
   }

@@ -2,8 +2,10 @@ import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 
 import { useAuth } from '@/lib/auth';
+import { getOfflineDb } from '@/lib/offline/db';
 import { OFFLINE_TXNS_ENABLED } from '@/lib/offline/flag';
 import { offlineUxKeys, type OfflineUxStatus } from '@/lib/offline/ux';
+import { readOfflineUxStatus } from '@/lib/offline/uxStatus';
 
 const EMPTY: OfflineUxStatus = {
   pendingIds: [],
@@ -24,8 +26,6 @@ export function useSyncStatus() {
     queryKey: offlineUxKeys.status(userId ?? 'signed-out'),
     enabled: OFFLINE_TXNS_ENABLED && Boolean(userId),
     queryFn: async (): Promise<OfflineUxStatus> => {
-      const { getOfflineDb } = await import('@/lib/offline/db');
-      const { readOfflineUxStatus } = await import('@/lib/offline/uxStatus');
       const db = await getOfflineDb();
       return readOfflineUxStatus(db, userId!);
     },

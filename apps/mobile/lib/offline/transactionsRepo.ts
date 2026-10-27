@@ -13,12 +13,14 @@ import {
   type TransactionInput,
 } from '@/lib/transactionModel';
 
-import { withSqlTransaction, type SqlExecutor } from './schema';
+import { getOfflineDb } from './db';
+import { newClientId } from './ids';
 import {
   deletePendingOutbox,
   enqueueTransactionChange,
   listPendingOutbox,
 } from './outbox';
+import { withSqlTransaction, type SqlExecutor } from './schema';
 import {
   getTransactionLocal,
   listActiveTransactionsLocal,
@@ -219,8 +221,9 @@ export async function bulkPatchLocalTransactions(
 }
 
 async function resolveDb(options?: TransactionsRepoOptions): Promise<SqlExecutor> {
+  // Static imports: dynamic import() needs Metro while offline and fails with
+  // "Could not load bundle" on the first create / update / soft-delete.
   if (options?.db) return options.db;
-  const { getOfflineDb } = await import('./db');
   return getOfflineDb();
 }
 
@@ -230,6 +233,5 @@ function timestamp(options?: TransactionsRepoOptions): string {
 
 async function nextId(options?: TransactionsRepoOptions): Promise<string> {
   if (options?.newId) return options.newId();
-  const { newClientId } = await import('./ids');
   return newClientId();
 }

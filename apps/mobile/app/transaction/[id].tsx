@@ -21,6 +21,7 @@ import {
   PENDING_SYNC_COPY,
   REPEAT_BLOCKED_COPY,
 } from '@/lib/offline/ux';
+import { userFacingOfflineWriteError } from '@/lib/offline/writeError';
 import {
   useSoftDeleteTransaction,
   useTransaction,
@@ -51,7 +52,7 @@ export default function EditTransactionScreen() {
       });
       router.back();
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Could not update.');
+      setFormError(userFacingOfflineWriteError(err, 'Could not update.'));
     }
   }
 
@@ -69,9 +70,12 @@ export default function EditTransactionScreen() {
             void softDelete.mutateAsync(id).then(
               () => router.back(),
               (err: unknown) => {
-                setFormError(
-                  err instanceof Error ? err.message : 'Could not delete.'
+                const message = userFacingOfflineWriteError(
+                  err,
+                  'Could not delete.'
                 );
+                setFormError(message);
+                Alert.alert('Could not delete', message);
               }
             );
           },

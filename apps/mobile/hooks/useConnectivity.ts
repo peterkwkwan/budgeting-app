@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import { OFFLINE_TXNS_ENABLED } from '@/lib/offline/flag';
+import { subscribeConnectivity } from '@/lib/offline/net';
 
 /**
  * Device online flag. While OFFLINE_TXNS_ENABLED is false this stays online
@@ -12,20 +13,7 @@ export function useConnectivity(): { online: boolean } {
   useEffect(() => {
     if (!OFFLINE_TXNS_ENABLED) return;
 
-    let cancelled = false;
-    let unsub = () => {};
-
-    void import('@/lib/offline/net').then((net) => {
-      if (cancelled) return;
-      unsub = net.subscribeConnectivity((next) => {
-        if (!cancelled) setOnline(next);
-      });
-    });
-
-    return () => {
-      cancelled = true;
-      unsub();
-    };
+    return subscribeConnectivity(setOnline);
   }, []);
 
   return { online: OFFLINE_TXNS_ENABLED ? online : true };

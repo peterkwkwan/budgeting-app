@@ -5,6 +5,7 @@ import { AppState, type AppStateStatus } from 'react-native';
 import { useAuth } from '@/lib/auth';
 import { OFFLINE_TXNS_ENABLED } from '@/lib/offline/flag';
 import { logOffline } from '@/lib/offline/log';
+import { subscribeOnline } from '@/lib/offline/net';
 import { syncNow } from '@/lib/offline/syncEngine';
 import { offlineUxKeys } from '@/lib/offline/ux';
 import { transactionKeys } from '@/lib/transactions';
@@ -72,10 +73,7 @@ export function useOfflineTransactionSync() {
     };
     const appSub = AppState.addEventListener('change', onChange);
 
-    void import('@/lib/offline/net').then((net) => {
-      if (cancelled) return;
-      unsubNet = net.subscribeOnline(() => run());
-    });
+    unsubNet = subscribeOnline(() => run());
 
     return () => {
       cancelled = true;

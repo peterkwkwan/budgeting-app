@@ -9,6 +9,7 @@ export async function refuseOfflineSeriesChange(
   isOnline?: () => Promise<boolean>
 ): Promise<void> {
   if (!OFFLINE_TXNS_ENABLED) return;
+  // Dynamic: Node unit tests import this module without NetInfo installed.
   const online = isOnline
     ? await isOnline()
     : await import('./net').then((net) => net.isDeviceOnline());

@@ -1,7 +1,8 @@
 /**
  * Open the on-device offline database and migrate it.
- * expo-sqlite is loaded only when this module opens the DB, so the
- * online path (flag off) never touches the native module.
+ * Callers import this module statically (so the open helper is already in the
+ * JS bundle). expo-sqlite itself stays a lazy import so Node unit tests that
+ * inject a fake DB never load the native module.
  */
 import type { SQLiteDatabase } from 'expo-sqlite';
 
@@ -26,6 +27,8 @@ export function getOfflineDb(): Promise<SqlExecutor> {
 }
 
 async function openOfflineDatabase(): Promise<SqlExecutor> {
+  // First open should happen while online (sync status / foreground sync).
+  // After that, `opening` is cached and offline writes need no Metro fetch.
   const SQLite = await import('expo-sqlite');
   const sqlite = await SQLite.openDatabaseAsync(OFFLINE_DB_NAME);
   const db = wrapExpoSqlite(sqlite);

@@ -9,6 +9,7 @@ import { useCallback, useMemo } from 'react';
 import { useAuth } from '@/lib/auth';
 import { OFFLINE_TXNS_ENABLED } from '@/lib/offline/flag';
 import { logOffline } from '@/lib/offline/log';
+import { syncNow } from '@/lib/offline/syncEngine';
 import { offlineUxKeys } from '@/lib/offline/ux';
 import {
   bulkPatchLocalTransactions,
@@ -25,6 +26,7 @@ import {
 } from '@/lib/periods';
 import { deviceTimezone } from '@/lib/profile';
 import { statsKeys } from '@/lib/stats';
+import { supabase } from '@/lib/supabase';
 import {
   bulkPatchTransactions,
   createTransaction,
@@ -56,10 +58,7 @@ function settleTransactionWrite(queryClient: ReturnType<typeof useQueryClient>) 
   // after the flush so a failed push can show the soft retry line.
   void queryClient.invalidateQueries({ queryKey: offlineUxKeys.all });
   void signedInUserId()
-    .then(async (userId) => {
-      const { syncNow } = await import('@/lib/offline/syncEngine');
-      return syncNow(userId);
-    })
+    .then((userId) => syncNow(userId))
     .then((result) => {
       void queryClient.invalidateQueries({ queryKey: offlineUxKeys.all });
       if (
@@ -80,11 +79,15 @@ function settleTransactionWrite(queryClient: ReturnType<typeof useQueryClient>) 
 
 /** Signed-in user id for the offline repository. */
 async function signedInUserId(): Promise<string> {
-  const { supabase } = await import('@/lib/supabase');
   const { data, error } = await supabase.auth.getSession();
   if (error) throw new Error(error.message);
   const userId = data.session?.user.id;
   if (!userId) throw new Error('You must be signed in.');
+  return userId;
+}
+
+function requireUserId(userId: string | undefined): string {
+  if (!userId) throw new Error('You must be signed in to change a transaction.');
   return userId;
 }
 
@@ -164,18 +167,16 @@ export function useCreateTransaction() {
 
   return useMutation({
     mutationFn: (input: TransactionInput) => {
-      if (!user?.id) {
-        throw new Error('You must be signed in to add a transaction.');
-      }
+      const userId = requireUserId(user?.id);
       if (OFFLINE_TXNS_ENABLED) {
         return createLocalTransaction(
-          user.id,
+          userId,
           input,
           profile?.currency ?? 'HKD'
         );
       }
       return createTransaction(
-        user.id,
+        userId,
         input,
         profile?.currency ?? 'HKD'
       );
@@ -187,14 +188,13 @@ export function useCreateTransaction() {
 }
 
 export function useUpdateTransaction(id: string) {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (input: TransactionInput) => {
       if (OFFLINE_TXNS_ENABLED) {
-        return signedInUserId().then((userId) =>
-          updateLocalTransaction(userId, id, input)
-        );
+        return updateLocalTransaction(requireUserId(user?.id), id, input);
       }
       return updateTransaction(id, input);
     },
@@ -205,14 +205,13 @@ export function useUpdateTransaction(id: string) {
 }
 
 export function useSoftDeleteTransaction() {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (txnId: string) => {
       if (OFFLINE_TXNS_ENABLED) {
-        return signedInUserId().then((userId) =>
-          softDeleteLocalTransaction(userId, txnId)
-        );
+        return softDeleteLocalTransaction(requireUserId(user?.id), txnId);
       }
       return softDeleteTransaction(txnId);
     },
@@ -223,14 +222,13 @@ export function useSoftDeleteTransaction() {
 }
 
 export function useBulkSoftDeleteTransactions() {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (ids: string[]) => {
       if (OFFLINE_TXNS_ENABLED) {
-        return signedInUserId().then((userId) =>
-          softDeleteLocalTransactions(userId, ids)
-        );
+        return softDeleteLocalTransactions(requireUserId(user?.id), ids);
       }
       return softDeleteTransactions(ids);
     },
@@ -241,6 +239,7 @@ export function useBulkSoftDeleteTransactions() {
 }
 
 export function useBulkPatchTransactions() {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -252,8 +251,10 @@ export function useBulkPatchTransactions() {
       patch: TransactionBulkPatch;
     }) => {
       if (OFFLINE_TXNS_ENABLED) {
-        return signedInUserId().then((userId) =>
-          bulkPatchLocalTransactions(userId, rows, patch)
+        return bulkPatchLocalTransactions(
+          requireUserId(user?.id),
+          rows,
+          patch
         );
       }
       return bulkPatchTransactions(rows, patch);

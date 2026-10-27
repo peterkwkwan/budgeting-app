@@ -41,6 +41,7 @@ import {
 } from '@/hooks/useTransactions';
 import { useOfflineGates } from '@/hooks/useOfflineGates';
 import { useAuth } from '@/lib/auth';
+import { userFacingOfflineWriteError } from '@/lib/offline/writeError';
 import {
   PeriodNavHeader,
   periodNavScreenOptions,
@@ -202,7 +203,7 @@ export default function TransactionsScreen() {
               (err: unknown) => {
                 Alert.alert(
                   'Could not delete',
-                  err instanceof Error ? err.message : 'Something went wrong.'
+                  userFacingOfflineWriteError(err, 'Something went wrong.')
                 );
               }
             );
@@ -230,7 +231,7 @@ export default function TransactionsScreen() {
         (err: unknown) => {
           Alert.alert(
             'Could not update',
-            err instanceof Error ? err.message : 'Something went wrong.'
+            userFacingOfflineWriteError(err, 'Something went wrong.')
           );
         }
       );

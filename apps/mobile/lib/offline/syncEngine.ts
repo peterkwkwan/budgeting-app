@@ -1,10 +1,12 @@
 /**
  * Transactions sync: push the outbox, then pull remote changes and merge LWW.
  * Tie on `updated_at` keeps the remote row. A failed push stays in the outbox.
- * Does not import Supabase or NetInfo until a real sync runs without injected deps.
+ * DB / NetInfo / ids are static so offline settle does not need a Metro fetch.
  */
 import type { Transaction } from '@/lib/transactionModel';
 
+import { getOfflineDb } from './db';
+import { newClientId } from './ids';
 import { logOffline } from './log';
 import { listOpenOutbox, enqueueTransactionChange } from './outbox';
 import {
@@ -769,21 +771,22 @@ async function nextOutboxId(explicit?: () => string): Promise<string> {
   if (explicit) return explicit();
   const uuid = globalThis.crypto?.randomUUID?.();
   if (uuid) return uuid;
-  const { newClientId } = await import('./ids');
   return newClientId();
 }
 
 async function openDefaultDb(): Promise<SqlExecutor> {
-  const { getOfflineDb } = await import('./db');
   return getOfflineDb();
 }
 
 async function defaultIsOnline(): Promise<boolean> {
+  // Dynamic: Node unit tests import syncEngine without NetInfo installed.
   const { isDeviceOnline } = await import('./net');
   return isDeviceOnline();
 }
 
 async function defaultRemote(): Promise<SyncRemote> {
+  // Only used while online. Keep dynamic so syncEngine unit tests do not
+  // need the full Supabase transactions module graph.
   const tx = await import('../transactions');
   return {
     createTransaction(row) {
