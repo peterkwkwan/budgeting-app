@@ -37,7 +37,7 @@ export default function NewTransactionScreen() {
   const [error, setError] = useState<string | null>(null);
   const [initial] = useState(() => readVoiceInitial());
   const timezone = profile?.timezone || deviceTimezone();
-  const { offline } = useOfflineGates();
+  const { offline, banner } = useOfflineGates();
   const busy = createTxn.isPending || createSeries.isPending;
 
   async function onSubmit(input: TransactionFormSubmit) {
@@ -77,7 +77,7 @@ export default function NewTransactionScreen() {
   return (
     <View style={styles.container}>
       <Stack.Screen options={{ title: 'Add transaction' }} />
-      <OfflineBanner />
+      <OfflineBanner message={banner} />
       <TransactionForm
         allowRepeat
         allowVoice

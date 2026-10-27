@@ -19,8 +19,8 @@ export const REPEAT_BLOCKED_COPY =
 export const STATS_OFFLINE_COPY = 'Partner stats need a connection.';
 
 /**
- * Banner on personal Stats while offline.
- * Pair stays blocked; do not reuse the Transactions OfflineBanner copy.
+ * Banner message for personal Stats while offline (pass to OfflineBanner).
+ * Pair stays blocked; do not reuse the Transactions offline copy.
  */
 export const STATS_PERSONAL_OFFLINE_BANNER =
   'Personal stats use data on this phone. Partner stats need a connection.';

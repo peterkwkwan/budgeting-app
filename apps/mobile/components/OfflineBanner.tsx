@@ -2,28 +2,22 @@ import { StyleSheet, View } from 'react-native';
 
 import { CaptionText } from '@/components/StyledText';
 import { colors, space } from '@/constants/theme';
-import { useOfflineGates } from '@/hooks/useOfflineGates';
 
 type OfflineBannerProps = {
-  /**
-   * `transactions` — Transactions / Add / Edit sync status.
-   * `settings` — Account / Settings: offline disables some controls.
-   */
-  variant?: 'transactions' | 'settings';
+  /** When null/undefined/empty, the banner is hidden. Screens supply copy. */
+  message: string | null | undefined;
 };
 
 /**
- * Thin paper status line. Transactions also shows pending/sync errors;
- * settings shows only while offline.
+ * Full-bleed status bar under the navbar (Transactions chrome).
+ * Dumb: no gates, no variants — pass the message text.
  */
-export function OfflineBanner({ variant = 'transactions' }: OfflineBannerProps) {
-  const { banner, settingsBanner } = useOfflineGates();
-  const text = variant === 'settings' ? settingsBanner : banner;
-  if (!text) return null;
+export function OfflineBanner({ message }: OfflineBannerProps) {
+  if (!message) return null;
 
   return (
     <View style={styles.bar} accessibilityRole="text">
-      <CaptionText style={styles.text}>{text}</CaptionText>
+      <CaptionText style={styles.text}>{message}</CaptionText>
     </View>
   );
 }

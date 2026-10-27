@@ -12,6 +12,7 @@ import {
 import { CaptionText, StrongText } from '@/components/StyledText';
 import { currencyLabel } from '@/constants/currencies';
 import { colors, radius, space } from '@/constants/theme';
+import { useOfflineGates } from '@/hooks/useOfflineGates';
 import { useAuth } from '@/lib/auth';
 import { profileCurrency } from '@/lib/currency';
 import {
@@ -28,6 +29,7 @@ import {
 export default function SettingsScreen() {
   const router = useRouter();
   const { user, profile, refreshProfile } = useAuth();
+  const { settingsBanner } = useOfflineGates();
   const { edges, scrollProps } = useScrollEdges();
   const [dateView, setDateView] = useState<TransactionsDateView>(
     DEFAULT_TRANSACTIONS_DATE_VIEW
@@ -65,7 +67,7 @@ export default function SettingsScreen() {
     <>
       <Stack.Screen options={{ title: 'Settings' }} />
       <View style={styles.host}>
-        <OfflineBanner variant="settings" />
+        <OfflineBanner message={settingsBanner} />
         <ScrollEdgeHost edges={edges} style={styles.scrollHost}>
           <ScrollView
             style={styles.scroll}

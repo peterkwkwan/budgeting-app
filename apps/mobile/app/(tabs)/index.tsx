@@ -99,7 +99,7 @@ export default function TransactionsScreen() {
   const [bulkField, setBulkField] = useState<BulkEditField | null>(null);
 
   const busy = bulkDelete.isPending || bulkPatch.isPending;
-  const { pendingIds, categoryFixIds } = useOfflineGates();
+  const { pendingIds, categoryFixIds, banner } = useOfflineGates();
   const { edges, scrollProps } = useScrollEdges();
 
   // Month ‹ ›: jump to today when focus is the current month; else clamp.
@@ -383,7 +383,7 @@ export default function TransactionsScreen() {
 
   return (
     <View style={styles.container}>
-      <OfflineBanner />
+      <OfflineBanner message={banner} />
       {isLoading ? (
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={colors.green[700]} />

@@ -35,26 +35,27 @@ import {
 
 export type StatsScope = 'personal' | 'pair';
 
-async function signedInUserId(): Promise<string> {
-  const { supabase } = await import('@/lib/supabase');
-  const { data, error } = await supabase.auth.getSession();
-  if (error) throw new Error(error.message);
-  const userId = data.session?.user.id;
-  if (!userId) throw new Error('You must be signed in.');
-  return userId;
-}
+/** Empty mirror / no user yet — never leave personal Stats spinning. */
+const EMPTY_PERIOD_TOTALS = aggregatePeriodTotals([]);
 
-/** Offline + flag: personal Stats from the SQLite mirror. */
+/**
+ * Offline + flag: personal Stats from the SQLite mirror.
+ * Until NetInfo's first snapshot, prefer local so a cold offline boot never
+ * starts a remote RPC that hangs forever.
+ */
 function usePersonalStatsLocal(): boolean {
-  const { online } = useConnectivity();
-  return OFFLINE_TXNS_ENABLED && !online;
+  const { online, ready } = useConnectivity();
+  if (!OFFLINE_TXNS_ENABLED) return false;
+  if (!ready) return true;
+  return !online;
 }
 
 export function usePersonalStats(period: PeriodBounds, pieType: TransactionType) {
   const queryClient = useQueryClient();
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
   const timeZone = profile?.timezone || deviceTimezone();
   const useLocal = usePersonalStatsLocal();
+  const userId = user?.id;
   const startIso = period.start.toISOString();
   const endIso = period.end.toISOString();
   const bucket: TrendBucket = trendBucketForPeriod(
@@ -63,6 +64,9 @@ export function usePersonalStats(period: PeriodBounds, pieType: TransactionType)
     period.preset
   );
   const source = useLocal ? 'local' : 'remote';
+  // Local path needs the in-memory auth user — avoid getSession network refresh.
+  const localReady = Boolean(userId);
+  const enabled = useLocal ? localReady : true;
 
   const totals = useQuery({
     queryKey: [...statsKeys.totals(startIso, endIso), source, timeZone],
@@ -70,7 +74,7 @@ export function usePersonalStats(period: PeriodBounds, pieType: TransactionType)
       if (!useLocal) {
         return fetchPersonalTotals(period.start, period.end);
       }
-      const userId = await signedInUserId();
+      if (!userId) return EMPTY_PERIOD_TOTALS;
       const rows = await listLocalTransactions(userId);
       const scoped = filterStatsTransactions(
         rows,
@@ -80,6 +84,7 @@ export function usePersonalStats(period: PeriodBounds, pieType: TransactionType)
       );
       return aggregatePeriodTotals(scoped);
     },
+    enabled,
   });
 
   const categories = useQuery({
@@ -88,7 +93,7 @@ export function usePersonalStats(period: PeriodBounds, pieType: TransactionType)
       if (!useLocal) {
         return fetchPersonalCategoryTotals(pieType, period.start, period.end);
       }
-      const userId = await signedInUserId();
+      if (!userId) return [];
       const rows = await listLocalTransactions(userId);
       const scoped = filterStatsTransactions(
         rows,
@@ -98,6 +103,7 @@ export function usePersonalStats(period: PeriodBounds, pieType: TransactionType)
       );
       return aggregateCategoryTotals(scoped, pieType);
     },
+    enabled,
   });
 
   useFocusEffect(
@@ -152,12 +158,15 @@ export function usePersonalTrend(
   bucket: TrendBucket,
   timeZone: string = 'UTC'
 ) {
+  const { user } = useAuth();
   const useLocal = usePersonalStatsLocal();
+  const userId = user?.id;
   // Centered ±2 window for Monthly/Yearly; custom Period uses the range as-is.
   const { start, end } = resolveTrendBounds(period, timeZone);
   const startIso = start.toISOString();
   const endIso = end.toISOString();
   const source = useLocal ? 'local' : 'remote';
+  const enabled = useLocal ? Boolean(userId) : true;
 
   return useQuery({
     queryKey: [...statsKeys.trend(metric, startIso, endIso, bucket), source, timeZone],
@@ -165,11 +174,12 @@ export function usePersonalTrend(
       if (!useLocal) {
         return fetchPersonalTrend(metric, start, end, bucket);
       }
-      const userId = await signedInUserId();
+      if (!userId) return [];
       const rows = await listLocalTransactions(userId);
       const scoped = filterStatsTransactions(rows, start, end, timeZone);
       return aggregateTrend(scoped, metric, bucket, timeZone);
     },
+    enabled,
     select: (raw): TrendSlot[] => {
       if (period.preset === 'custom') {
         return raw.map((p) => ({
@@ -190,9 +200,10 @@ export function useCategoryDrilldown(params: {
   end: Date;
   enabled?: boolean;
 }) {
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
   const timeZone = profile?.timezone || deviceTimezone();
   const useLocal = usePersonalStatsLocal();
+  const userId = user?.id;
   const startIso = params.start.toISOString();
   const endIso = params.end.toISOString();
   const source = useLocal ? 'local' : 'remote';
@@ -218,7 +229,7 @@ export function useCategoryDrilldown(params: {
           timeZone,
         });
       }
-      const userId = await signedInUserId();
+      if (!userId) return [];
       const rows = await listLocalTransactions(userId);
       return filterCategoryTransactions(rows, {
         type: params.type,
@@ -228,6 +239,9 @@ export function useCategoryDrilldown(params: {
         timeZone,
       });
     },
-    enabled: params.enabled !== false && Boolean(params.category),
+    enabled:
+      params.enabled !== false &&
+      Boolean(params.category) &&
+      (useLocal ? Boolean(userId) : true),
   });
 }

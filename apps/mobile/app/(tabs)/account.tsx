@@ -13,6 +13,7 @@ import {
 import { CaptionText, StrongText, TitleText } from '@/components/StyledText';
 import { Text, View } from '@/components/Themed';
 import { colors, fonts, radius, space, typography } from '@/constants/theme';
+import { useOfflineGates } from '@/hooks/useOfflineGates';
 import { useAuth } from '@/lib/auth';
 
 /** Public privacy policy (GitHub Pages → /docs). Same URL as Play Console. */
@@ -21,6 +22,7 @@ const PRIVACY_POLICY_URL = 'https://peterkwkwan.github.io/fudget/privacy.html';
 export default function AccountScreen() {
   const router = useRouter();
   const { user, profile, signOut } = useAuth();
+  const { settingsBanner } = useOfflineGates();
   const { edges, scrollProps } = useScrollEdges();
 
   const openPrivacyPolicy = () => {
@@ -29,7 +31,7 @@ export default function AccountScreen() {
 
   return (
     <RNView style={styles.host}>
-      <OfflineBanner variant="settings" />
+      <OfflineBanner message={settingsBanner} />
       <ScrollEdgeHost edges={edges} style={styles.scrollHost}>
         <ScrollView
           style={styles.scroll}

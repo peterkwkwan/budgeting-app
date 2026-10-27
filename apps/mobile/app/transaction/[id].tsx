@@ -30,7 +30,8 @@ export default function EditTransactionScreen() {
   const { data, isLoading, isError, error } = useTransaction(id);
   const update = useUpdateTransaction(id ?? '');
   const softDelete = useSoftDeleteTransaction();
-  const { pendingIds, categoryFixIds, recurringBlocked } = useOfflineGates();
+  const { pendingIds, categoryFixIds, recurringBlocked, banner } =
+    useOfflineGates();
   const pending = Boolean(id && pendingIds.has(id));
   const categoryFix = Boolean(id && categoryFixIds.has(id));
   const [formError, setFormError] = useState<string | null>(null);
@@ -117,7 +118,7 @@ export default function EditTransactionScreen() {
   return (
     <View style={styles.container}>
       <Stack.Screen options={{ title: 'Edit transaction' }} />
-      <OfflineBanner />
+      <OfflineBanner message={banner} />
       {categoryFix ? (
         <CaptionText style={styles.pending}>{CATEGORY_FIX_COPY}</CaptionText>
       ) : null}

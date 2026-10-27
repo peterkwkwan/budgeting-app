@@ -39,7 +39,7 @@ export default function CategoriesSettingsScreen() {
   const rename = useRenameUserCategory();
   const archive = useArchiveUserCategory();
   const unarchive = useUnarchiveUserCategory();
-  const { manageBlocked, manageHint } = useOfflineGates();
+  const { manageBlocked, manageHint, settingsBanner } = useOfflineGates();
 
   const [tab, setTab] = useState<TransactionType>('expense');
   const [newName, setNewName] = useState('');
@@ -109,7 +109,7 @@ export default function CategoriesSettingsScreen() {
     <>
       <Stack.Screen options={{ title: 'Categories' }} />
       <View style={styles.host}>
-        <OfflineBanner variant="settings" />
+        <OfflineBanner message={settingsBanner} />
         <ScrollEdgeHost edges={edges} style={styles.scrollHost}>
           <ScrollView
             style={styles.scroll}

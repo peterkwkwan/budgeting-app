@@ -45,7 +45,8 @@ export default function CurrencySettingsScreen() {
   const { profile, refreshProfile, user } = useAuth();
   const queryClient = useQueryClient();
   const { edges, scrollProps } = useScrollEdges();
-  const { manageBlocked, offline, outboxPending } = useOfflineGates();
+  const { manageBlocked, offline, outboxPending, settingsBanner } =
+    useOfflineGates();
   const currencyHint = currencyConvertHint({
     enabled: OFFLINE_TXNS_ENABLED,
     online: !offline,
@@ -150,7 +151,7 @@ export default function CurrencySettingsScreen() {
     <>
       <Stack.Screen options={{ title: 'Currency' }} />
       <View style={styles.host}>
-        <OfflineBanner variant="settings" />
+        <OfflineBanner message={settingsBanner} />
         <ScrollEdgeHost edges={edges} style={styles.scrollHost}>
           <ScrollView
             style={styles.scroll}

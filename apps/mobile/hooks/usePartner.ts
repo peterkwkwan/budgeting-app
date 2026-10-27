@@ -6,7 +6,9 @@ import {
 import { useFocusEffect } from 'expo-router';
 import { useCallback } from 'react';
 
+import { useConnectivity } from '@/hooks/useConnectivity';
 import { useAuth } from '@/lib/auth';
+import { OFFLINE_TXNS_ENABLED } from '@/lib/offline/flag';
 import {
   acceptPartnerInvite,
   createPartnerInvite,
@@ -18,19 +20,24 @@ import { statsKeys } from '@/lib/stats';
 
 export function usePartnerLink() {
   const { session } = useAuth();
+  const { online, ready } = useConnectivity();
   const queryClient = useQueryClient();
+  // Partner RPC never settles offline after a cold boot — skip until online.
+  const canFetch =
+    Boolean(session) &&
+    (!OFFLINE_TXNS_ENABLED || (ready && online));
 
   const query = useQuery({
     queryKey: partnerKeys.link(),
     queryFn: fetchPartnerLink,
-    enabled: Boolean(session),
+    enabled: canFetch,
   });
 
   useFocusEffect(
     useCallback(() => {
-      if (!session) return;
+      if (!canFetch) return;
       void queryClient.invalidateQueries({ queryKey: partnerKeys.link() });
-    }, [queryClient, session])
+    }, [queryClient, canFetch])
   );
 
   return query;

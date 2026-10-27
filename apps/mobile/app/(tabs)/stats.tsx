@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 
 import { ConnectionRequired } from '@/components/ConnectionRequired';
+import { OfflineBanner } from '@/components/OfflineBanner';
 import {
   ScrollEdgeHost,
   useScrollEdges,
@@ -151,11 +152,14 @@ export default function StatsScreen() {
     totals.isRefetching ||
     categories.isRefetching ||
     (!pairLive && trend.isRefetching) ||
-    partnerLink.isRefetching;
+    (!offline && partnerLink.isRefetching);
   const pairBlocked = showPair && pairStatsBlocked;
+  // Partner RPC hangs offline after cold boot — never gate personal charts on it.
   const loading = pairBlocked
     ? false
-    : partnerLink.isLoading || totals.isLoading || categories.isLoading;
+    : totals.isLoading ||
+      categories.isLoading ||
+      (!offline && partnerLink.isLoading);
   const error = pairBlocked
     ? null
     : (totals.error instanceof Error && totals.error.message) ||
@@ -183,7 +187,9 @@ export default function StatsScreen() {
     focus.month === currentFocus.month;
 
   const onRefresh = () => {
-    void partnerLink.refetch();
+    if (!offline) {
+      void partnerLink.refetch();
+    }
     if (showPair && pairStatsBlocked) return;
     void totals.refetch();
     void categories.refetch();
@@ -198,7 +204,11 @@ export default function StatsScreen() {
   };
 
   return (
-    <ScrollEdgeHost edges={edges} style={styles.container}>
+    <View style={styles.container}>
+    <OfflineBanner
+      message={offline ? STATS_PERSONAL_OFFLINE_BANNER : null}
+    />
+    <ScrollEdgeHost edges={edges} style={styles.scrollHost}>
     <ScrollView
       style={styles.scroll}
       contentContainerStyle={[
@@ -214,14 +224,6 @@ export default function StatsScreen() {
         />
       }
     >
-      {offline ? (
-        <View style={styles.offlineBanner} accessibilityRole="text">
-          <CaptionText style={styles.offlineBannerText}>
-            {STATS_PERSONAL_OFFLINE_BANNER}
-          </CaptionText>
-        </View>
-      ) : null}
-
       {isPaired ? (
         <View style={styles.scopeRow}>
           {(
@@ -438,6 +440,7 @@ export default function StatsScreen() {
       )}
     </ScrollView>
     </ScrollEdgeHost>
+    </View>
   );
 }
 
@@ -445,6 +448,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.canvas,
+  },
+  scrollHost: {
+    flex: 1,
   },
   scroll: {
     flex: 1,
@@ -457,17 +463,6 @@ const styles = StyleSheet.create({
   },
   contentEmpty: {
     flexGrow: 1,
-  },
-  offlineBanner: {
-    backgroundColor: colors.surfaceMuted,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    paddingHorizontal: space.md,
-    paddingVertical: space.sm,
-  },
-  offlineBannerText: {
-    color: colors.ink,
   },
   scopeRow: {
     flexDirection: 'row',
