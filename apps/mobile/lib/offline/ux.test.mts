@@ -18,17 +18,18 @@ import { createLocalTransaction } from './transactionsRepo.ts';
 import { upsertTransactionLocal } from './transactionsLocal.ts';
 import type { TransactionLocalRow } from './types.ts';
 import {
-  NEEDS_INTERNET_COPY,
   OFFLINE_BANNER_COPY,
   PENDING_SYNC_COPY,
   REPEAT_BLOCKED_COPY,
   SAVED_ON_PHONE_COPY,
+  SETTINGS_OFFLINE_BANNER_COPY,
   STATS_OFFLINE_COPY,
   SYNCING_COPY,
   blockedActionHint,
   blockedOnlineAction,
   isPendingSync,
   offlineBannerCopy,
+  settingsOfflineBannerCopy,
 } from './ux.ts';
 import { readOfflineUxStatus } from './uxStatus.ts';
 
@@ -153,7 +154,8 @@ describe('online-only gates', () => {
       blockedOnlineAction({ enabled: true, online: false }),
       'offline'
     );
-    assert.equal(blockedActionHint('offline'), NEEDS_INTERNET_COPY);
+    // Offline copy is the settings banner, not an inline hint.
+    assert.equal(blockedActionHint('offline'), null);
     assert.equal(
       blockedOnlineAction({
         enabled: true,
@@ -193,6 +195,21 @@ describe('online-only gates', () => {
         outboxPending: false,
         blockOnPending: true,
       }),
+      null
+    );
+  });
+
+  it('shows the settings offline banner only while offline', () => {
+    assert.equal(
+      settingsOfflineBannerCopy({ enabled: true, online: false }),
+      SETTINGS_OFFLINE_BANNER_COPY
+    );
+    assert.equal(
+      settingsOfflineBannerCopy({ enabled: true, online: true }),
+      null
+    );
+    assert.equal(
+      settingsOfflineBannerCopy({ enabled: false, online: false }),
       null
     );
   });

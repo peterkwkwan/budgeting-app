@@ -4,17 +4,26 @@ import { CaptionText } from '@/components/StyledText';
 import { colors, space } from '@/constants/theme';
 import { useOfflineGates } from '@/hooks/useOfflineGates';
 
+type OfflineBannerProps = {
+  /**
+   * `transactions` — Transactions / Add / Edit sync status.
+   * `settings` — Account / Settings: offline disables some controls.
+   */
+  variant?: 'transactions' | 'settings';
+};
+
 /**
- * Thin status line on Transactions and Add/Edit.
- * Renders nothing while the flag is off, and while online with an empty outbox.
+ * Thin paper status line. Transactions also shows pending/sync errors;
+ * settings shows only while offline.
  */
-export function OfflineBanner() {
-  const { banner } = useOfflineGates();
-  if (!banner) return null;
+export function OfflineBanner({ variant = 'transactions' }: OfflineBannerProps) {
+  const { banner, settingsBanner } = useOfflineGates();
+  const text = variant === 'settings' ? settingsBanner : banner;
+  if (!text) return null;
 
   return (
     <View style={styles.bar} accessibilityRole="text">
-      <CaptionText style={styles.text}>{banner}</CaptionText>
+      <CaptionText style={styles.text}>{text}</CaptionText>
     </View>
   );
 }

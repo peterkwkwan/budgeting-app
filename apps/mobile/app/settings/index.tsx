@@ -4,6 +4,7 @@ import { Stack, useRouter } from 'expo-router';
 
 import { AccountDangerZone } from '@/components/AccountDangerZone';
 import { DateViewToggle } from '@/components/DateViewToggle';
+import { OfflineBanner } from '@/components/OfflineBanner';
 import {
   ScrollEdgeHost,
   useScrollEdges,
@@ -63,52 +64,55 @@ export default function SettingsScreen() {
   return (
     <>
       <Stack.Screen options={{ title: 'Settings' }} />
-      <ScrollEdgeHost edges={edges} style={styles.host}>
-        <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={styles.container}
-          keyboardShouldPersistTaps="handled"
-          {...scrollProps}
-        >
-          <Pressable
-            style={styles.block}
-            onPress={() => router.push('/settings/currency')}
-            accessibilityRole="button"
-            accessibilityLabel={`Currency, ${currency}`}
+      <View style={styles.host}>
+        <OfflineBanner variant="settings" />
+        <ScrollEdgeHost edges={edges} style={styles.scrollHost}>
+          <ScrollView
+            style={styles.scroll}
+            contentContainerStyle={styles.container}
+            keyboardShouldPersistTaps="handled"
+            {...scrollProps}
           >
-            <CaptionText style={styles.label}>Money</CaptionText>
-            <StrongText style={styles.blockTitle}>Currency</StrongText>
-            <CaptionText style={styles.hint}>
-              {currency} — {currencyLabel(currency)}. Tap to change.
-            </CaptionText>
-          </Pressable>
+            <Pressable
+              style={styles.block}
+              onPress={() => router.push('/settings/currency')}
+              accessibilityRole="button"
+              accessibilityLabel={`Currency, ${currency}`}
+            >
+              <CaptionText style={styles.label}>Money</CaptionText>
+              <StrongText style={styles.blockTitle}>Currency</StrongText>
+              <CaptionText style={styles.hint}>
+                {currency} — {currencyLabel(currency)}. Tap to change.
+              </CaptionText>
+            </Pressable>
 
-          <Pressable
-            style={styles.block}
-            onPress={() => router.push('/settings/categories')}
-            accessibilityRole="button"
-            accessibilityLabel="Categories"
-          >
-            <CaptionText style={styles.label}>Organize</CaptionText>
-            <StrongText style={styles.blockTitle}>Categories</StrongText>
-            <CaptionText style={styles.hint}>
-              Built-in lists plus your own. Add, rename, or archive customs.
-            </CaptionText>
-          </Pressable>
+            <Pressable
+              style={styles.block}
+              onPress={() => router.push('/settings/categories')}
+              accessibilityRole="button"
+              accessibilityLabel="Categories"
+            >
+              <CaptionText style={styles.label}>Organize</CaptionText>
+              <StrongText style={styles.blockTitle}>Categories</StrongText>
+              <CaptionText style={styles.hint}>
+                Built-in lists plus your own. Add, rename, or archive customs.
+              </CaptionText>
+            </Pressable>
 
-          <View style={styles.block}>
-            <CaptionText style={styles.label}>Transactions layout</CaptionText>
-            <StrongText style={styles.blockTitle}>Date view</StrongText>
-            <CaptionText style={styles.hint}>
-              List by day, week strip, or month calendar on the Transactions
-              tab.
-            </CaptionText>
-            <DateViewToggle value={dateView} onChange={setDateView} />
-          </View>
+            <View style={styles.block}>
+              <CaptionText style={styles.label}>Transactions layout</CaptionText>
+              <StrongText style={styles.blockTitle}>Date view</StrongText>
+              <CaptionText style={styles.hint}>
+                List by day, week strip, or month calendar on the Transactions
+                tab.
+              </CaptionText>
+              <DateViewToggle value={dateView} onChange={setDateView} />
+            </View>
 
-          <AccountDangerZone />
-        </ScrollView>
-      </ScrollEdgeHost>
+            <AccountDangerZone />
+          </ScrollView>
+        </ScrollEdgeHost>
+      </View>
     </>
   );
 }
@@ -117,6 +121,9 @@ const styles = StyleSheet.create({
   host: {
     flex: 1,
     backgroundColor: colors.canvas,
+  },
+  scrollHost: {
+    flex: 1,
   },
   scroll: {
     flex: 1,

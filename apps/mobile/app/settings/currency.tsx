@@ -11,6 +11,7 @@ import {
 import { Stack, useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 
+import { OfflineBanner } from '@/components/OfflineBanner';
 import {
   ScrollEdgeHost,
   useScrollEdges,
@@ -148,56 +149,59 @@ export default function CurrencySettingsScreen() {
   return (
     <>
       <Stack.Screen options={{ title: 'Currency' }} />
-      <ScrollEdgeHost edges={edges} style={styles.host}>
-        <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={styles.container}
-          keyboardShouldPersistTaps="handled"
-          {...scrollProps}
-        >
-          <View style={styles.block}>
-            <CaptionText style={styles.label}>Account currency</CaptionText>
-            <StrongText style={styles.blockTitle}>{current}</StrongText>
-            <CaptionText style={styles.hint}>
-              All amounts use one currency. Changing it can keep numbers as-is
-              or convert them with a rate you choose.
-            </CaptionText>
-            {currencyHint ? (
-              <CaptionText style={styles.hint}>{currencyHint}</CaptionText>
-            ) : null}
-          </View>
+      <View style={styles.host}>
+        <OfflineBanner variant="settings" />
+        <ScrollEdgeHost edges={edges} style={styles.scrollHost}>
+          <ScrollView
+            style={styles.scroll}
+            contentContainerStyle={styles.container}
+            keyboardShouldPersistTaps="handled"
+            {...scrollProps}
+          >
+            <View style={styles.block}>
+              <CaptionText style={styles.label}>Account currency</CaptionText>
+              <StrongText style={styles.blockTitle}>{current}</StrongText>
+              <CaptionText style={styles.hint}>
+                All amounts use one currency. Changing it can keep numbers as-is
+                or convert them with a rate you choose.
+              </CaptionText>
+              {currencyHint ? (
+                <CaptionText style={styles.hint}>{currencyHint}</CaptionText>
+              ) : null}
+            </View>
 
-          <View style={styles.block}>
-            <CaptionText style={styles.label}>Choose currency</CaptionText>
-            {ACCOUNT_CURRENCIES.map((code) => {
-              const selected = code === current;
-              return (
-                <Pressable
-                  key={code}
-                  onPress={() => onPick(code)}
-                  disabled={manageBlocked}
-                  style={[
-                    styles.row,
-                    selected && styles.rowSelected,
-                    manageBlocked && styles.rowDisabled,
-                  ]}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected, disabled: manageBlocked }}
-                >
-                  <StrongText
-                    style={[styles.rowText, selected && styles.rowTextSelected]}
+            <View style={styles.block}>
+              <CaptionText style={styles.label}>Choose currency</CaptionText>
+              {ACCOUNT_CURRENCIES.map((code) => {
+                const selected = code === current;
+                return (
+                  <Pressable
+                    key={code}
+                    onPress={() => onPick(code)}
+                    disabled={manageBlocked}
+                    style={[
+                      styles.row,
+                      selected && styles.rowSelected,
+                      manageBlocked && styles.rowDisabled,
+                    ]}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected, disabled: manageBlocked }}
                   >
-                    {currencyPickerLabel(code)}
-                  </StrongText>
-                  {selected ? (
-                    <CaptionText style={styles.currentBadge}>Current</CaptionText>
-                  ) : null}
-                </Pressable>
-              );
-            })}
-          </View>
-        </ScrollView>
-      </ScrollEdgeHost>
+                    <StrongText
+                      style={[styles.rowText, selected && styles.rowTextSelected]}
+                    >
+                      {currencyPickerLabel(code)}
+                    </StrongText>
+                    {selected ? (
+                      <CaptionText style={styles.currentBadge}>Current</CaptionText>
+                    ) : null}
+                  </Pressable>
+                );
+              })}
+            </View>
+          </ScrollView>
+        </ScrollEdgeHost>
+      </View>
 
       <Modal
         visible={pending != null}
@@ -293,6 +297,7 @@ export default function CurrencySettingsScreen() {
 
 const styles = StyleSheet.create({
   host: { flex: 1, backgroundColor: colors.canvas },
+  scrollHost: { flex: 1 },
   scroll: { flex: 1, backgroundColor: colors.canvas },
   container: {
     paddingHorizontal: space.md,

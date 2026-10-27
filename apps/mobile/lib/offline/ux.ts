@@ -6,6 +6,10 @@
 export const OFFLINE_BANNER_COPY =
   'You’re offline. Transaction changes save on this phone and sync when you’re back.';
 
+/** Account / Settings top banner while offline (inline “Needs internet.” removed). */
+export const SETTINGS_OFFLINE_BANNER_COPY =
+  'You’re offline. Some settings are disabled and will be available when you’re back online.';
+
 export const PENDING_SYNC_COPY = 'Pending sync';
 
 export const REPEAT_BLOCKED_COPY =
@@ -14,8 +18,6 @@ export const REPEAT_BLOCKED_COPY =
 export const STATS_OFFLINE_COPY = 'Stats need a connection.';
 
 export const PLANNER_OFFLINE_COPY = 'Planner needs a connection.';
-
-export const NEEDS_INTERNET_COPY = 'Needs internet.';
 
 export const SAVED_ON_PHONE_COPY = 'Saved on phone — sync will retry.';
 
@@ -64,6 +66,18 @@ export function offlineBannerCopy(input: {
   return SYNCING_COPY;
 }
 
+/**
+ * Banner on Account and Settings.
+ * Offline only — pending-sync still uses the short inline hint.
+ */
+export function settingsOfflineBannerCopy(input: {
+  enabled: boolean;
+  online: boolean;
+}): string | null {
+  if (!input.enabled || input.online) return null;
+  return SETTINGS_OFFLINE_BANNER_COPY;
+}
+
 /** Server trigger: `Category "…" is not allowed for expense|income`. */
 export function isInvalidCategoryError(
   message: string | null | undefined
@@ -92,7 +106,8 @@ export function currencyConvertHint(input: {
     outboxPending: input.outboxPending,
     blockOnPending: true,
   });
-  if (reason === 'offline') return NEEDS_INTERNET_COPY;
+  // Offline copy lives on the settings Offline banner.
+  if (reason === 'offline') return null;
   if (reason === 'pending') return SYNC_BEFORE_CONVERT_COPY;
   return null;
 }
@@ -129,9 +144,12 @@ export function blockedOnlineAction(input: {
   return null;
 }
 
-/** Short hint for a disabled partner, currency, category, or account-data control. */
+/**
+ * Short hint for a disabled partner, currency, or category control.
+ * Offline uses the settings banner instead of an inline “Needs internet.”
+ */
 export function blockedActionHint(reason: OnlineBlockReason | null): string | null {
-  if (reason === 'offline') return NEEDS_INTERNET_COPY;
+  if (reason === 'offline') return null;
   if (reason === 'pending') return PENDING_SYNC_COPY;
   return null;
 }

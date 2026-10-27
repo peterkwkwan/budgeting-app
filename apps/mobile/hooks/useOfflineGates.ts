@@ -5,6 +5,7 @@ import {
   blockedActionHint,
   blockedOnlineAction,
   offlineBannerCopy,
+  settingsOfflineBannerCopy,
 } from '@/lib/offline/ux';
 
 /**
@@ -38,6 +39,8 @@ export function useOfflineGates() {
       openCount: sync.openCount,
       lastSyncError: sync.lastSyncError,
     }),
+    /** Account / Settings top banner while offline. */
+    settingsBanner: settingsOfflineBannerCopy({ enabled, online }),
     repeatBlocked: offline,
     recurringBlocked: offline,
     statsBlocked: offline,

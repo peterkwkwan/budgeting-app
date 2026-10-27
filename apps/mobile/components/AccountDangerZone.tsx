@@ -17,7 +17,7 @@ import {
   useWipeMyData,
 } from '@/hooks/useAccountBackup';
 import { useOfflineGates } from '@/hooks/useOfflineGates';
-import { NEEDS_INTERNET_COPY, UNSYNCED_DISCARD_COPY } from '@/lib/offline/ux';
+import { UNSYNCED_DISCARD_COPY } from '@/lib/offline/ux';
 import { useAuth } from '@/lib/auth';
 import {
   DELETE_CONFIRM_PHRASE,
@@ -159,9 +159,6 @@ export function AccountDangerZone() {
         Wipe clears your data but keeps you signed in. Delete removes your
         Google account link and all Fudget data forever.
       </CaptionText>
-      {accountDataBlocked ? (
-        <CaptionText style={styles.hint}>{NEEDS_INTERNET_COPY}</CaptionText>
-      ) : null}
 
       {restoreAvailable ? (
         <View style={styles.notice}>

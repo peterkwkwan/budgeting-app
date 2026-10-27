@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { Stack } from 'expo-router';
 
+import { OfflineBanner } from '@/components/OfflineBanner';
 import {
   ScrollEdgeHost,
   useScrollEdges,
@@ -107,13 +108,15 @@ export default function CategoriesSettingsScreen() {
   return (
     <>
       <Stack.Screen options={{ title: 'Categories' }} />
-      <ScrollEdgeHost edges={edges} style={styles.host}>
-        <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={styles.container}
-          keyboardShouldPersistTaps="handled"
-          {...scrollProps}
-        >
+      <View style={styles.host}>
+        <OfflineBanner variant="settings" />
+        <ScrollEdgeHost edges={edges} style={styles.scrollHost}>
+          <ScrollView
+            style={styles.scroll}
+            contentContainerStyle={styles.container}
+            keyboardShouldPersistTaps="handled"
+            {...scrollProps}
+          >
           <View style={styles.segment}>
             {(['expense', 'income'] as const).map((option) => {
               const selected = tab === option;
@@ -277,17 +280,19 @@ export default function CategoriesSettingsScreen() {
           {error ? (
             <CaptionText style={styles.error}>{error}</CaptionText>
           ) : null}
-          {customsQuery.isLoading ? (
-            <ActivityIndicator color={colors.green[700]} />
-          ) : null}
-        </ScrollView>
-      </ScrollEdgeHost>
+            {customsQuery.isLoading ? (
+              <ActivityIndicator color={colors.green[700]} />
+            ) : null}
+          </ScrollView>
+        </ScrollEdgeHost>
+      </View>
     </>
   );
 }
 
 const styles = StyleSheet.create({
   host: { flex: 1, backgroundColor: colors.canvas },
+  scrollHost: { flex: 1 },
   scroll: { flex: 1 },
   container: {
     paddingHorizontal: space.md,

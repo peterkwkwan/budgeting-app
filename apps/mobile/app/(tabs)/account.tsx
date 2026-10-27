@@ -3,6 +3,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { Pressable, ScrollView, StyleSheet, View as RNView } from 'react-native';
 
 import { ChevronRightIcon } from '@/components/icons';
+import { OfflineBanner } from '@/components/OfflineBanner';
 import { PartnerSection } from '@/components/PartnerSection';
 import { RestoreBackupBanner } from '@/components/RestoreBackupBanner';
 import {
@@ -27,84 +28,87 @@ export default function AccountScreen() {
   };
 
   return (
-    <ScrollEdgeHost edges={edges} style={styles.host}>
-    <ScrollView
-      style={styles.scroll}
-      contentContainerStyle={styles.container}
-      keyboardShouldPersistTaps="handled"
-      {...scrollProps}
-    >
-      <TitleText style={styles.title}>Account</TitleText>
+    <RNView style={styles.host}>
+      <OfflineBanner variant="settings" />
+      <ScrollEdgeHost edges={edges} style={styles.scrollHost}>
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.container}
+          keyboardShouldPersistTaps="handled"
+          {...scrollProps}
+        >
+          <TitleText style={styles.title}>Account</TitleText>
 
-      <RestoreBackupBanner />
+          <RestoreBackupBanner />
 
-      <View style={styles.block} lightColor={colors.surfaceMuted} darkColor="#1a2a1f">
-        <CaptionText style={styles.label}>Email</CaptionText>
-        <StrongText style={styles.value}>{user?.email ?? '—'}</StrongText>
+          <View style={styles.block} lightColor={colors.surfaceMuted} darkColor="#1a2a1f">
+            <CaptionText style={styles.label}>Email</CaptionText>
+            <StrongText style={styles.value}>{user?.email ?? '—'}</StrongText>
 
-        <CaptionText style={styles.label}>Display name</CaptionText>
-        <StrongText style={styles.value}>{profile?.display_name ?? '—'}</StrongText>
+            <CaptionText style={styles.label}>Display name</CaptionText>
+            <StrongText style={styles.value}>{profile?.display_name ?? '—'}</StrongText>
 
-        <CaptionText style={styles.label}>Timezone</CaptionText>
-        <StrongText style={styles.value}>{profile?.timezone ?? '—'}</StrongText>
-      </View>
+            <CaptionText style={styles.label}>Timezone</CaptionText>
+            <StrongText style={styles.value}>{profile?.timezone ?? '—'}</StrongText>
+          </View>
 
-      <Pressable
-        style={({ pressed }) => [
-          styles.settingsEntry,
-          pressed && styles.settingsEntryPressed,
-        ]}
-        onPress={() => router.push('/settings')}
-        accessibilityRole="button"
-        accessibilityLabel="Open settings and preferences"
-      >
-        <RNView style={styles.settingsCopy}>
-          <StrongText style={styles.settingsTitle}>Settings</StrongText>
-          <CaptionText style={styles.settingsSubtitle}>
-            Open preferences and account tools
-          </CaptionText>
-        </RNView>
-        <ChevronRightIcon color={colors.inkMuted} size={18} />
-      </Pressable>
+          <Pressable
+            style={({ pressed }) => [
+              styles.settingsEntry,
+              pressed && styles.settingsEntryPressed,
+            ]}
+            onPress={() => router.push('/settings')}
+            accessibilityRole="button"
+            accessibilityLabel="Open settings and preferences"
+          >
+            <RNView style={styles.settingsCopy}>
+              <StrongText style={styles.settingsTitle}>Settings</StrongText>
+              <CaptionText style={styles.settingsSubtitle}>
+                Open preferences and account tools
+              </CaptionText>
+            </RNView>
+            <ChevronRightIcon color={colors.inkMuted} size={18} />
+          </Pressable>
 
-      <PartnerSection />
+          <PartnerSection />
 
-      <Pressable
-        style={({ pressed }) => [
-          styles.linkRow,
-          pressed && styles.linkRowPressed,
-        ]}
-        onPress={openPrivacyPolicy}
-        accessibilityRole="link"
-        accessibilityLabel="Open privacy policy"
-      >
-        <StrongText style={styles.linkTitle}>Privacy policy</StrongText>
-        <CaptionText style={styles.linkMeta}>
-          How Fudget handles your data · opens in your browser
-        </CaptionText>
-      </Pressable>
+          <Pressable
+            style={({ pressed }) => [
+              styles.linkRow,
+              pressed && styles.linkRowPressed,
+            ]}
+            onPress={openPrivacyPolicy}
+            accessibilityRole="link"
+            accessibilityLabel="Open privacy policy"
+          >
+            <StrongText style={styles.linkTitle}>Privacy policy</StrongText>
+            <CaptionText style={styles.linkMeta}>
+              How Fudget handles your data · opens in your browser
+            </CaptionText>
+          </Pressable>
 
-      <Text style={styles.note} lightColor={colors.inkMuted} darkColor={colors.green[200]}>
-        Transactions sync from Supabase while online. Soft-deleted rows stay in
-        the cloud but leave this device’s list. Recurring rules auto-add
-        matching transactions about 90 days ahead (or until a series ends).
-        Partner stats are combined totals only — never each other’s rows. Wipe
-        my data (Settings) clears product data with a 30-day restore; Delete my
-        account removes Auth and all data permanently.
-      </Text>
+          <Text style={styles.note} lightColor={colors.inkMuted} darkColor={colors.green[200]}>
+            Transactions sync from Supabase while online. Soft-deleted rows stay in
+            the cloud but leave this device’s list. Recurring rules auto-add
+            matching transactions about 90 days ahead (or until a series ends).
+            Partner stats are combined totals only — never each other’s rows. Wipe
+            my data (Settings) clears product data with a 30-day restore; Delete my
+            account removes Auth and all data permanently.
+          </Text>
 
-      <Pressable
-        style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
-        onPress={() => void signOut()}
-        accessibilityRole="button"
-        accessibilityLabel="Sign out"
-      >
-        <Text style={styles.buttonText} lightColor={colors.inkInverse} darkColor={colors.inkInverse}>
-          Sign out
-        </Text>
-      </Pressable>
-    </ScrollView>
-    </ScrollEdgeHost>
+          <Pressable
+            style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
+            onPress={() => void signOut()}
+            accessibilityRole="button"
+            accessibilityLabel="Sign out"
+          >
+            <Text style={styles.buttonText} lightColor={colors.inkInverse} darkColor={colors.inkInverse}>
+              Sign out
+            </Text>
+          </Pressable>
+        </ScrollView>
+      </ScrollEdgeHost>
+    </RNView>
   );
 }
 
@@ -112,6 +116,9 @@ const styles = StyleSheet.create({
   host: {
     flex: 1,
     backgroundColor: colors.canvas,
+  },
+  scrollHost: {
+    flex: 1,
   },
   scroll: {
     flex: 1,

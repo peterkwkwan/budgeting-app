@@ -45,7 +45,6 @@ import type { TransactionLocalRow } from './types.ts';
 import { readOfflineUxStatus } from './uxStatus.ts';
 import {
   CATEGORY_FIX_COPY,
-  NEEDS_INTERNET_COPY,
   SYNC_BEFORE_CONVERT_COPY,
   UNSYNCED_DISCARD_COPY,
   currencyConvertHint,
@@ -365,7 +364,7 @@ describe('wipe, restore, and convert', () => {
         online: false,
         outboxPending: false,
       }),
-      NEEDS_INTERNET_COPY
+      null
     );
     assert.equal(
       currencyConvertHint({
