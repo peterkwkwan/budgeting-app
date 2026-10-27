@@ -82,6 +82,20 @@ export async function getTransactionLocal(
   return row ? mapLocalRow(row) : null;
 }
 
+/** Mirror row including a soft-delete tombstone. Sync uses this for LWW. */
+export async function getTransactionLocalAny(
+  db: SqlExecutor,
+  userId: string,
+  id: string
+): Promise<TransactionLocalRow | null> {
+  const row = await db.first<Record<string, unknown>>(
+    `SELECT * FROM transactions_local
+     WHERE user_id = ? AND id = ?`,
+    [userId, id]
+  );
+  return row ? mapLocalRow(row) : null;
+}
+
 /**
  * Soft-delete one active row. Sets deleted_at, bumps updated_at, and marks
  * pending_op = 'delete'. Returns false when no active row matched.

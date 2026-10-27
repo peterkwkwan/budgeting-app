@@ -1,7 +1,8 @@
 /**
- * Outbox enqueue for transaction edits. Writes rows only — no push/pull.
- * Coalesce rule (plan §5): one pending row per transaction.
- * A pending create that is deleted before push is dropped (never sent).
+ * Outbox enqueue for transaction edits.
+ * Coalesce rule (plan §5): one open row per transaction (pending or failed).
+ * A create that is deleted before a successful push is dropped (never sent).
+ * Push / pull live in `syncEngine.ts`. Failed rows stay queued for retry.
  */
 import type { SqlExecutor } from './schema';
 import type { OutboxOp, OutboxRow, OutboxStatus } from './types';
@@ -24,18 +25,40 @@ export async function listPendingOutbox(
   userId: string,
   entityId?: string
 ): Promise<OutboxRow[]> {
+  return listOutboxByStatus(db, userId, ['pending'], entityId);
+}
+
+/** Pending and failed rows, FIFO. Failed rows are retried, not dropped. */
+export async function listOpenOutbox(
+  db: SqlExecutor,
+  userId: string,
+  entityId?: string
+): Promise<OutboxRow[]> {
+  return listOutboxByStatus(db, userId, ['pending', 'failed'], entityId);
+}
+
+async function listOutboxByStatus(
+  db: SqlExecutor,
+  userId: string,
+  statuses: readonly OutboxStatus[],
+  entityId?: string
+): Promise<OutboxRow[]> {
+  const marks = statuses.map(() => '?').join(', ');
   const sql = entityId
     ? `SELECT * FROM outbox
-       WHERE user_id = ? AND entity = 'transaction' AND entity_id = ? AND status = 'pending'
+       WHERE user_id = ? AND entity = 'transaction' AND entity_id = ? AND status IN (${marks})
        ORDER BY seq ASC`
     : `SELECT * FROM outbox
-       WHERE user_id = ? AND entity = 'transaction' AND status = 'pending'
+       WHERE user_id = ? AND entity = 'transaction' AND status IN (${marks})
        ORDER BY seq ASC`;
-  const params = entityId ? [userId, entityId] : [userId];
+  const params = entityId
+    ? [userId, entityId, ...statuses]
+    : [userId, ...statuses];
   const rows = await db.all<Record<string, unknown>>(sql, params);
   return rows.map(mapOutboxRow);
 }
 
+/** Drop open rows (pending or failed) for one transaction. Does not touch acked history. */
 export async function deletePendingOutbox(
   db: SqlExecutor,
   userId: string,
@@ -43,7 +66,8 @@ export async function deletePendingOutbox(
 ): Promise<void> {
   await db.run(
     `DELETE FROM outbox
-     WHERE user_id = ? AND entity = 'transaction' AND entity_id = ? AND status = 'pending'`,
+     WHERE user_id = ? AND entity = 'transaction' AND entity_id = ?
+       AND status IN ('pending', 'failed')`,
     [userId, entityId]
   );
 }
@@ -52,7 +76,7 @@ export async function enqueueTransactionChange(
   db: SqlExecutor,
   change: EnqueueTransactionChange
 ): Promise<EnqueueResult> {
-  const pending = await listPendingOutbox(db, change.userId, change.entityId);
+  const pending = await listOpenOutbox(db, change.userId, change.entityId);
   const payloadJson = JSON.stringify(change.payload);
 
   if (change.op === 'soft_delete' && pending.some((row) => row.op === 'create')) {
@@ -67,14 +91,15 @@ export async function enqueueTransactionChange(
     const baseUpdatedAt = head.op === 'create' ? null : head.base_updated_at;
     await db.run(
       `UPDATE outbox
-       SET op = ?, payload_json = ?, base_updated_at = ?
+       SET op = ?, payload_json = ?, base_updated_at = ?, status = 'pending', last_error = NULL
        WHERE seq = ?`,
       [nextOp, payloadJson, baseUpdatedAt, head.seq]
     );
     if (pending.length > 1) {
       await db.run(
         `DELETE FROM outbox
-         WHERE user_id = ? AND entity = 'transaction' AND entity_id = ? AND status = 'pending' AND seq != ?`,
+         WHERE user_id = ? AND entity = 'transaction' AND entity_id = ?
+           AND status IN ('pending', 'failed') AND seq != ?`,
         [change.userId, change.entityId, head.seq]
       );
     }

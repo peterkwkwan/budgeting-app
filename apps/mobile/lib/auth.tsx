@@ -12,6 +12,8 @@ import {
   type ReactNode,
 } from 'react';
 
+import { OFFLINE_TXNS_ENABLED } from '@/lib/offline/flag';
+
 import { ensureProfile, type Profile } from './profile';
 import { isSupabaseConfigured, supabase } from './supabase';
 
@@ -169,10 +171,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const userId = session?.user?.id;
   const signOut = useCallback(async () => {
+    if (OFFLINE_TXNS_ENABLED && userId) {
+      try {
+        const { clearOfflineUser } = await import('@/lib/offline/syncEngine');
+        await clearOfflineUser(userId);
+      } catch (err) {
+        console.warn('[offline] sign-out clear failed', err);
+      }
+    }
     await supabase.auth.signOut();
     setProfile(null);
-  }, []);
+  }, [userId]);
 
   const refreshProfile = useCallback(async () => {
     await syncProfile(session?.user ?? null);

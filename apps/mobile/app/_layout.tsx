@@ -17,6 +17,7 @@ import 'react-native-reanimated';
 
 import { colors } from '@/constants/theme';
 import { useCatchUpRecurring } from '@/hooks/useCatchUpRecurring';
+import { useOfflineTransactionSync } from '@/hooks/useOfflineSync';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { AppQueryProvider } from '@/lib/query';
 
@@ -59,6 +60,8 @@ function RootNavigator() {
   const { session } = useAuth();
   // Fill missing recurring transaction rows when signed in / returning to app.
   useCatchUpRecurring();
+  // Push then pull when the offline flag is on. No-op while the flag is false.
+  useOfflineTransactionSync();
 
   return (
     <Stack>

@@ -46,6 +46,28 @@ function invalidateTransactionsAndStats(
   void queryClient.invalidateQueries({ queryKey: statsKeys.all });
 }
 
+/** Online path only invalidates. Flag on: also push then pull. */
+function settleTransactionWrite(queryClient: ReturnType<typeof useQueryClient>) {
+  invalidateTransactionsAndStats(queryClient);
+  if (!OFFLINE_TXNS_ENABLED) return;
+  void signedInUserId()
+    .then(async (userId) => {
+      const { syncNow } = await import('@/lib/offline/syncEngine');
+      return syncNow(userId);
+    })
+    .then((result) => {
+      if (
+        !result.skipped &&
+        (result.pushed > 0 || result.pulled > 0 || result.dropped > 0)
+      ) {
+        invalidateTransactionsAndStats(queryClient);
+      }
+    })
+    .catch((err) => {
+      console.warn('[offline] sync after write failed', err);
+    });
+}
+
 /** Signed-in user id for the offline repository. Not called while the flag is off. */
 async function signedInUserId(): Promise<string> {
   const { supabase } = await import('@/lib/supabase');
@@ -146,7 +168,7 @@ export function useCreateTransaction() {
       );
     },
     onSuccess: () => {
-      invalidateTransactionsAndStats(queryClient);
+      settleTransactionWrite(queryClient);
     },
   });
 }
@@ -164,7 +186,7 @@ export function useUpdateTransaction(id: string) {
       return updateTransaction(id, input);
     },
     onSuccess: () => {
-      invalidateTransactionsAndStats(queryClient);
+      settleTransactionWrite(queryClient);
     },
   });
 }
@@ -182,7 +204,7 @@ export function useSoftDeleteTransaction() {
       return softDeleteTransaction(txnId);
     },
     onSuccess: () => {
-      invalidateTransactionsAndStats(queryClient);
+      settleTransactionWrite(queryClient);
     },
   });
 }
@@ -200,7 +222,7 @@ export function useBulkSoftDeleteTransactions() {
       return softDeleteTransactions(ids);
     },
     onSuccess: () => {
-      invalidateTransactionsAndStats(queryClient);
+      settleTransactionWrite(queryClient);
     },
   });
 }
@@ -224,7 +246,7 @@ export function useBulkPatchTransactions() {
       return bulkPatchTransactions(rows, patch);
     },
     onSuccess: () => {
-      invalidateTransactionsAndStats(queryClient);
+      settleTransactionWrite(queryClient);
     },
   });
 }
