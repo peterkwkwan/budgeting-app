@@ -23,6 +23,7 @@ import {
 } from '@/constants/currencies';
 import { colors, fonts, radius, space, typography } from '@/constants/theme';
 import { invalidateAllProductQueries } from '@/hooks/useAccountBackup';
+import { useOfflineGates } from '@/hooks/useOfflineGates';
 import { useAuth } from '@/lib/auth';
 import { profileCurrency, setAccountCurrency } from '@/lib/currency';
 import { formatFxRateInput, suggestFxRate } from '@/lib/fx';
@@ -36,6 +37,7 @@ export default function CurrencySettingsScreen() {
   const { profile, refreshProfile } = useAuth();
   const queryClient = useQueryClient();
   const { edges, scrollProps } = useScrollEdges();
+  const { manageBlocked, manageHint } = useOfflineGates();
   const current = profileCurrency(profile);
 
   const [pending, setPending] = useState<AccountCurrency | null>(null);
@@ -79,13 +81,13 @@ export default function CurrencySettingsScreen() {
   }, [pending, current]);
 
   const onPick = (code: AccountCurrency) => {
-    if (code === current) return;
+    if (manageBlocked || code === current) return;
     setError(null);
     setPending(code);
   };
 
   const apply = async (mode: 'keep' | 'convert') => {
-    if (!pending) return;
+    if (!pending || manageBlocked) return;
     setError(null);
     let rate: number | null = null;
     if (mode === 'convert') {
@@ -133,6 +135,9 @@ export default function CurrencySettingsScreen() {
               All amounts use one currency. Changing it can keep numbers as-is
               or convert them with a rate you choose.
             </CaptionText>
+            {manageHint ? (
+              <CaptionText style={styles.hint}>{manageHint}</CaptionText>
+            ) : null}
           </View>
 
           <View style={styles.block}>
@@ -143,9 +148,14 @@ export default function CurrencySettingsScreen() {
                 <Pressable
                   key={code}
                   onPress={() => onPick(code)}
-                  style={[styles.row, selected && styles.rowSelected]}
+                  disabled={manageBlocked}
+                  style={[
+                    styles.row,
+                    selected && styles.rowSelected,
+                    manageBlocked && styles.rowDisabled,
+                  ]}
                   accessibilityRole="button"
-                  accessibilityState={{ selected }}
+                  accessibilityState={{ selected, disabled: manageBlocked }}
                 >
                   <StrongText
                     style={[styles.rowText, selected && styles.rowTextSelected]}
@@ -213,8 +223,11 @@ export default function CurrencySettingsScreen() {
             ) : null}
 
             <Pressable
-              style={[styles.primaryBtn, busy && styles.btnDisabled]}
-              disabled={busy}
+              style={[
+                styles.primaryBtn,
+                (busy || manageBlocked) && styles.btnDisabled,
+              ]}
+              disabled={busy || manageBlocked}
               onPress={() => void apply('keep')}
             >
               <StrongText style={styles.primaryBtnText}>
@@ -222,8 +235,11 @@ export default function CurrencySettingsScreen() {
               </StrongText>
             </Pressable>
             <Pressable
-              style={[styles.secondaryBtn, busy && styles.btnDisabled]}
-              disabled={busy || fxLoading}
+              style={[
+                styles.secondaryBtn,
+                (busy || fxLoading || manageBlocked) && styles.btnDisabled,
+              ]}
+              disabled={busy || fxLoading || manageBlocked}
               onPress={() => void apply('convert')}
             >
               {busy ? (
@@ -280,6 +296,7 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   rowSelected: {},
+  rowDisabled: { opacity: 0.55 },
   rowText: { color: colors.ink, flex: 1 },
   rowTextSelected: { color: colors.green[700] },
   currentBadge: { color: colors.inkMuted },

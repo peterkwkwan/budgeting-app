@@ -5,6 +5,7 @@ import { AppState, type AppStateStatus } from 'react-native';
 import { useAuth } from '@/lib/auth';
 import { OFFLINE_TXNS_ENABLED } from '@/lib/offline/flag';
 import { syncNow } from '@/lib/offline/syncEngine';
+import { offlineUxKeys } from '@/lib/offline/ux';
 import { transactionKeys } from '@/lib/transactions';
 
 /**
@@ -33,8 +34,15 @@ export function useOfflineTransactionSync() {
       inFlight = true;
       void syncNow(userId)
         .then((result) => {
-          if (cancelled || result.skipped) return;
-          if (result.pushed > 0 || result.pulled > 0 || result.dropped > 0) {
+          if (cancelled) return;
+          void queryClient.invalidateQueries({ queryKey: offlineUxKeys.all });
+          if (result.skipped) return;
+          if (
+            result.pushed > 0 ||
+            result.pulled > 0 ||
+            result.dropped > 0 ||
+            result.failed > 0
+          ) {
             void queryClient.invalidateQueries({ queryKey: transactionKeys.all });
           }
           if (result.failed > 0) {
@@ -43,6 +51,9 @@ export function useOfflineTransactionSync() {
         })
         .catch((err) => {
           console.warn('[offline] sync failed', err);
+          if (!cancelled) {
+            void queryClient.invalidateQueries({ queryKey: offlineUxKeys.all });
+          }
         })
         .finally(() => {
           inFlight = false;

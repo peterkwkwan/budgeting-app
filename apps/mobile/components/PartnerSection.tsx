@@ -11,6 +11,7 @@ import {
 
 import { CaptionText, StrongText, TitleText } from '@/components/StyledText';
 import { colors, fonts, radius, space, typography } from '@/constants/theme';
+import { useOfflineGates } from '@/hooks/useOfflineGates';
 import {
   useAcceptPartnerInvite,
   useCreatePartnerInvite,
@@ -27,12 +28,14 @@ export function PartnerSection() {
   const createInvite = useCreatePartnerInvite();
   const acceptInvite = useAcceptPartnerInvite();
   const unlink = useUnlinkPartner();
+  const { manageBlocked, manageHint } = useOfflineGates();
   const [codeInput, setCodeInput] = useState('');
   const [showEnterCode, setShowEnterCode] = useState(false);
 
   const link = linkQuery.data ?? null;
   const busy =
     createInvite.isPending || acceptInvite.isPending || unlink.isPending;
+  const locked = busy || manageBlocked;
 
   const onShareCode = async (code: string) => {
     try {
@@ -45,6 +48,7 @@ export function PartnerSection() {
   };
 
   const onUnlink = () => {
+    if (locked) return;
     const title =
       link?.status === 'pending' ? 'Cancel invite?' : 'Unlink partner?';
     const message =
@@ -71,6 +75,7 @@ export function PartnerSection() {
   };
 
   const onCreate = () => {
+    if (locked) return;
     createInvite.mutate(undefined, {
       onError: (err) => {
         Alert.alert(
@@ -82,6 +87,7 @@ export function PartnerSection() {
   };
 
   const onAccept = () => {
+    if (locked) return;
     const code = codeInput.trim();
     if (code.length < 6) {
       Alert.alert('Enter the invite code', 'Ask your partner for their code.');
@@ -108,6 +114,9 @@ export function PartnerSection() {
         Pair with one other account. You’ll see combined category totals — never
         each other’s transaction notes or rows.
       </CaptionText>
+      {manageHint ? (
+        <CaptionText style={styles.blurb}>{manageHint}</CaptionText>
+      ) : null}
 
       {linkQuery.isLoading ? (
         <ActivityIndicator color={colors.green[700]} />
@@ -124,10 +133,10 @@ export function PartnerSection() {
             style={({ pressed }) => [
               styles.dangerOutline,
               pressed && styles.dangerPressed,
-              busy && styles.disabled,
+              locked && styles.disabled,
             ]}
             onPress={onUnlink}
-            disabled={busy}
+            disabled={locked}
             accessibilityRole="button"
             accessibilityLabel="Unlink partner"
           >
@@ -148,10 +157,10 @@ export function PartnerSection() {
               style={({ pressed }) => [
                 styles.primary,
                 pressed && styles.primaryPressed,
-                busy && styles.disabled,
+                locked && styles.disabled,
               ]}
               onPress={() => void onShareCode(link.inviteCode!)}
-              disabled={busy}
+              disabled={locked}
               accessibilityRole="button"
               accessibilityLabel="Share invite code"
             >
@@ -161,10 +170,10 @@ export function PartnerSection() {
               style={({ pressed }) => [
                 styles.secondary,
                 pressed && styles.secondaryPressed,
-                busy && styles.disabled,
+                locked && styles.disabled,
               ]}
               onPress={onCreate}
-              disabled={busy}
+              disabled={locked}
               accessibilityRole="button"
               accessibilityLabel="Refresh invite code"
             >
@@ -175,10 +184,10 @@ export function PartnerSection() {
             style={({ pressed }) => [
               styles.dangerOutline,
               pressed && styles.dangerPressed,
-              busy && styles.disabled,
+              locked && styles.disabled,
             ]}
             onPress={onUnlink}
-            disabled={busy}
+            disabled={locked}
             accessibilityRole="button"
             accessibilityLabel="Cancel invite"
           >
@@ -196,7 +205,7 @@ export function PartnerSection() {
             placeholder="ABCD2345"
             placeholderTextColor={colors.inkMuted}
             style={styles.input}
-            editable={!busy}
+            editable={!locked}
             accessibilityLabel="Invite code"
           />
           <View style={styles.rowActions}>
@@ -204,10 +213,10 @@ export function PartnerSection() {
               style={({ pressed }) => [
                 styles.primary,
                 pressed && styles.primaryPressed,
-                busy && styles.disabled,
+                locked && styles.disabled,
               ]}
               onPress={onAccept}
-              disabled={busy}
+              disabled={locked}
               accessibilityRole="button"
               accessibilityLabel="Accept invite"
             >
@@ -244,10 +253,10 @@ export function PartnerSection() {
               style={({ pressed }) => [
                 styles.primary,
                 pressed && styles.primaryPressed,
-                busy && styles.disabled,
+                locked && styles.disabled,
               ]}
               onPress={onCreate}
-              disabled={busy}
+              disabled={locked}
               accessibilityRole="button"
               accessibilityLabel="Create invite code"
             >
@@ -260,9 +269,14 @@ export function PartnerSection() {
             <Pressable
               style={({ pressed }) => [
                 styles.secondary,
-                pressed && styles.secondaryPressed,
+                pressed && !locked && styles.secondaryPressed,
+                locked && styles.disabled,
               ]}
-              onPress={() => setShowEnterCode(true)}
+              onPress={() => {
+                if (locked) return;
+                setShowEnterCode(true);
+              }}
+              disabled={locked}
               accessibilityRole="button"
               accessibilityLabel="Enter invite code"
             >

@@ -2,12 +2,14 @@ import { Stack, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import { OfflineBanner } from '@/components/OfflineBanner';
 import {
   TransactionForm,
   type TransactionFormSubmit,
   type TransactionFormValues,
 } from '@/components/TransactionForm';
 import { colors } from '@/constants/theme';
+import { useOfflineGates } from '@/hooks/useOfflineGates';
 import { useCreateRecurringSeries } from '@/hooks/useRecurring';
 import { useCreateTransaction } from '@/hooks/useTransactions';
 import { useAuth } from '@/lib/auth';
@@ -34,12 +36,13 @@ export default function NewTransactionScreen() {
   const [error, setError] = useState<string | null>(null);
   const [initial] = useState(() => readVoiceInitial());
   const timezone = profile?.timezone || deviceTimezone();
+  const { offline } = useOfflineGates();
   const busy = createTxn.isPending || createSeries.isPending;
 
   async function onSubmit(input: TransactionFormSubmit) {
     setError(null);
     try {
-      if (input.repeat?.cadence) {
+      if (input.repeat?.cadence && !offline) {
         await createSeries.mutateAsync({
           amount: input.amount,
           type: input.type,
@@ -73,6 +76,7 @@ export default function NewTransactionScreen() {
   return (
     <View style={styles.container}>
       <Stack.Screen options={{ title: 'Add transaction' }} />
+      <OfflineBanner />
       <TransactionForm
         allowRepeat
         allowVoice

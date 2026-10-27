@@ -9,6 +9,7 @@ import {
   View,
 } from 'react-native';
 
+import { ConnectionRequired } from '@/components/ConnectionRequired';
 import {
   ScrollEdgeHost,
   useScrollEdges,
@@ -22,6 +23,7 @@ import { CaptionText, StrongText, TitleText } from '@/components/StyledText';
 import type { TransactionType } from '@/constants/categories';
 import { trendStrokeForMetric } from '@/constants/chartColors';
 import { colors, fonts, radius, space, typography } from '@/constants/theme';
+import { useOfflineGates } from '@/hooks/useOfflineGates';
 import { usePartnerLink } from '@/hooks/usePartner';
 import {
   useAggregateStats,
@@ -42,6 +44,7 @@ import {
   type PeriodFocus,
   type PeriodPreset,
 } from '@/lib/periods';
+import { STATS_OFFLINE_COPY } from '@/lib/offline/ux';
 import { savingsRatePercent } from '@/lib/savingsRate';
 import type { StatsMetric } from '@/lib/stats';
 
@@ -58,6 +61,7 @@ export default function StatsScreen() {
   };
   const timeZone = profile?.timezone || 'UTC';
   const partnerLink = usePartnerLink();
+  const { statsBlocked } = useOfflineGates();
   const isPaired = partnerLink.data?.status === 'active';
 
   const [scope, setScope] = useState<StatsScope>('personal');
@@ -203,7 +207,7 @@ export default function StatsScreen() {
         />
       }
     >
-      {isPaired ? (
+      {isPaired && !statsBlocked ? (
         <View style={styles.scopeRow}>
           {(
             [
@@ -235,14 +239,16 @@ export default function StatsScreen() {
         </View>
       ) : null}
 
-      {showPair ? (
+      {!statsBlocked && showPair ? (
         <CaptionText style={styles.pairHint}>
           Combined totals with {partnerLink.data?.partnerDisplayName ?? 'partner'}.
           Category sums only — no individual transactions.
         </CaptionText>
       ) : null}
 
-      {loading ? (
+      {statsBlocked ? (
+        <ConnectionRequired message={STATS_OFFLINE_COPY} />
+      ) : loading ? (
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={colors.green[700]} />
         </View>

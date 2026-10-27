@@ -7,11 +7,14 @@ import {
   View,
 } from 'react-native';
 
+import { ConnectionRequired } from '@/components/ConnectionRequired';
 import { CaptionText, TitleText } from '@/components/StyledText';
 import { RecurringRow } from '@/components/RecurringRow';
 import { colors, fonts, radius, space, typography } from '@/constants/theme';
+import { useOfflineGates } from '@/hooks/useOfflineGates';
 import { useRecurringList } from '@/hooks/useRecurring';
 import { guardedPush } from '@/lib/navGuard';
+import { REPEAT_BLOCKED_COPY } from '@/lib/offline/ux';
 
 /**
  * Manage recurring rules (stack screen — not a bottom tab).
@@ -19,8 +22,18 @@ import { guardedPush } from '@/lib/navGuard';
  */
 export default function RecurringManageScreen() {
   const router = useRouter();
+  const { recurringBlocked } = useOfflineGates();
   const { data, isLoading, isError, error, refetch, isRefetching } =
     useRecurringList();
+
+  if (recurringBlocked) {
+    return (
+      <View style={styles.container}>
+        <Stack.Screen options={{ title: 'Recurring rules' }} />
+        <ConnectionRequired message={REPEAT_BLOCKED_COPY} />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>

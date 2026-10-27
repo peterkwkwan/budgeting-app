@@ -17,6 +17,19 @@ export async function isDeviceOnline(): Promise<boolean> {
 }
 
 /**
+ * Current online value, then every change.
+ * Used by the Phase 3 banner. Sync still uses `subscribeOnline`.
+ */
+export function subscribeConnectivity(
+  onChange: (online: boolean) => void
+): () => void {
+  const emit = (state: NetInfoState) => onChange(isStateOnline(state));
+  const unsub = NetInfo.addEventListener(emit);
+  void NetInfo.fetch().then(emit);
+  return unsub;
+}
+
+/**
  * Calls `onOnline` when NetInfo transitions from offline to online.
  * The first snapshot does not fire, so mount can sync on its own.
  */

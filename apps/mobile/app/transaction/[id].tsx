@@ -8,12 +8,15 @@ import {
   View,
 } from 'react-native';
 
+import { OfflineBanner } from '@/components/OfflineBanner';
 import { CaptionText, StrongText, TitleText } from '@/components/StyledText';
 import {
   TransactionForm,
   type TransactionFormSubmit,
 } from '@/components/TransactionForm';
 import { colors, radius, space } from '@/constants/theme';
+import { useOfflineGates } from '@/hooks/useOfflineGates';
+import { PENDING_SYNC_COPY, REPEAT_BLOCKED_COPY } from '@/lib/offline/ux';
 import {
   useSoftDeleteTransaction,
   useTransaction,
@@ -26,6 +29,8 @@ export default function EditTransactionScreen() {
   const { data, isLoading, isError, error } = useTransaction(id);
   const update = useUpdateTransaction(id ?? '');
   const softDelete = useSoftDeleteTransaction();
+  const { pendingIds, recurringBlocked } = useOfflineGates();
+  const pending = Boolean(id && pendingIds.has(id));
   const [formError, setFormError] = useState<string | null>(null);
 
   async function onSubmit(input: TransactionFormSubmit) {
@@ -107,23 +112,33 @@ export default function EditTransactionScreen() {
   return (
     <View style={styles.container}>
       <Stack.Screen options={{ title: 'Edit transaction' }} />
+      <OfflineBanner />
+      {pending ? (
+        <CaptionText style={styles.pending}>{PENDING_SYNC_COPY}</CaptionText>
+      ) : null}
       {data.recurring_series_id ? (
         <Pressable
           style={({ pressed }) => [
             styles.seriesLink,
-            pressed && styles.seriesLinkPressed,
+            pressed && !recurringBlocked && styles.seriesLinkPressed,
+            recurringBlocked && styles.seriesLinkDisabled,
           ]}
-          onPress={() =>
-            router.push(`/recurring/${data.recurring_series_id}`)
-          }
+          onPress={() => {
+            if (recurringBlocked) return;
+            router.push(`/recurring/${data.recurring_series_id}`);
+          }}
+          disabled={recurringBlocked}
           accessibilityRole="button"
+          accessibilityState={{ disabled: recurringBlocked }}
           accessibilityLabel="Edit or stop this recurring rule"
         >
           <StrongText style={styles.seriesLinkTitle}>
             Part of a recurring rule
           </StrongText>
           <CaptionText style={styles.seriesLinkMeta}>
-            Edit future entries or stop the series
+            {recurringBlocked
+              ? REPEAT_BLOCKED_COPY
+              : 'Edit future entries or stop the series'}
           </CaptionText>
         </Pressable>
       ) : null}
@@ -169,6 +184,14 @@ const styles = StyleSheet.create({
   },
   seriesLinkMeta: {
     color: colors.inkMuted,
+  },
+  seriesLinkDisabled: {
+    opacity: 0.6,
+  },
+  pending: {
+    color: colors.inkMuted,
+    paddingHorizontal: space.md,
+    paddingTop: space.md,
   },
   centered: {
     flex: 1,

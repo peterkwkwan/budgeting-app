@@ -1,7 +1,7 @@
 import DateTimePicker, {
   type DateTimePickerEvent,
 } from '@react-native-community/datetimepicker';
-import { useCallback, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   Modal,
@@ -27,7 +27,9 @@ import {
 } from '@/constants/repeatPresets';
 import { colors, fonts, radius, space, typography } from '@/constants/theme';
 import { RepeatCustomSheet } from '@/components/RepeatCustomSheet';
+import { useOfflineGates } from '@/hooks/useOfflineGates';
 import { useUserCategories } from '@/hooks/useUserCategories';
+import { REPEAT_BLOCKED_COPY } from '@/lib/offline/ux';
 import { useVoiceRecognition } from '@/hooks/useVoiceRecognition';
 import { useAuth } from '@/lib/auth';
 import { formatDisplayDate } from '@/lib/dates';
@@ -99,10 +101,19 @@ export function TransactionForm({
   const [voicePartial, setVoicePartial] = useState(false);
   const [lastHeard, setLastHeard] = useState<string | null>(null);
   const { profile } = useAuth();
+  const { repeatBlocked: repeatOffline } = useOfflineGates();
+  const repeatBlocked = allowRepeat && repeatOffline;
   const customsQuery = useUserCategories();
   const customs = customsQuery.data ?? [];
   const timeZone = profile?.timezone || deviceTimezone();
   const presetOptions = buildRepeatPresetOptions(occurredAt, timeZone);
+
+  useEffect(() => {
+    if (!repeatBlocked) return;
+    setRepeatRule(null);
+    setShowRepeatSheet(false);
+    setShowCustomSheet(false);
+  }, [repeatBlocked]);
 
   const applyVoiceDraft = useCallback((draft: VoiceDraft) => {
     setAmount(formatAmountInput(draft.amount));
@@ -165,7 +176,7 @@ export function TransactionForm({
       category,
       note: note.trim() || null,
       occurred_at: occurredAt.toISOString(),
-      repeat: allowRepeat ? repeatRule : null,
+      repeat: allowRepeat && !repeatBlocked ? repeatRule : null,
     });
   }
 
@@ -288,10 +299,16 @@ export function TransactionForm({
               <Pressable
                 style={[
                   styles.input,
-                  repeatRule != null && styles.repeatActive,
+                  repeatRule != null && !repeatBlocked && styles.repeatActive,
+                  repeatBlocked && styles.disabled,
                 ]}
-                onPress={() => setShowRepeatSheet(true)}
+                onPress={() => {
+                  if (repeatBlocked) return;
+                  setShowRepeatSheet(true);
+                }}
+                disabled={repeatBlocked}
                 accessibilityRole="button"
+                accessibilityState={{ disabled: repeatBlocked }}
                 accessibilityLabel="Choose how often this repeats"
               >
                 <Text
@@ -320,7 +337,9 @@ export function TransactionForm({
             <StrongText style={{ color: colors.green[700] }}>Done</StrongText>
           </Pressable>
         ) : null}
-        {allowRepeat && repeatRule ? (
+        {repeatBlocked ? (
+          <CaptionText style={styles.hint}>{REPEAT_BLOCKED_COPY}</CaptionText>
+        ) : allowRepeat && repeatRule ? (
           <CaptionText style={styles.hint}>
             Saves as a recurring rule. Matching transactions are written about
             90 days ahead (or sooner if the series ends).

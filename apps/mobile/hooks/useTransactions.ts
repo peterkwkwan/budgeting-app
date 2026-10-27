@@ -8,6 +8,7 @@ import { useCallback, useMemo } from 'react';
 
 import { useAuth } from '@/lib/auth';
 import { OFFLINE_TXNS_ENABLED } from '@/lib/offline/flag';
+import { offlineUxKeys } from '@/lib/offline/ux';
 import {
   bulkPatchLocalTransactions,
   createLocalTransaction,
@@ -50,21 +51,29 @@ function invalidateTransactionsAndStats(
 function settleTransactionWrite(queryClient: ReturnType<typeof useQueryClient>) {
   invalidateTransactionsAndStats(queryClient);
   if (!OFFLINE_TXNS_ENABLED) return;
+  // Local row is already saved. Refresh the badge immediately, then again
+  // after the flush so a failed push can show the soft retry line.
+  void queryClient.invalidateQueries({ queryKey: offlineUxKeys.all });
   void signedInUserId()
     .then(async (userId) => {
       const { syncNow } = await import('@/lib/offline/syncEngine');
       return syncNow(userId);
     })
     .then((result) => {
+      void queryClient.invalidateQueries({ queryKey: offlineUxKeys.all });
       if (
         !result.skipped &&
-        (result.pushed > 0 || result.pulled > 0 || result.dropped > 0)
+        (result.pushed > 0 ||
+          result.pulled > 0 ||
+          result.dropped > 0 ||
+          result.failed > 0)
       ) {
         invalidateTransactionsAndStats(queryClient);
       }
     })
     .catch((err) => {
       console.warn('[offline] sync after write failed', err);
+      void queryClient.invalidateQueries({ queryKey: offlineUxKeys.all });
     });
 }
 
@@ -100,6 +109,9 @@ export function useTransactionList(focus?: PeriodFocus) {
   useFocusEffect(
     useCallback(() => {
       void queryClient.invalidateQueries({ queryKey: transactionKeys.list() });
+      if (OFFLINE_TXNS_ENABLED) {
+        void queryClient.invalidateQueries({ queryKey: offlineUxKeys.all });
+      }
     }, [queryClient])
   );
 

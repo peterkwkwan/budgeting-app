@@ -22,6 +22,7 @@ import {
   type BulkEditField,
 } from '@/components/BulkEditSheet';
 import { MonthDayCalendar } from '@/components/MonthDayCalendar';
+import { OfflineBanner } from '@/components/OfflineBanner';
 import {
   ScrollEdgeHost,
   useScrollEdges,
@@ -38,6 +39,7 @@ import {
   useBulkSoftDeleteTransactions,
   useTransactionList,
 } from '@/hooks/useTransactions';
+import { useOfflineGates } from '@/hooks/useOfflineGates';
 import { useAuth } from '@/lib/auth';
 import {
   PeriodNavHeader,
@@ -96,6 +98,7 @@ export default function TransactionsScreen() {
   const [bulkField, setBulkField] = useState<BulkEditField | null>(null);
 
   const busy = bulkDelete.isPending || bulkPatch.isPending;
+  const { pendingIds } = useOfflineGates();
   const { edges, scrollProps } = useScrollEdges();
 
   // Month ‹ ›: jump to today when focus is the current month; else clamp.
@@ -290,6 +293,7 @@ export default function TransactionsScreen() {
       <TransactionRow
         transaction={item}
         hideDate
+        pending={pendingIds.has(item.id)}
         selectionMode={selectionMode}
         selected={selectedIds.has(item.id)}
         onPress={() => onRowPress(item)}
@@ -377,6 +381,7 @@ export default function TransactionsScreen() {
 
   return (
     <View style={styles.container}>
+      <OfflineBanner />
       {isLoading ? (
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={colors.green[700]} />

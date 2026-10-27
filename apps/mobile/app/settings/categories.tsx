@@ -19,6 +19,7 @@ import {
   type TransactionType,
 } from '@/constants/categories';
 import { colors, fonts, radius, space } from '@/constants/theme';
+import { useOfflineGates } from '@/hooks/useOfflineGates';
 import {
   useArchiveUserCategory,
   useCreateUserCategory,
@@ -37,6 +38,7 @@ export default function CategoriesSettingsScreen() {
   const rename = useRenameUserCategory();
   const archive = useArchiveUserCategory();
   const unarchive = useUnarchiveUserCategory();
+  const { manageBlocked, manageHint } = useOfflineGates();
 
   const [tab, setTab] = useState<TransactionType>('expense');
   const [newName, setNewName] = useState('');
@@ -60,8 +62,10 @@ export default function CategoriesSettingsScreen() {
     rename.isPending ||
     archive.isPending ||
     unarchive.isPending;
+  const locked = busy || manageBlocked;
 
   const onAdd = () => {
+    if (manageBlocked) return;
     setError(null);
     create.mutate(
       { type: tab, name: newName },
@@ -74,13 +78,14 @@ export default function CategoriesSettingsScreen() {
   };
 
   const startRename = (id: string, current: string) => {
+    if (manageBlocked) return;
     setEditingId(id);
     setEditName(current);
     setError(null);
   };
 
   const saveRename = () => {
-    if (!editingId) return;
+    if (!editingId || manageBlocked) return;
     const trimmed = editName.trim();
     if (!trimmed) {
       setError('Enter a category name.');
@@ -153,6 +158,9 @@ export default function CategoriesSettingsScreen() {
               Add your own. Archive hides them from pickers; past transactions
               keep the name.
             </CaptionText>
+            {manageHint ? (
+              <CaptionText style={styles.hint}>{manageHint}</CaptionText>
+            ) : null}
 
             <View style={styles.addRow}>
               <TextInput
@@ -161,12 +169,12 @@ export default function CategoriesSettingsScreen() {
                 placeholder="New category name"
                 placeholderTextColor={colors.inkMuted}
                 style={styles.input}
-                editable={!busy}
+                editable={!locked}
                 maxLength={40}
               />
               <Pressable
-                style={[styles.addBtn, busy && styles.disabled]}
-                disabled={busy || !newName.trim()}
+                style={[styles.addBtn, locked && styles.disabled]}
+                disabled={locked || !newName.trim()}
                 onPress={onAdd}
               >
                 {create.isPending ? (
@@ -192,12 +200,12 @@ export default function CategoriesSettingsScreen() {
                         maxLength={40}
                       />
                       <View style={styles.editActions}>
-                        <Pressable onPress={saveRename} disabled={busy}>
+                        <Pressable onPress={saveRename} disabled={locked}>
                           <StrongText style={styles.link}>Save</StrongText>
                         </Pressable>
                         <Pressable
                           onPress={() => setEditingId(null)}
-                          disabled={busy}
+                          disabled={locked}
                         >
                           <CaptionText style={styles.muted}>Cancel</CaptionText>
                         </Pressable>
@@ -209,12 +217,13 @@ export default function CategoriesSettingsScreen() {
                       <View style={styles.actions}>
                         <Pressable
                           onPress={() => startRename(c.id, c.name)}
-                          disabled={busy}
+                          disabled={locked}
                         >
                           <CaptionText style={styles.link}>Rename</CaptionText>
                         </Pressable>
                         <Pressable
-                          onPress={() =>
+                          onPress={() => {
+                            if (manageBlocked) return;
                             archive.mutate(c.id, {
                               onError: (err) =>
                                 setError(
@@ -222,9 +231,9 @@ export default function CategoriesSettingsScreen() {
                                     ? err.message
                                     : 'Could not archive.'
                                 ),
-                            })
-                          }
-                          disabled={busy}
+                            });
+                          }}
+                          disabled={locked}
                         >
                           <CaptionText style={styles.muted}>Archive</CaptionText>
                         </Pressable>
@@ -245,7 +254,8 @@ export default function CategoriesSettingsScreen() {
                     {c.name}
                   </StrongText>
                   <Pressable
-                    onPress={() =>
+                    onPress={() => {
+                      if (manageBlocked) return;
                       unarchive.mutate(c.id, {
                         onError: (err) =>
                           setError(
@@ -253,9 +263,9 @@ export default function CategoriesSettingsScreen() {
                               ? err.message
                               : 'Could not restore.'
                           ),
-                      })
-                    }
-                    disabled={busy}
+                      });
+                    }}
+                    disabled={locked}
                   >
                     <CaptionText style={styles.link}>Restore</CaptionText>
                   </Pressable>

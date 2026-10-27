@@ -7,11 +7,14 @@ import {
   View,
 } from 'react-native';
 
+import { ConnectionRequired } from '@/components/ConnectionRequired';
 import { CaptionText, TitleText } from '@/components/StyledText';
 import { TransactionRow } from '@/components/TransactionRow';
 import type { TransactionType } from '@/constants/categories';
 import { colors, space, typography } from '@/constants/theme';
+import { useOfflineGates } from '@/hooks/useOfflineGates';
 import { useCategoryDrilldown } from '@/hooks/useStats';
+import { STATS_OFFLINE_COPY } from '@/lib/offline/ux';
 
 function asString(value: string | string[] | undefined): string {
   if (Array.isArray(value)) return value[0] ?? '';
@@ -37,6 +40,7 @@ export default function CategoryDrilldownScreen() {
   const start = useMemo(() => new Date(startIso), [startIso]);
   const end = useMemo(() => new Date(endIso), [endIso]);
 
+  const { statsBlocked, pendingIds } = useOfflineGates();
   const boundsValid =
     !Number.isNaN(start.getTime()) &&
     !Number.isNaN(end.getTime()) &&
@@ -59,11 +63,13 @@ export default function CategoryDrilldownScreen() {
         }}
       />
       <View style={styles.container}>
-        {periodLabel ? (
+        {periodLabel && !statsBlocked ? (
           <CaptionText style={styles.period}>{periodLabel}</CaptionText>
         ) : null}
 
-        {!boundsValid ? (
+        {statsBlocked ? (
+          <ConnectionRequired message={STATS_OFFLINE_COPY} />
+        ) : !boundsValid ? (
           <View style={styles.centered}>
             <TitleText style={styles.emptyTitle}>Missing filters</TitleText>
             <CaptionText style={styles.emptyBody}>
@@ -88,6 +94,7 @@ export default function CategoryDrilldownScreen() {
             renderItem={({ item }) => (
               <TransactionRow
                 transaction={item}
+                pending={pendingIds.has(item.id)}
                 onPress={() => router.push(`/transaction/${item.id}`)}
               />
             )}

@@ -5,6 +5,7 @@ import { CaptionText, StrongText } from '@/components/StyledText';
 import { colors, space, typography } from '@/constants/theme';
 import { useFormatMoney } from '@/hooks/useFormatMoney';
 import { useAuth } from '@/lib/auth';
+import { PENDING_SYNC_COPY } from '@/lib/offline/ux';
 import { formatDisplayDate } from '@/lib/dates';
 import { deviceTimezone } from '@/lib/profile';
 import type { Transaction } from '@/lib/transactions';
@@ -17,6 +18,8 @@ type Props = {
   selectionMode?: boolean;
   /** When grouped under a day heading, omit the date from the meta line. */
   hideDate?: boolean;
+  /** Local edit still waiting to reach the cloud. Hidden when false. */
+  pending?: boolean;
 };
 
 export function TransactionRow({
@@ -26,6 +29,7 @@ export function TransactionRow({
   selected = false,
   selectionMode = false,
   hideDate = false,
+  pending = false,
 }: Props) {
   const { format } = useFormatMoney();
   const formatAmount = (txn: Transaction): string => {
@@ -73,8 +77,8 @@ export function TransactionRow({
       accessibilityRole="button"
       accessibilityState={{ selected: selectionMode ? selected : undefined }}
       accessibilityLabel={`${transaction.category}, ${formatAmount(transaction)}, ${dateLabel}${
-        selectionMode ? (selected ? ', selected' : ', not selected') : ''
-      }`}
+        pending ? ', pending sync' : ''
+      }${selectionMode ? (selected ? ', selected' : ', not selected') : ''}`}
     >
       {selectionMode ? (
         <View
@@ -91,6 +95,9 @@ export function TransactionRow({
           </CaptionText>
         ) : null}
         <CaptionText style={styles.meta}>{metaParts.join(' · ')}</CaptionText>
+        {pending ? (
+          <CaptionText style={styles.pending}>{PENDING_SYNC_COPY}</CaptionText>
+        ) : null}
       </View>
       <StrongText style={[styles.amount, { color: amountColor }]}>
         {formatAmount(transaction)}
@@ -142,6 +149,9 @@ const styles = StyleSheet.create({
     color: colors.inkMuted,
   },
   meta: {
+    color: colors.inkMuted,
+  },
+  pending: {
     color: colors.inkMuted,
   },
   amount: {

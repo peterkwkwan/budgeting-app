@@ -16,6 +16,8 @@ import {
   useRestoreMyData,
   useWipeMyData,
 } from '@/hooks/useAccountBackup';
+import { useOfflineGates } from '@/hooks/useOfflineGates';
+import { NEEDS_INTERNET_COPY } from '@/lib/offline/ux';
 import { useAuth } from '@/lib/auth';
 import {
   DELETE_CONFIRM_PHRASE,
@@ -35,6 +37,7 @@ export function AccountDangerZone() {
   const wipe = useWipeMyData();
   const restore = useRestoreMyData();
   const deleteAccount = useDeleteMyAccount();
+  const { accountDataBlocked } = useOfflineGates();
 
   const [confirmKind, setConfirmKind] = useState<ConfirmKind>(null);
   const [typed, setTyped] = useState('');
@@ -56,6 +59,7 @@ export function AccountDangerZone() {
   };
 
   const openConfirm = (kind: ConfirmKind) => {
+    if (accountDataBlocked) return;
     setError(null);
     setTyped('');
     setConfirmKind(kind);
@@ -153,6 +157,9 @@ export function AccountDangerZone() {
         Wipe clears your data but keeps you signed in. Delete removes your
         Google account link and all Fudget data forever.
       </CaptionText>
+      {accountDataBlocked ? (
+        <CaptionText style={styles.hint}>{NEEDS_INTERNET_COPY}</CaptionText>
+      ) : null}
 
       {restoreAvailable ? (
         <View style={styles.notice}>
@@ -169,12 +176,13 @@ export function AccountDangerZone() {
       <Pressable
         style={({ pressed }) => [
           styles.dangerBtn,
-          pressed && styles.dangerBtnPressed,
-          busy && styles.disabled,
+          pressed && !accountDataBlocked && styles.dangerBtnPressed,
+          (busy || accountDataBlocked) && styles.disabled,
         ]}
         onPress={() => openConfirm('wipe')}
-        disabled={busy}
+        disabled={busy || accountDataBlocked}
         accessibilityRole="button"
+        accessibilityState={{ disabled: busy || accountDataBlocked }}
         accessibilityLabel="Wipe my data"
       >
         <StrongText style={styles.dangerBtnText}>Wipe my data</StrongText>
@@ -187,11 +195,11 @@ export function AccountDangerZone() {
         <Pressable
           style={({ pressed }) => [
             styles.restoreBtn,
-            pressed && styles.restoreBtnPressed,
-            busy && styles.disabled,
+            pressed && !accountDataBlocked && styles.restoreBtnPressed,
+            (busy || accountDataBlocked) && styles.disabled,
           ]}
           onPress={() => openConfirm('restore')}
-          disabled={busy}
+          disabled={busy || accountDataBlocked}
           accessibilityRole="button"
           accessibilityLabel="Restore my data"
         >
@@ -205,11 +213,11 @@ export function AccountDangerZone() {
       <Pressable
         style={({ pressed }) => [
           styles.deleteBtn,
-          pressed && styles.deleteBtnPressed,
-          busy && styles.disabled,
+          pressed && !accountDataBlocked && styles.deleteBtnPressed,
+          (busy || accountDataBlocked) && styles.disabled,
         ]}
         onPress={() => openConfirm('delete')}
-        disabled={busy}
+        disabled={busy || accountDataBlocked}
         accessibilityRole="button"
         accessibilityLabel="Delete my account"
       >
@@ -279,7 +287,7 @@ export function AccountDangerZone() {
                   busy && styles.disabled,
                 ]}
                 onPress={onConfirm}
-                disabled={busy}
+                disabled={busy || accountDataBlocked}
                 accessibilityRole="button"
                 accessibilityLabel={confirmActionLabel}
               >

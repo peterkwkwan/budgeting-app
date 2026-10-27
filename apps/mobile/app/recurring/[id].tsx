@@ -8,9 +8,12 @@ import {
   View,
 } from 'react-native';
 
+import { ConnectionRequired } from '@/components/ConnectionRequired';
 import { CaptionText, StrongText, TitleText } from '@/components/StyledText';
 import { RecurringForm } from '@/components/RecurringForm';
 import { colors, radius, space } from '@/constants/theme';
+import { useOfflineGates } from '@/hooks/useOfflineGates';
+import { REPEAT_BLOCKED_COPY } from '@/lib/offline/ux';
 import {
   useRecurringSeries,
   useStopRecurringSeries,
@@ -25,7 +28,17 @@ export default function EditRecurringScreen() {
   const { data, isLoading, isError, error } = useRecurringSeries(id);
   const update = useUpdateRecurringSeries(id ?? '');
   const stop = useStopRecurringSeries();
+  const { recurringBlocked } = useOfflineGates();
   const [formError, setFormError] = useState<string | null>(null);
+
+  if (recurringBlocked) {
+    return (
+      <View style={styles.container}>
+        <Stack.Screen options={{ title: 'Edit recurring' }} />
+        <ConnectionRequired message={REPEAT_BLOCKED_COPY} />
+      </View>
+    );
+  }
 
   async function onSubmit(input: RecurringSeriesUpdateInput) {
     if (!id) return;

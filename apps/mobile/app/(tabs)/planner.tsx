@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 
+import { ConnectionRequired } from '@/components/ConnectionRequired';
 import { PlusIcon } from '@/components/icons';
 import { LinkedAccountLinks } from '@/components/planner/LinkedAccountLinks';
 import { ProjectionChart } from '@/components/planner/ProjectionChart';
@@ -28,6 +29,7 @@ import {
   type HorizonPresetKey,
 } from '@/constants/planner';
 import { colors, fonts, radius, space, typography } from '@/constants/theme';
+import { useOfflineGates } from '@/hooks/useOfflineGates';
 import {
   usePlannerGoals,
   usePlannerVehicles,
@@ -42,6 +44,7 @@ import {
   saveChartFocus,
 } from '@/lib/plannerChartFocus';
 import { useFormatMoney } from '@/hooks/useFormatMoney';
+import { PLANNER_OFFLINE_COPY } from '@/lib/offline/ux';
 import { guardedPush } from '@/lib/navGuard';
 import {
   goalEffectiveSaved,
@@ -109,6 +112,7 @@ export default function PlannerScreen() {
   );
   const [prefsReady, setPrefsReady] = useState(false);
   const { edges, scrollProps } = useScrollEdges();
+  const { plannerBlocked } = useOfflineGates();
 
   useEffect(() => {
     let cancelled = false;
@@ -220,7 +224,9 @@ export default function PlannerScreen() {
         />
       }
     >
-      {loading ? (
+      {plannerBlocked ? (
+        <ConnectionRequired message={PLANNER_OFFLINE_COPY} />
+      ) : loading ? (
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={colors.green[700]} />
         </View>
