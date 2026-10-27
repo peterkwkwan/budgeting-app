@@ -26,6 +26,7 @@ import { invalidateAllProductQueries } from '@/hooks/useAccountBackup';
 import { useOfflineGates } from '@/hooks/useOfflineGates';
 import { useAuth } from '@/lib/auth';
 import { OFFLINE_TXNS_ENABLED } from '@/lib/offline/flag';
+import { logOffline } from '@/lib/offline/log';
 import {
   currencyConvertHint,
   offlineUxKeys,
@@ -124,8 +125,8 @@ export default function CurrencySettingsScreen() {
         try {
           const { resetLocalAndFullPull } = await import('@/lib/offline/syncEngine');
           await resetLocalAndFullPull(user.id);
-        } catch (err) {
-          console.warn('[offline] re-pull after convert failed', err);
+        } catch {
+          logOffline('re-pull after convert failed', { op: 'pull' });
         }
       }
       invalidateAllProductQueries(queryClient);

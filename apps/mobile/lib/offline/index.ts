@@ -5,7 +5,7 @@
  * Phase 2: sync engine (`./syncEngine`) and NetInfo (`./net`). Not re-exported
  * here — this barrel still loads the Phase 0 spike, which imports expo-sqlite.
  * Phase 3: banner, pending badge, and gates live in `hooks/useOfflineGates.ts`.
- * Production UI stays on Supabase while OFFLINE_TXNS_ENABLED is false.
+ * Transactions use this path while OFFLINE_TXNS_ENABLED is true.
  */
 export { OFFLINE_SCHEMA_VERSION } from './schema';
 export { OFFLINE_TXNS_ENABLED } from './flag';

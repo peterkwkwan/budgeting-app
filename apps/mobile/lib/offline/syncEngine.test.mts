@@ -8,6 +8,7 @@ import { DatabaseSync } from 'node:sqlite';
 
 import type { Transaction } from '../transactionModel.ts';
 import { OFFLINE_TXNS_ENABLED } from './flag.ts';
+import { readCategoryCache, saveCategoryCache } from './categoryCache.ts';
 import { listOpenOutbox } from './outbox.ts';
 import {
   migrateOfflineSchema,
@@ -17,6 +18,7 @@ import {
 import {
   FULL_PULL_SINCE,
   clearOfflineUserData,
+  mergeRemoteTransaction,
   pullRemote,
   readSyncMeta,
   remoteWinsLww,
@@ -147,8 +149,8 @@ function stubRemote(partial: Partial<SyncRemote>): SyncRemote {
 }
 
 describe('offline sync flag', () => {
-  it('stays off so production still uses Supabase', () => {
-    assert.equal(OFFLINE_TXNS_ENABLED, false);
+  it('is on so transactions use the local mirror and sync', () => {
+    assert.equal(OFFLINE_TXNS_ENABLED, true);
   });
 });
 
@@ -499,6 +501,72 @@ describe('LWW merge', () => {
     );
   });
 
+  it('does not write a partner row into sqlite', async () => {
+    const db = await freshDb();
+    await upsertTransactionLocal(
+      db,
+      mirror({
+        id: 'txn-1',
+        amount: 4,
+        occurred_at: '2026-10-20T08:00:00.000Z',
+        updated_at: '2026-10-20T08:00:00.000Z',
+      })
+    );
+    const partner = asRemote({
+      id: 'txn-1',
+      user_id: 'partner',
+      amount: 500,
+      type: 'income',
+      category: 'Salary',
+      note: 'partner note',
+      occurred_at: '2026-10-20T08:00:00.000Z',
+      created_at: '2026-10-20T08:00:00.000Z',
+      updated_at: '2026-10-29T00:00:00.000Z',
+    });
+    assert.equal(
+      await mergeRemoteTransaction(db, 'user-a', partner),
+      'kept_local'
+    );
+
+    await pullRemote(
+      db,
+      'user-a',
+      stubRemote({
+        async listTransactionsSince() {
+          return [
+            partner,
+            asRemote({
+              id: 'partner-row',
+              user_id: 'partner',
+              amount: 80,
+              type: 'expense',
+              category: 'Groceries',
+              occurred_at: '2026-10-20T08:00:00.000Z',
+              created_at: '2026-10-20T08:00:00.000Z',
+              updated_at: '2026-10-28T00:00:00.000Z',
+            }),
+          ];
+        },
+      }),
+      { now: () => '2026-10-27T13:00:00.000Z' }
+    );
+
+    const foreign = await db.first<{ n: number }>(
+      'SELECT COUNT(*) AS n FROM transactions_local WHERE user_id != ?',
+      ['user-a']
+    );
+    assert.equal(Number(foreign?.n), 0);
+    const local = await getTransactionLocal(db, 'user-a', 'txn-1');
+    assert.equal(local?.amount, 4);
+    assert.equal(local?.type, 'expense');
+    const rows = await db.first<{ n: number }>(
+      'SELECT COUNT(*) AS n FROM transactions_local'
+    );
+    assert.equal(Number(rows?.n), 1);
+    assert.equal((await listOpenOutbox(db, 'user-a')).length, 0);
+    assert.equal((await readSyncMeta(db, 'user-a'))?.last_pulled_at, null);
+  });
+
   it('does not advance the cursor when the pull fails', async () => {
     const db = await freshDb();
     await db.run(
@@ -522,6 +590,52 @@ describe('LWW merge', () => {
     const meta = await readSyncMeta(db, 'user-a');
     assert.equal(meta?.last_pulled_at, '2026-10-20T00:00:00.000Z');
     assert.match(meta?.last_sync_error ?? '', /pull failed/);
+  });
+
+  it('does not keep a partial merge or advance the cursor when a later row is invalid', async () => {
+    const db = await freshDb();
+    await db.run(
+      `INSERT INTO sync_meta (user_id, last_pulled_at, last_sync_at, last_sync_error)
+       VALUES ('user-a', '2026-10-20T00:00:00.000Z', NULL, NULL)`
+    );
+    await assert.rejects(
+      () =>
+        pullRemote(
+          db,
+          'user-a',
+          stubRemote({
+            async listTransactionsSince() {
+              return [
+                asRemote({
+                  id: 'txn-ok',
+                  user_id: 'user-a',
+                  amount: 3,
+                  type: 'expense',
+                  category: 'Groceries',
+                  occurred_at: '2026-10-21T08:00:00.000Z',
+                  created_at: '2026-10-21T08:00:00.000Z',
+                  updated_at: '2026-10-21T08:00:00.000Z',
+                }),
+                asRemote({
+                  id: 'txn-bad',
+                  user_id: 'user-a',
+                  amount: 9,
+                  type: 'expense',
+                  category: 'Groceries',
+                  occurred_at: '2026-10-22T08:00:00.000Z',
+                  created_at: '2026-10-22T08:00:00.000Z',
+                  updated_at: 'not-a-date',
+                }),
+              ];
+            },
+          }),
+          { now: () => '2026-10-27T13:00:00.000Z' }
+        ),
+      /missing updated_at/
+    );
+    assert.equal(await getTransactionLocalAny(db, 'user-a', 'txn-ok'), null);
+    const meta = await readSyncMeta(db, 'user-a');
+    assert.equal(meta?.last_pulled_at, '2026-10-20T00:00:00.000Z');
   });
 
   it('uses the advanced cursor on the next pull', async () => {
@@ -773,12 +887,16 @@ describe('push conflicts and sign-out', () => {
        VALUES ('user-a', '2026-10-01T00:00:00.000Z', NULL, NULL),
               ('user-b', '2026-10-02T00:00:00.000Z', NULL, NULL)`
     );
+    await saveCategoryCache(db, 'user-a', ['Rent'], '2026-10-01T00:00:00.000Z');
+    await saveCategoryCache(db, 'user-b', ['Salary'], '2026-10-01T00:00:00.000Z');
 
     await clearOfflineUserData(db, 'user-a');
 
     assert.equal((await listActiveTransactionsLocal(db, 'user-a')).length, 0);
     assert.equal((await listOpenOutbox(db, 'user-a')).length, 0);
     assert.equal(await readSyncMeta(db, 'user-a'), null);
+    assert.equal(await readCategoryCache(db, 'user-a'), null);
+    assert.deepEqual(await readCategoryCache(db, 'user-b'), ['Salary']);
     assert.equal((await listActiveTransactionsLocal(db, 'user-b')).length, 1);
     assert.equal(
       (await readSyncMeta(db, 'user-b'))?.last_pulled_at,

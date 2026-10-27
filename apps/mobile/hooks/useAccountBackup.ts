@@ -9,6 +9,7 @@ import {
 } from '@/lib/accountData';
 import { useAuth } from '@/lib/auth';
 import { OFFLINE_TXNS_ENABLED } from '@/lib/offline/flag';
+import { logOffline } from '@/lib/offline/log';
 import { offlineUxKeys } from '@/lib/offline/ux';
 import { partnerKeys } from '@/lib/partner';
 import { plannerGoalKeys } from '@/lib/plannerGoals';
@@ -73,8 +74,8 @@ export function useWipeMyData() {
     onSuccess: async (result) => {
       try {
         await clearLocalIfEnabled(user?.id);
-      } catch (err) {
-        console.warn('[offline] wipe clear failed', err);
+      } catch {
+        logOffline('wipe clear failed', { op: 'clear' });
       }
       queryClient.setQueryData<AccountBackupStatus>(accountBackupKeys.status(), {
         hasBackup: true,
@@ -96,8 +97,8 @@ export function useRestoreMyData() {
     onSuccess: async () => {
       try {
         await resetAndPullIfEnabled(user?.id);
-      } catch (err) {
-        console.warn('[offline] restore pull failed', err);
+      } catch {
+        logOffline('restore pull failed', { op: 'pull' });
       }
       queryClient.setQueryData<AccountBackupStatus>(accountBackupKeys.status(), {
         hasBackup: false,
@@ -119,8 +120,8 @@ export function useDeleteMyAccount() {
     onSuccess: async () => {
       try {
         await clearLocalIfEnabled(user?.id);
-      } catch (err) {
-        console.warn('[offline] delete-account clear failed', err);
+      } catch {
+        logOffline('delete-account clear failed', { op: 'clear' });
       }
       queryClient.clear();
     },

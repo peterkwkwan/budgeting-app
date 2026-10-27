@@ -8,6 +8,7 @@ import { useCallback } from 'react';
 
 import { useAuth } from '@/lib/auth';
 import { OFFLINE_TXNS_ENABLED } from '@/lib/offline/flag';
+import { logOffline } from '@/lib/offline/log';
 import { refuseOfflineSeriesChange } from '@/lib/offline/seriesGuard';
 import {
   catchUpRecurring,
@@ -35,8 +36,8 @@ async function pullAfterSeriesCreate(userId: string | undefined): Promise<void> 
   try {
     const { syncNow } = await import('@/lib/offline/syncEngine');
     await syncNow(userId);
-  } catch (err) {
-    console.warn('[offline] series pull failed', err);
+  } catch {
+    logOffline('series pull failed', { op: 'pull' });
   }
 }
 
@@ -49,8 +50,8 @@ async function resyncAfterSeriesChange(userId: string | undefined): Promise<void
   try {
     const { resyncAfterSeriesHardDelete } = await import('@/lib/offline/syncEngine');
     await resyncAfterSeriesHardDelete(userId);
-  } catch (err) {
-    console.warn('[offline] series resync failed', err);
+  } catch {
+    logOffline('series resync failed', { op: 'sync' });
   }
 }
 

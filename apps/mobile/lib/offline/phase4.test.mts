@@ -145,8 +145,8 @@ const editInput: TransactionInput = {
 };
 
 describe('offline flag', () => {
-  it('stays off', () => {
-    assert.equal(OFFLINE_TXNS_ENABLED, false);
+  it('is on', () => {
+    assert.equal(OFFLINE_TXNS_ENABLED, true);
   });
 });
 
@@ -223,13 +223,18 @@ describe('recurring instances', () => {
     );
   });
 
-  it('does not call the network check while the flag is off', async () => {
+  it('blocks a series change when the phone is offline', async () => {
     let called = false;
-    await refuseOfflineSeriesChange(async () => {
-      called = true;
-      return false;
-    });
-    assert.equal(called, false);
+    await assert.rejects(
+      () =>
+        refuseOfflineSeriesChange(async () => {
+          called = true;
+          return false;
+        }),
+      /Connect to the internet to set up repeating transactions/
+    );
+    assert.equal(called, true);
+    await refuseOfflineSeriesChange(async () => true);
     assert.equal(seriesChangeBlocked(true, false), true);
     assert.equal(seriesChangeBlocked(true, true), false);
     assert.equal(seriesChangeBlocked(false, false), false);

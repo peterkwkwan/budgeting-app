@@ -8,6 +8,7 @@ import { useCallback, useMemo } from 'react';
 
 import { useAuth } from '@/lib/auth';
 import { OFFLINE_TXNS_ENABLED } from '@/lib/offline/flag';
+import { logOffline } from '@/lib/offline/log';
 import { offlineUxKeys } from '@/lib/offline/ux';
 import {
   bulkPatchLocalTransactions,
@@ -71,13 +72,13 @@ function settleTransactionWrite(queryClient: ReturnType<typeof useQueryClient>) 
         invalidateTransactionsAndStats(queryClient);
       }
     })
-    .catch((err) => {
-      console.warn('[offline] sync after write failed', err);
+    .catch(() => {
+      logOffline('sync after write failed', { op: 'sync' });
       void queryClient.invalidateQueries({ queryKey: offlineUxKeys.all });
     });
 }
 
-/** Signed-in user id for the offline repository. Not called while the flag is off. */
+/** Signed-in user id for the offline repository. */
 async function signedInUserId(): Promise<string> {
   const { supabase } = await import('@/lib/supabase');
   const { data, error } = await supabase.auth.getSession();

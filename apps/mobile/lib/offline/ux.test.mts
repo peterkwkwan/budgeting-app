@@ -71,8 +71,11 @@ const input: TransactionInput = {
 };
 
 describe('offline flag', () => {
-  it('stays off so production UI does not show Phase 3 chrome', () => {
-    assert.equal(OFFLINE_TXNS_ENABLED, false);
+  it('is on so transactions show the offline chrome', () => {
+    assert.equal(OFFLINE_TXNS_ENABLED, true);
+  });
+
+  it('hides chrome when the caller passes enabled false', () => {
     assert.equal(
       offlineBannerCopy({
         enabled: false,

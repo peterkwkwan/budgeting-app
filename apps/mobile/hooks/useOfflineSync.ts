@@ -4,6 +4,7 @@ import { AppState, type AppStateStatus } from 'react-native';
 
 import { useAuth } from '@/lib/auth';
 import { OFFLINE_TXNS_ENABLED } from '@/lib/offline/flag';
+import { logOffline } from '@/lib/offline/log';
 import { syncNow } from '@/lib/offline/syncEngine';
 import { offlineUxKeys } from '@/lib/offline/ux';
 import { transactionKeys } from '@/lib/transactions';
@@ -46,11 +47,11 @@ export function useOfflineTransactionSync() {
             void queryClient.invalidateQueries({ queryKey: transactionKeys.all });
           }
           if (result.failed > 0) {
-            console.warn('[offline] sync push failed', result.failed);
+            logOffline('sync push failed', { op: 'push' });
           }
         })
-        .catch((err) => {
-          console.warn('[offline] sync failed', err);
+        .catch(() => {
+          logOffline('sync failed', { op: 'sync' });
           if (!cancelled) {
             void queryClient.invalidateQueries({ queryKey: offlineUxKeys.all });
           }

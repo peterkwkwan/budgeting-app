@@ -1,6 +1,6 @@
 /**
  * Feature flag for transactions-only offline (SQLite mirror + outbox + sync).
- * Phases 3–4 ship banners, gates, and wipe/restore/convert/category edges behind this flag.
- * Keep false so production UI stays on the Supabase path until a later flip.
+ * On: Transactions list and one-off writes use the local mirror. Sync runs on
+ * foreground and reconnect. A Dev Client rebuild is required for expo-sqlite.
  */
-export const OFFLINE_TXNS_ENABLED = false;
+export const OFFLINE_TXNS_ENABLED = true;

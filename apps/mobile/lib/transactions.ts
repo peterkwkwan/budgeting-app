@@ -2,7 +2,7 @@
  * Remote Supabase adapter for transactions.
  * Pure shapes, validation, and list filters live in `transactionModel.ts`
  * and are re-exported here so existing imports stay put.
- * Offline writes go through `lib/offline/transactionsRepo` (flagged off).
+ * Offline writes go through `lib/offline/transactionsRepo` when the flag is on.
  * Sync push/pull uses the `*OwnTransaction` / `listTransactionsSince` helpers.
  */
 import { DEFAULT_CURRENCY } from '@/constants/currencies';

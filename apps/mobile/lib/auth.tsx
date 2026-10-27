@@ -13,6 +13,7 @@ import {
 } from 'react';
 
 import { OFFLINE_TXNS_ENABLED } from '@/lib/offline/flag';
+import { logOffline } from '@/lib/offline/log';
 
 import { ensureProfile, type Profile } from './profile';
 import { isSupabaseConfigured, supabase } from './supabase';
@@ -177,8 +178,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const { clearOfflineUser } = await import('@/lib/offline/syncEngine');
         await clearOfflineUser(userId);
-      } catch (err) {
-        console.warn('[offline] sign-out clear failed', err);
+      } catch {
+        logOffline('sign-out clear failed', { op: 'clear' });
       }
     }
     await supabase.auth.signOut();

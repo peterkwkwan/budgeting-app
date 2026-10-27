@@ -5,6 +5,7 @@
  */
 import type { Transaction } from '@/lib/transactionModel';
 
+import { logOffline } from './log';
 import { listOpenOutbox, enqueueTransactionChange } from './outbox';
 import {
   getTransactionLocalAny,
@@ -236,6 +237,7 @@ export async function pullRemote(
   try {
     rows = await remote.listTransactionsSince(since);
   } catch (error) {
+    logOffline('pull failed', { op: 'pull' });
     await writeSyncMeta(db, {
       user_id: userId,
       last_pulled_at: meta?.last_pulled_at ?? null,
@@ -251,7 +253,8 @@ export async function pullRemote(
   try {
     await withSqlTransaction(db, async () => {
       for (const row of rows) {
-        if (row.user_id !== userId) continue;
+        // Partner rows and any other user_id are never written.
+        if (!isOwnTransaction(userId, row.user_id)) continue;
         if (Number.isNaN(Date.parse(row.updated_at))) {
           throw new Error('Remote transaction is missing updated_at.');
         }
@@ -271,6 +274,7 @@ export async function pullRemote(
       });
     });
   } catch (error) {
+    logOffline('pull failed', { op: 'pull' });
     await writeSyncMeta(db, {
       user_id: userId,
       last_pulled_at: meta?.last_pulled_at ?? null,
@@ -340,7 +344,7 @@ export async function mergeRemoteTransaction(
   remote: Transaction,
   options?: SyncEngineOptions
 ): Promise<'applied' | 'kept_local'> {
-  if (remote.user_id !== userId) return 'kept_local';
+  if (!isOwnTransaction(userId, remote.user_id)) return 'kept_local';
   const local = await getTransactionLocalAny(db, userId, remote.id);
   const open = await listOpenOutbox(db, userId, remote.id);
   const challenger = laterTimestamp(
@@ -393,6 +397,7 @@ async function pushOne(
   } catch (error) {
     const message = await failOutbox(db, row, error);
     if (message == null) return { status: 'stale', error: null };
+    logOffline('push failed', { op: row.op, id: row.entity_id });
     return { status: 'failed', error: message };
   }
 }
@@ -733,6 +738,11 @@ function requireDeletePayload(value: unknown): { deleted_at: string } {
     throw new Error('Bad outbox payload.');
   }
   return { deleted_at: payload.deleted_at };
+}
+
+/** True only for the signed-in user. Partner rows fail this and are not inserted. */
+function isOwnTransaction(userId: string, rowUserId: string): boolean {
+  return userId.length > 0 && rowUserId === userId;
 }
 
 function errorMessage(error: unknown): string {
