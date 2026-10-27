@@ -7,6 +7,16 @@ import { useFocusEffect } from 'expo-router';
 import { useCallback, useMemo } from 'react';
 
 import { useAuth } from '@/lib/auth';
+import { OFFLINE_TXNS_ENABLED } from '@/lib/offline/flag';
+import {
+  bulkPatchLocalTransactions,
+  createLocalTransaction,
+  getLocalTransaction,
+  listLocalTransactions,
+  softDeleteLocalTransaction,
+  softDeleteLocalTransactions,
+  updateLocalTransaction,
+} from '@/lib/offline/transactionsRepo';
 import {
   currentPeriodFocus,
   type PeriodFocus,
@@ -36,6 +46,16 @@ function invalidateTransactionsAndStats(
   void queryClient.invalidateQueries({ queryKey: statsKeys.all });
 }
 
+/** Signed-in user id for the offline repository. Not called while the flag is off. */
+async function signedInUserId(): Promise<string> {
+  const { supabase } = await import('@/lib/supabase');
+  const { data, error } = await supabase.auth.getSession();
+  if (error) throw new Error(error.message);
+  const userId = data.session?.user.id;
+  if (!userId) throw new Error('You must be signed in.');
+  return userId;
+}
+
 /**
  * Active transactions from Supabase, then client-split for the focused month:
  * - list: one-offs + recurring on/before local today, within focused month
@@ -49,7 +69,10 @@ export function useTransactionList(focus?: PeriodFocus) {
 
   const query = useQuery({
     queryKey: transactionKeys.list(),
-    queryFn: listTransactions,
+    // Flag off: same stable listTransactions reference as the online path.
+    queryFn: OFFLINE_TXNS_ENABLED
+      ? () => signedInUserId().then((userId) => listLocalTransactions(userId))
+      : listTransactions,
   });
 
   useFocusEffect(
@@ -92,7 +115,10 @@ export function useTransactionList(focus?: PeriodFocus) {
 export function useTransaction(id: string | undefined) {
   return useQuery({
     queryKey: transactionKeys.detail(id ?? ''),
-    queryFn: () => getTransaction(id!),
+    queryFn: () =>
+      OFFLINE_TXNS_ENABLED
+        ? signedInUserId().then((userId) => getLocalTransaction(userId, id!))
+        : getTransaction(id!),
     enabled: Boolean(id),
   });
 }
@@ -105,6 +131,13 @@ export function useCreateTransaction() {
     mutationFn: (input: TransactionInput) => {
       if (!user?.id) {
         throw new Error('You must be signed in to add a transaction.');
+      }
+      if (OFFLINE_TXNS_ENABLED) {
+        return createLocalTransaction(
+          user.id,
+          input,
+          profile?.currency ?? 'HKD'
+        );
       }
       return createTransaction(
         user.id,
@@ -122,7 +155,14 @@ export function useUpdateTransaction(id: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (input: TransactionInput) => updateTransaction(id, input),
+    mutationFn: (input: TransactionInput) => {
+      if (OFFLINE_TXNS_ENABLED) {
+        return signedInUserId().then((userId) =>
+          updateLocalTransaction(userId, id, input)
+        );
+      }
+      return updateTransaction(id, input);
+    },
     onSuccess: () => {
       invalidateTransactionsAndStats(queryClient);
     },
@@ -133,7 +173,14 @@ export function useSoftDeleteTransaction() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (id: string) => softDeleteTransaction(id),
+    mutationFn: (txnId: string) => {
+      if (OFFLINE_TXNS_ENABLED) {
+        return signedInUserId().then((userId) =>
+          softDeleteLocalTransaction(userId, txnId)
+        );
+      }
+      return softDeleteTransaction(txnId);
+    },
     onSuccess: () => {
       invalidateTransactionsAndStats(queryClient);
     },
@@ -144,7 +191,14 @@ export function useBulkSoftDeleteTransactions() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (ids: string[]) => softDeleteTransactions(ids),
+    mutationFn: (ids: string[]) => {
+      if (OFFLINE_TXNS_ENABLED) {
+        return signedInUserId().then((userId) =>
+          softDeleteLocalTransactions(userId, ids)
+        );
+      }
+      return softDeleteTransactions(ids);
+    },
     onSuccess: () => {
       invalidateTransactionsAndStats(queryClient);
     },
@@ -161,7 +215,14 @@ export function useBulkPatchTransactions() {
     }: {
       rows: Transaction[];
       patch: TransactionBulkPatch;
-    }) => bulkPatchTransactions(rows, patch),
+    }) => {
+      if (OFFLINE_TXNS_ENABLED) {
+        return signedInUserId().then((userId) =>
+          bulkPatchLocalTransactions(userId, rows, patch)
+        );
+      }
+      return bulkPatchTransactions(rows, patch);
+    },
     onSuccess: () => {
       invalidateTransactionsAndStats(queryClient);
     },

@@ -48,7 +48,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test lib/*.test.mts"
+    "test": "tsx --test lib/*.test.mts lib/offline/*.test.mts"
   },
   "private": true
 }
