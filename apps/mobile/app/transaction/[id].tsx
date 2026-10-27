@@ -16,11 +16,7 @@ import {
 } from '@/components/TransactionForm';
 import { colors, radius, space } from '@/constants/theme';
 import { useOfflineGates } from '@/hooks/useOfflineGates';
-import {
-  CATEGORY_FIX_COPY,
-  PENDING_SYNC_COPY,
-  REPEAT_BLOCKED_COPY,
-} from '@/lib/offline/ux';
+import { CATEGORY_FIX_COPY, REPEAT_BLOCKED_COPY } from '@/lib/offline/ux';
 import { userFacingOfflineWriteError } from '@/lib/offline/writeError';
 import {
   useSoftDeleteTransaction,
@@ -124,8 +120,6 @@ export default function EditTransactionScreen() {
       <OfflineBanner />
       {categoryFix ? (
         <CaptionText style={styles.pending}>{CATEGORY_FIX_COPY}</CaptionText>
-      ) : pending ? (
-        <CaptionText style={styles.pending}>{PENDING_SYNC_COPY}</CaptionText>
       ) : null}
       {data.recurring_series_id ? (
         <Pressable
@@ -165,6 +159,7 @@ export default function EditTransactionScreen() {
         busy={update.isPending}
         deleteBusy={softDelete.isPending}
         error={formError}
+        pendingSync={pending && !categoryFix}
         onSubmit={(input) => void onSubmit(input)}
         onDelete={confirmDelete}
       />

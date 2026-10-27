@@ -1,11 +1,12 @@
 import { useRef } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import { PendingSyncDot } from '@/components/PendingSyncDot';
 import { CaptionText, StrongText } from '@/components/StyledText';
 import { colors, space, typography } from '@/constants/theme';
 import { useFormatMoney } from '@/hooks/useFormatMoney';
 import { useAuth } from '@/lib/auth';
-import { CATEGORY_FIX_COPY, PENDING_SYNC_COPY } from '@/lib/offline/ux';
+import { CATEGORY_FIX_COPY } from '@/lib/offline/ux';
 import { formatDisplayDate } from '@/lib/dates';
 import { deviceTimezone } from '@/lib/profile';
 import type { Transaction } from '@/lib/transactions';
@@ -91,7 +92,10 @@ export function TransactionRow({
         />
       ) : null}
       <View style={styles.left}>
-        <StrongText style={styles.category}>{transaction.category}</StrongText>
+        <View style={styles.categoryRow}>
+          <StrongText style={styles.category}>{transaction.category}</StrongText>
+          {!categoryFix && pending ? <PendingSyncDot /> : null}
+        </View>
         {transaction.note ? (
           <CaptionText style={styles.note} numberOfLines={1}>
             {transaction.note}
@@ -100,8 +104,6 @@ export function TransactionRow({
         <CaptionText style={styles.meta}>{metaParts.join(' · ')}</CaptionText>
         {categoryFix ? (
           <CaptionText style={styles.pending}>{CATEGORY_FIX_COPY}</CaptionText>
-        ) : pending ? (
-          <CaptionText style={styles.pending}>{PENDING_SYNC_COPY}</CaptionText>
         ) : null}
       </View>
       <StrongText style={[styles.amount, { color: amountColor }]}>
@@ -146,6 +148,11 @@ const styles = StyleSheet.create({
   left: {
     flex: 1,
     gap: 2,
+  },
+  categoryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.xs,
   },
   category: {
     color: colors.ink,

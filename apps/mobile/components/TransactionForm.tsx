@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 
 import { MicButton } from '@/components/MicButton';
+import { PendingSyncDot } from '@/components/PendingSyncDot';
 import { CaptionText, StrongText, TitleText } from '@/components/StyledText';
 import { Text } from '@/components/Themed';
 import {
@@ -66,6 +67,8 @@ type Props = {
   allowVoice?: boolean;
   /** Optional banner above fields (e.g. voice confirm copy from parent). */
   banner?: ReactNode;
+  /** Amber dot beside Category when a local edit is waiting to sync. */
+  pendingSync?: boolean;
   onSubmit: (input: TransactionFormSubmit) => void;
   onDelete?: () => void;
   deleteBusy?: boolean;
@@ -79,6 +82,7 @@ export function TransactionForm({
   allowRepeat = false,
   allowVoice = false,
   banner,
+  pendingSync = false,
   onSubmit,
   onDelete,
   deleteBusy = false,
@@ -257,7 +261,10 @@ export function TransactionForm({
           accessibilityLabel="Amount in USD"
         />
 
-        <CaptionText style={styles.label}>Category</CaptionText>
+        <View style={styles.categoryLabelRow}>
+          <CaptionText style={styles.categoryLabel}>Category</CaptionText>
+          {pendingSync ? <PendingSyncDot /> : null}
+        </View>
         <View style={styles.chips}>
           {categories.map((cat) => {
             const selected = category === cat;
@@ -529,6 +536,16 @@ const styles = StyleSheet.create({
   },
   label: {
     marginTop: space.sm,
+    color: colors.inkMuted,
+    textTransform: 'uppercase',
+  },
+  categoryLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.xs,
+    marginTop: space.sm,
+  },
+  categoryLabel: {
     color: colors.inkMuted,
     textTransform: 'uppercase',
   },
