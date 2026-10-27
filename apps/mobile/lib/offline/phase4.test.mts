@@ -345,6 +345,7 @@ describe('wipe, restore, and convert', () => {
   });
 
   it('blocks convert while the outbox is open and asks to sync first', () => {
+    assert.equal(SYNC_BEFORE_CONVERT_COPY, 'Sync pending changes first.');
     assert.equal(
       currencyConvertHint({
         enabled: false,

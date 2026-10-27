@@ -25,7 +25,7 @@ export const SYNCING_COPY = 'Syncing…';
 export const UNSYNCED_DISCARD_COPY = 'Unsynced changes will be discarded.';
 
 /** Currency convert while local edits have not reached the server. */
-export const SYNC_BEFORE_CONVERT_COPY = 'Sync this phone first, then convert.';
+export const SYNC_BEFORE_CONVERT_COPY = 'Sync pending changes first.';
 
 /** Push rejected the category. The outbox row stays so the user can edit it. */
 export const CATEGORY_FIX_COPY =
