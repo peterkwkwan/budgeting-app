@@ -16,7 +16,7 @@ type Props = {
 };
 
 export function CategoryBreakdownList({ data, onSelect, type }: Props) {
-  const { format } = useFormatMoney();
+  const { formatWhole } = useFormatMoney();
   if (data.length === 0) {
     return null;
   }
@@ -32,7 +32,8 @@ export function CategoryBreakdownList({ data, onSelect, type }: Props) {
       {data.map((row, index) => {
         const pct = Math.round((row.sum / total) * 100);
         const emphasis = emphasizeDominant && index === 0;
-        const label = `${row.category}, ${pct} percent, ${format(row.sum)}${
+        const amountLabel = formatWhole(row.sum);
+        const label = `${row.category}, ${pct} percent, ${amountLabel}${
           selectable ? '. Open transactions.' : '.'
         }`;
         const body = (
@@ -49,7 +50,7 @@ export function CategoryBreakdownList({ data, onSelect, type }: Props) {
                   {pct}%
                 </StrongText>
                 <CaptionText style={styles.amount}>
-                  {format(row.sum)}
+                  {amountLabel}
                 </CaptionText>
               </View>
             </View>

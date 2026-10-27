@@ -58,10 +58,10 @@ export default function StatsScreen() {
   const router = useRouter();
   const navigation = useNavigation();
   const { profile } = useAuth();
-  const { format } = useFormatMoney();
+  const { formatWhole } = useFormatMoney();
   const formatSigned = (n: number): string => {
     const sign = n < 0 ? '−' : '';
-    return `${sign}${format(Math.abs(n))}`;
+    return `${sign}${formatWhole(Math.abs(n))}`;
   };
   const timeZone = profile?.timezone || 'UTC';
   const partnerLink = usePartnerLink();

@@ -11,13 +11,15 @@ import {
  * unicode minus (`−`) and plus prefixes instead of an ASCII hyphen.
  *
  * HKD `12.5` → `HK$12.50`, JPY `1200` → `¥1,200`.
+ * Pass `{ whole: true }` to round to whole units (Stats By category).
  */
 export function formatMoney(
   amount: number,
-  currency: AccountCurrency | string = 'HKD'
+  currency: AccountCurrency | string = 'HKD',
+  options?: { whole?: boolean }
 ): string {
   const code = parseAccountCurrency(currency);
-  const digits = currencyFractionDigits(code);
+  const digits = options?.whole ? 0 : currencyFractionDigits(code);
   const symbol = currencySymbol(code);
   const abs = Math.abs(amount);
   if (digits === 0) {

@@ -19,8 +19,8 @@ type Props = {
   centerTotal: number;
 };
 
-/** Matches mockup D: 168 outer / 104 hole. */
-const SIZE = 168;
+/** Modest bump from mockup D (168 / 104) for readable center totals. */
+const SIZE = 188;
 const INNER_RATIO = 104 / 168;
 /** Radial wedges — View-only donut (no Skia / SVG). */
 const WEDGES = 90;
@@ -31,10 +31,10 @@ export function CategoryPieChart({
   type,
   centerTotal,
 }: Props) {
-  const { format } = useFormatMoney();
+  const { formatWhole } = useFormatMoney();
   const formatCenterMoney = (n: number): string => {
     const sign = n < 0 ? '−' : '';
-    return `${sign}${format(Math.abs(n))}`;
+    return `${sign}${formatWhole(Math.abs(n))}`;
   };
   const centerLabel = type === 'expense' ? 'Spent' : 'Earned';
   const centerColor = type === 'expense' ? colors.expense : colors.income;
@@ -157,7 +157,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   empty: {
-    height: 168,
+    height: SIZE,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: space.lg,

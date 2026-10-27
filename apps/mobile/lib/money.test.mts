@@ -29,6 +29,12 @@ test('formatMoney uses account currency symbols', () => {
   assert.equal(formatMoney(99.5, 'EUR'), '€99.50');
 });
 
+test('formatMoney whole drops fraction digits', () => {
+  assert.equal(formatMoney(43001, 'HKD', { whole: true }), 'HK$43,001');
+  assert.equal(formatMoney(12.5, 'HKD', { whole: true }), 'HK$13');
+  assert.equal(formatMoney(1200.4, 'JPY', { whole: true }), '¥1,200');
+});
+
 test('formatCompactUsd abbreviates axis ticks', () => {
   assert.equal(formatCompactUsd(0), '$0');
   assert.equal(formatCompactUsd(42), '$42');
