@@ -11,7 +11,7 @@ import {
   useScrollEdges,
 } from '@/components/ScrollEdgeShadows';
 import { CaptionText, StrongText, TitleText } from '@/components/StyledText';
-import { Text, View } from '@/components/Themed';
+import { Text } from '@/components/Themed';
 import { colors, fonts, radius, space, typography } from '@/constants/theme';
 import { useOfflineGates } from '@/hooks/useOfflineGates';
 import { useAuth } from '@/lib/auth';
@@ -43,7 +43,7 @@ export default function AccountScreen() {
 
           <RestoreBackupBanner />
 
-          <View style={styles.block} lightColor={colors.surfaceMuted} darkColor="#1a2a1f">
+          <RNView style={styles.block}>
             <CaptionText style={styles.label}>Email</CaptionText>
             <StrongText style={styles.value}>{user?.email ?? '—'}</StrongText>
 
@@ -52,7 +52,7 @@ export default function AccountScreen() {
 
             <CaptionText style={styles.label}>Timezone</CaptionText>
             <StrongText style={styles.value}>{profile?.timezone ?? '—'}</StrongText>
-          </View>
+          </RNView>
 
           <Pressable
             style={({ pressed }) => [
@@ -139,6 +139,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,
+    backgroundColor: colors.surface,
     padding: space.md,
     gap: space.xs,
   },
