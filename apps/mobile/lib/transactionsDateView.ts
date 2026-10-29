@@ -75,7 +75,7 @@ export function dateKeyFromFocusDay(focus: PeriodFocus, day: number): string {
   return `${ymd.year}-${m}-${d}`;
 }
 
-/** Heading like `Thursday, October 23` for a civil day in the focused month. */
+/** Heading like `Thu, October 23` for a civil day in the focused month. */
 export function formatFocusDayHeading(
   focus: PeriodFocus,
   day: number,

@@ -50,7 +50,7 @@ export function localDateKey(
 
 /**
  * Transactions / form date label in account timezone.
- * Full weekday + month, day only — e.g. `Monday, October 22` (no year).
+ * Short weekday + month, day only — e.g. `Thu, October 22` (no year).
  */
 export function formatDisplayDate(
   isoOrDate: string | Date,
@@ -62,7 +62,7 @@ export function formatDisplayDate(
   }
   const opts: Intl.DateTimeFormatOptions = {
     timeZone,
-    weekday: 'long',
+    weekday: 'short',
     month: 'long',
     day: 'numeric',
   };
