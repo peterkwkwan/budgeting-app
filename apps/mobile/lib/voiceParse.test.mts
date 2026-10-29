@@ -52,6 +52,41 @@ test('parses freelance income', () => {
   assert.equal(d.category, 'Freelance');
 });
 
+test('parses spoken thirty dollars for groceries', () => {
+  const d = parseVoiceTranscript('Thirty dollars for groceries');
+  assert.ok(d);
+  assert.equal(d.amount, '30.00');
+  assert.equal(d.type, 'expense');
+  assert.equal(d.category, 'Groceries');
+  assert.equal(d.confidence, 'full');
+});
+
+test('parses hyphenated spoken dollars', () => {
+  const d = parseVoiceTranscript('twenty-five dollars on gas');
+  assert.ok(d);
+  assert.equal(d.amount, '25.00');
+  assert.equal(d.category, 'Transport');
+});
+
+test('parses spoken hundreds and cents', () => {
+  const hundreds = parseVoiceTranscript('one hundred and twenty dollars for rent');
+  assert.ok(hundreds);
+  assert.equal(hundreds.amount, '120.00');
+  assert.equal(hundreds.category, 'Rent and Bills');
+
+  const cents = parseVoiceTranscript('thirty dollars and fifty cents for groceries');
+  assert.ok(cents);
+  assert.equal(cents.amount, '30.50');
+  assert.equal(cents.category, 'Groceries');
+});
+
+test('parses spoken amount without the word dollars', () => {
+  const d = parseVoiceTranscript('spent forty five on lunch');
+  assert.ok(d);
+  assert.equal(d.amount, '45.00');
+  assert.equal(d.category, 'Eating out');
+});
+
 test('matches custom category names when provided', () => {
   const d = parseVoiceTranscript('spent 20 on bubble tea', {
     expense: ['Bubble tea'],

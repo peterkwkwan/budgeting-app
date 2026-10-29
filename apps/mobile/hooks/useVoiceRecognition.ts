@@ -64,6 +64,8 @@ export function useVoiceRecognition({
   const [error, setError] = useState<string | null>(null);
   const [onDevice, setOnDevice] = useState(true);
   const finishingRef = useRef(false);
+  /** Latest interim/final text. Stop must not wait on a final event — Android often drops it. */
+  const transcriptRef = useRef('');
   const onDraftRef = useRef(onDraft);
   onDraftRef.current = onDraft;
   const extrasRef = useRef(categoryExtras);
@@ -71,6 +73,7 @@ export function useVoiceRecognition({
 
   const reset = useCallback(() => {
     finishingRef.current = false;
+    transcriptRef.current = '';
     setPhase('idle');
     setTranscript('');
     setError(null);
@@ -91,23 +94,28 @@ export function useVoiceRecognition({
     }
   }, [active, stopListening, reset]);
 
-  const finishWithTranscript = useCallback(
-    (text: string) => {
-      const draft = parseVoiceTranscript(text, extrasRef.current);
-      if (!draft) {
-        setPhase('error');
-        setError(
-          'Didn’t catch that. Try again, or add the transaction manually.'
-        );
-        return;
-      }
-      stopListening();
-      setPhase('idle');
-      setTranscript(text);
-      onDraftRef.current(draft);
-    },
-    [stopListening]
-  );
+  const finishWithTranscript = useCallback((text: string) => {
+    finishingRef.current = true;
+    const draft = parseVoiceTranscript(text, extrasRef.current);
+    // Release the recognizer. abort() drops a late final result; we already have the text.
+    try {
+      ExpoSpeechRecognitionModule.abort();
+    } catch {
+      // Native module may be absent (Expo Go / web).
+    }
+    if (!draft) {
+      setPhase('error');
+      setError(
+        'Didn’t catch that. Try again, or add the transaction manually.'
+      );
+      return;
+    }
+    setPhase('idle');
+    setError(null);
+    setTranscript(text);
+    transcriptRef.current = text;
+    onDraftRef.current(draft);
+  }, []);
 
   useSpeechRecognitionEvent('start', () => {
     if (!active) return;
@@ -117,21 +125,39 @@ export function useVoiceRecognition({
 
   useSpeechRecognitionEvent('end', () => {
     if (!active) return;
-    setPhase((p) => (p === 'listening' ? 'processing' : p));
+    // Session closed without a final result. Keep the interim line already on screen.
+    if (!finishingRef.current && transcriptRef.current.trim()) {
+      finishWithTranscript(transcriptRef.current);
+      return;
+    }
+    setPhase((p) => (p === 'listening' || p === 'processing' ? 'idle' : p));
   });
 
   useSpeechRecognitionEvent('result', (event) => {
     if (!active) return;
     const text = event.results[0]?.transcript?.trim() ?? '';
-    if (text) setTranscript(text);
+    if (text) {
+      transcriptRef.current = text;
+      setTranscript(text);
+    }
     if (event.isFinal && text && !finishingRef.current) {
-      finishingRef.current = true;
       finishWithTranscript(text);
     }
   });
 
   useSpeechRecognitionEvent('error', (event) => {
     if (!active || finishingRef.current) return;
+    // On-device stop() races the recognizer and reports `client` after good partials.
+    const heard = transcriptRef.current.trim();
+    const lostFinal =
+      event.error === 'client' ||
+      event.error === 'aborted' ||
+      event.error === 'no-speech' ||
+      event.error === 'speech-timeout';
+    if (lostFinal && heard) {
+      finishWithTranscript(heard);
+      return;
+    }
     if (event.error === 'aborted') {
       setPhase('idle');
       return;
@@ -143,6 +169,7 @@ export function useVoiceRecognition({
   async function startListening() {
     setError(null);
     setTranscript('');
+    transcriptRef.current = '';
     finishingRef.current = false;
 
     if (Platform.OS !== 'android') {
@@ -221,6 +248,12 @@ export function useVoiceRecognition({
 
   function toggle() {
     if (phase === 'listening' || phase === 'permission') {
+      // Tap-to-stop. Commit the interim transcript now; Android often never emits isFinal.
+      const heard = transcriptRef.current.trim();
+      if (heard) {
+        finishWithTranscript(heard);
+        return;
+      }
       try {
         ExpoSpeechRecognitionModule.stop();
       } catch {
