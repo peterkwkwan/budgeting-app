@@ -28,6 +28,7 @@ import {
 } from '@/constants/repeatPresets';
 import { colors, fonts, radius, space, typography } from '@/constants/theme';
 import { RepeatCustomSheet } from '@/components/RepeatCustomSheet';
+import { useFormatMoney } from '@/hooks/useFormatMoney';
 import { useOfflineGates } from '@/hooks/useOfflineGates';
 import { useUserCategories } from '@/hooks/useUserCategories';
 import { REPEAT_BLOCKED_COPY } from '@/lib/offline/ux';
@@ -105,6 +106,8 @@ export function TransactionForm({
   const [voicePartial, setVoicePartial] = useState(false);
   const [lastHeard, setLastHeard] = useState<string | null>(null);
   const { profile } = useAuth();
+  const { currency } = useFormatMoney();
+  const amountLabel = `Amount (${currency})`;
   const { repeatBlocked: repeatOffline } = useOfflineGates();
   const repeatBlocked = allowRepeat && repeatOffline;
   const customsQuery = useUserCategories();
@@ -250,7 +253,7 @@ export function TransactionForm({
           })}
         </View>
 
-        <CaptionText style={styles.label}>Amount (USD)</CaptionText>
+        <CaptionText style={styles.label}>{amountLabel}</CaptionText>
         <TextInput
           style={[styles.input, highlightVoice && amount ? styles.inputHighlight : null]}
           value={amount}
@@ -258,7 +261,7 @@ export function TransactionForm({
           keyboardType="decimal-pad"
           placeholder="0.00"
           placeholderTextColor={colors.inkMuted}
-          accessibilityLabel="Amount in USD"
+          accessibilityLabel={amountLabel}
         />
 
         <View style={styles.categoryLabelRow}>

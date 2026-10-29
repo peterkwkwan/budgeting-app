@@ -23,6 +23,7 @@ import {
   endsSummary,
   type EndsMode,
 } from '@/constants/repeatPresets';
+import { useFormatMoney } from '@/hooks/useFormatMoney';
 import { useUserCategories } from '@/hooks/useUserCategories';
 import { formatDisplayDate } from '@/lib/dates';
 import {
@@ -101,6 +102,9 @@ export function RecurringForm(props: Props) {
   const [localError, setLocalError] = useState<string | null>(null);
   const customsQuery = useUserCategories();
   const customs = customsQuery.data ?? [];
+  const { currency } = useFormatMoney();
+  const amountLabel = `Amount (${currency})`;
+  const startLabel = formatDisplayDate(anchorAt, timezone);
 
   function setTypeAndCategory(next: TransactionType) {
     setType(next);
@@ -199,7 +203,7 @@ export function RecurringForm(props: Props) {
         })}
       </View>
 
-      <CaptionText style={styles.label}>Amount (USD)</CaptionText>
+      <CaptionText style={styles.label}>{amountLabel}</CaptionText>
       <TextInput
         style={styles.input}
         value={amount}
@@ -207,7 +211,7 @@ export function RecurringForm(props: Props) {
         keyboardType="decimal-pad"
         placeholder="0.00"
         placeholderTextColor={colors.inkMuted}
-        accessibilityLabel="Amount in USD"
+        accessibilityLabel={amountLabel}
       />
 
       <CaptionText style={styles.label}>Category</CaptionText>
@@ -293,11 +297,20 @@ export function RecurringForm(props: Props) {
           </CaptionText>
         </>
       ) : (
-        <CaptionText style={styles.hint}>
-          Saving updates this rule and future transaction amounts only. Past entries
-          stay the same. Repeats:{' '}
-          {cadenceLabel(initial?.cadence ?? 'monthly')} · {timezone}.
-        </CaptionText>
+        <>
+          <CaptionText style={styles.label}>Starts</CaptionText>
+          <View
+            style={styles.input}
+            accessibilityLabel={`Starts ${startLabel}`}
+          >
+            <Text style={styles.dateText}>{startLabel}</Text>
+          </View>
+          <CaptionText style={styles.hint}>
+            Saving updates this rule and future transaction amounts only. Past
+            entries stay the same. Repeats:{' '}
+            {cadenceLabel(initial?.cadence ?? 'monthly')} · {timezone}.
+          </CaptionText>
+        </>
       )}
 
       {!isCreate ? (
