@@ -119,6 +119,9 @@ const styles = StyleSheet.create({
     ...typography.display,
     color: colors.green[950],
     textAlign: 'center',
+    // Full hero width. A shrink-wrapped box is measured short on Android, so
+    // the last glyph is clipped ("Fudget" draws as "Fudge").
+    alignSelf: 'stretch',
     marginBottom: 8,
   },
   sloganRow: {
@@ -185,6 +188,10 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     color: colors.inkInverse,
     letterSpacing: 0.1,
+    textAlign: 'center',
+    // Same Android clip as the wordmark: "Continue with Google" draws as
+    // "Continue with Goog" when the label hugs its measured width.
+    alignSelf: 'stretch',
   },
   error: {
     ...typography.caption,
