@@ -329,8 +329,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: space.xs,
-    flexGrow: 0,
-    flexShrink: 1,
+    // Basis 0 + grow so this row's width is the free space in the header
+    // (the gap before [Monthly] on Stats), not the label's own width.
+    // flexGrow: 0 left the row content-sized while the label shrinks, so
+    // Yoga ellipsized the month ("October" → "Octo...") in that narrow box.
+    // Children stay packed at the start, so ‹ October › stays a cluster
+    // and the label only ellipsizes when the string exceeds that width.
+    flex: 1,
     minWidth: 0,
   },
   chevronBtn: {
