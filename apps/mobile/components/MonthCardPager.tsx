@@ -82,6 +82,29 @@ export function MonthCardPager({
     onStepRef.current(delta);
   }, []);
 
+  /** Snap / commit on the JS thread (`monthStepFromCardSwipe` is not a worklet). */
+  const settleSwipe = useCallback(
+    (translationXValue: number, velocityX: number, width: number) => {
+      const step = monthStepFromCardSwipe(
+        translationXValue,
+        velocityX,
+        width
+      );
+      const target = step === 0 ? 0 : -step * width;
+      translateX.value = withTiming(
+        target,
+        { duration: MONTH_CARD_SNAP_MS, easing: easeOut },
+        (finished) => {
+          'worklet';
+          if (!finished || step === 0) return;
+          translateX.value = 0;
+          runOnJS(commitStep)(step);
+        }
+      );
+    },
+    [commitStep, translateX]
+  );
+
   const onLayout = useCallback(
     (event: LayoutChangeEvent) => {
       const w = event.nativeEvent.layout.width;
@@ -128,22 +151,7 @@ export function MonthCardPager({
         });
         return;
       }
-      const step = monthStepFromCardSwipe(
-        event.translationX,
-        event.velocityX,
-        w
-      );
-      const target = step === 0 ? 0 : -step * w;
-      translateX.value = withTiming(
-        target,
-        { duration: MONTH_CARD_SNAP_MS, easing: easeOut },
-        (finished) => {
-          if (!finished) return;
-          if (step === 0) return;
-          translateX.value = 0;
-          runOnJS(commitStep)(step);
-        }
-      );
+      runOnJS(settleSwipe)(event.translationX, event.velocityX, w);
     },
   });
 
