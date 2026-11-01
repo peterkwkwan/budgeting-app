@@ -4,6 +4,7 @@ import { CaptionText, StrongText } from '@/components/StyledText';
 import { colors, space, typography } from '@/constants/theme';
 import { seriesRepeatLabel } from '@/constants/repeatPresets';
 import { useFormatMoney } from '@/hooks/useFormatMoney';
+import { nextOccurrenceLabel } from '@/lib/nextOccurrence';
 import type { RecurringSeries } from '@/lib/recurring';
 
 type Props = {
@@ -16,13 +17,27 @@ export function RecurringRow({ series, onPress }: Props) {
   const amountColor =
     series.type === 'income' ? colors.income : colors.expense;
   const amountLabel = `${series.type === 'expense' ? '−' : '+'}${format(series.amount)}`;
+  const repeatLabel = seriesRepeatLabel(
+    series.cadence,
+    series.byweekday,
+    series.ends_on,
+    series.ends_after_count
+  );
+  const when = nextOccurrenceLabel(series);
+  const meta = [
+    when,
+    repeatLabel,
+    series.type === 'income' ? 'Income' : 'Expense',
+  ]
+    .filter(Boolean)
+    .join(' · ');
 
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [styles.row, pressed && styles.pressed]}
       accessibilityRole="button"
-      accessibilityLabel={`${series.category}, ${seriesRepeatLabel(series.cadence, series.byweekday, series.ends_on, series.ends_after_count)}, ${amountLabel}`}
+      accessibilityLabel={`${series.category}, ${meta}, ${amountLabel}`}
     >
       <View style={styles.left}>
         <StrongText style={styles.category}>{series.category}</StrongText>
@@ -31,15 +46,7 @@ export function RecurringRow({ series, onPress }: Props) {
             {series.note}
           </CaptionText>
         ) : null}
-        <CaptionText style={styles.meta}>
-          {seriesRepeatLabel(
-            series.cadence,
-            series.byweekday,
-            series.ends_on,
-            series.ends_after_count
-          )}{' '}
-          · {series.type === 'income' ? 'Income' : 'Expense'}
-        </CaptionText>
+        <CaptionText style={styles.meta}>{meta}</CaptionText>
       </View>
       <StrongText style={[styles.amount, { color: amountColor }]}>
         {amountLabel}
