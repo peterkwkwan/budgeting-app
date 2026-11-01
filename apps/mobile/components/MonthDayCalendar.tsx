@@ -55,7 +55,7 @@ export function MonthDayCalendar({
           const label =
             net == null
               ? null
-              : formatDayNet(net, { compact: true, currency });
+              : formatDayNet(net, { compact: true, plain: true, currency });
           return (
             <Pressable
               key={day}

@@ -159,18 +159,33 @@ export type DayNetTone = 'income' | 'expense' | 'zero';
  * Signed money label for a day net.
  * Positive `+HK$12.50` (income), negative `−HK$18.75` (expense), zero `HK$0.00`.
  * `compact` abbreviates amounts at or above 1,000 so calendar chips fit.
+ * `plain` drops the currency symbol and cent decimals (`−758`, `+80`).
+ * Compact thousands may still show one scale decimal (`−5.2k`).
  */
 export function formatDayNet(
   net: number,
-  opts?: { compact?: boolean; currency?: AccountCurrency | string }
+  opts?: {
+    compact?: boolean;
+    plain?: boolean;
+    currency?: AccountCurrency | string;
+  }
 ): { text: string; tone: DayNetTone } {
   const currency = opts?.currency ?? DEFAULT_CURRENCY;
   const tone: DayNetTone =
     net > 0 ? 'income' : net < 0 ? 'expense' : 'zero';
   const compact = Boolean(opts?.compact) && Math.abs(net) >= 1000;
+  const plain = Boolean(opts?.plain);
   const body = compact
-    ? formatCompactMoney(Math.abs(net), currency)
-    : formatMoney(net, currency);
+    ? formatCompactMoney(
+        Math.abs(net),
+        currency,
+        plain ? { symbol: false } : undefined
+      )
+    : formatMoney(
+        net,
+        currency,
+        plain ? { whole: true, symbol: false } : undefined
+      );
   if (net > 0) return { text: `+${body}`, tone };
   if (net < 0) return { text: `−${body}`, tone };
   return { text: body, tone };

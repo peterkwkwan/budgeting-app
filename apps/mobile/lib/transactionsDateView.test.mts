@@ -154,4 +154,39 @@ describe('transactionsDateView', () => {
       tone: 'income',
     });
   });
+
+  it('formatDayNet plain drops symbol and cent decimals for calendar cells', () => {
+    assert.deepEqual(
+      formatDayNet(-758, { compact: true, plain: true, currency: 'HKD' }),
+      { text: '−758', tone: 'expense' }
+    );
+    assert.deepEqual(
+      formatDayNet(-758.49, { compact: true, plain: true, currency: 'HKD' }),
+      { text: '−758', tone: 'expense' }
+    );
+    assert.deepEqual(
+      formatDayNet(80.5, { compact: true, plain: true, currency: 'HKD' }),
+      { text: '+81', tone: 'income' }
+    );
+    assert.deepEqual(
+      formatDayNet(0, { compact: true, plain: true, currency: 'HKD' }),
+      { text: '0', tone: 'zero' }
+    );
+    assert.deepEqual(
+      formatDayNet(-5200, { compact: true, plain: true, currency: 'HKD' }),
+      { text: '−5.2k', tone: 'expense' }
+    );
+    assert.deepEqual(
+      formatDayNet(93200, { compact: true, plain: true, currency: 'HKD' }),
+      { text: '+93.2k', tone: 'income' }
+    );
+    assert.deepEqual(
+      formatDayNet(-1700, { compact: true, plain: true, currency: 'HKD' }),
+      { text: '−1.7k', tone: 'expense' }
+    );
+    assert.deepEqual(
+      formatDayNet(2000, { compact: true, plain: true, currency: 'HKD' }),
+      { text: '+2k', tone: 'income' }
+    );
+  });
 });

@@ -12,15 +12,16 @@ import {
  *
  * HKD `12.5` → `HK$12.50`, JPY `1200` → `¥1,200`.
  * Pass `{ whole: true }` to round to whole units (Stats By category).
+ * Pass `{ symbol: false }` to omit the currency symbol.
  */
 export function formatMoney(
   amount: number,
   currency: AccountCurrency | string = 'HKD',
-  options?: { whole?: boolean }
+  options?: { whole?: boolean; symbol?: boolean }
 ): string {
   const code = parseAccountCurrency(currency);
   const digits = options?.whole ? 0 : currencyFractionDigits(code);
-  const symbol = currencySymbol(code);
+  const symbol = options?.symbol === false ? '' : currencySymbol(code);
   const abs = Math.abs(amount);
   if (digits === 0) {
     const whole = Math.round(abs).toString();
@@ -36,13 +37,15 @@ export function formatMoney(
  * Compact axis / chip labels — never full `HK$1,079,462.49`.
  * Under 1000 → `HK$n`; thousands → `HK$nk`; millions → `HK$n.nM`.
  * Includes a leading `-` for negatives (unlike formatMoney).
+ * Pass `{ symbol: false }` to omit the currency symbol.
  */
 export function formatCompactMoney(
   amount: number,
-  currency: AccountCurrency | string = 'HKD'
+  currency: AccountCurrency | string = 'HKD',
+  options?: { symbol?: boolean }
 ): string {
   const code = parseAccountCurrency(currency);
-  const symbol = currencySymbol(code);
+  const symbol = options?.symbol === false ? '' : currencySymbol(code);
   if (!Number.isFinite(amount)) return `${symbol}0`;
   const sign = amount < 0 ? '-' : '';
   const a = Math.abs(amount);
