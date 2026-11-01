@@ -344,15 +344,12 @@ export default function StatsScreen() {
             </CaptionText>
 
             <View style={styles.quietPeers}>
-              {(pieType === 'expense'
-                ? [
-                    { label: 'Earned', value: formatSigned(incomeSum) },
-                    { label: 'Net', value: formatSigned(netSum) },
-                  ]
-                : [
-                    { label: 'Spent', value: formatSigned(expenseSum) },
-                    { label: 'Net', value: formatSigned(netSum) },
-                  ]
+              {(
+                [
+                  { label: 'Spent', value: formatSigned(expenseSum) },
+                  { label: 'Earned', value: formatSigned(incomeSum) },
+                  { label: 'Net', value: formatSigned(netSum) },
+                ] as const
               ).map((peer) => (
                 <View key={peer.label} style={styles.quietPeer}>
                   <CaptionText style={styles.quietPeerLabel}>
@@ -572,13 +569,15 @@ const styles = StyleSheet.create({
   },
   quietPeers: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'center',
-    gap: space.lg,
+    gap: space.md,
     paddingBottom: space.xs,
   },
   quietPeer: {
     alignItems: 'center',
     gap: 2,
+    minWidth: 72,
   },
   quietPeerLabel: {
     color: colors.inkMuted,
