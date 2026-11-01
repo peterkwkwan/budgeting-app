@@ -21,10 +21,10 @@ import {
   BulkEditSheet,
   type BulkEditField,
 } from '@/components/BulkEditSheet';
+import { MonthCardPager } from '@/components/MonthCardPager';
 import { MonthDayCalendar } from '@/components/MonthDayCalendar';
-import { MonthSwipeTransition } from '@/components/MonthSwipeTransition';
-import { TransactionsMonthSwipe } from '@/components/TransactionsMonthSwipe';
 import { OfflineBanner } from '@/components/OfflineBanner';
+import { TransactionsMonthPeek } from '@/components/TransactionsMonthPeek';
 import {
   ScrollEdgeHost,
   useScrollEdges,
@@ -97,8 +97,16 @@ export default function TransactionsScreen() {
     [timeZone, focus]
   );
 
-  const { data, upcoming, isLoading, isError, error, refetch, isRefetching } =
-    useTransactionList(focus);
+  const {
+    data,
+    allRows,
+    upcoming,
+    isLoading,
+    isError,
+    error,
+    refetch,
+    isRefetching,
+  } = useTransactionList(focus);
 
   const bulkDelete = useBulkSoftDeleteTransactions();
   const bulkPatch = useBulkPatchTransactions();
@@ -400,11 +408,29 @@ export default function TransactionsScreen() {
       )
     ) : undefined;
 
+  const renderAdjacent = useCallback(
+    (adjacentFocus: PeriodFocus) => (
+      <TransactionsMonthPeek
+        focus={adjacentFocus}
+        allRows={allRows}
+        listLoading={isLoading}
+        timeZone={timeZone}
+        dateView={dateView}
+        currency={currency}
+      />
+    ),
+    [allRows, isLoading, timeZone, dateView, currency]
+  );
+
   return (
-    <TransactionsMonthSwipe enabled={!selectionMode} onStep={onMonthStep}>
     <View style={styles.container}>
       <OfflineBanner message={banner} />
-      <MonthSwipeTransition focus={focus}>
+      <MonthCardPager
+        focus={focus}
+        enabled={!selectionMode}
+        onStep={onMonthStep}
+        renderAdjacent={renderAdjacent}
+      >
       {isLoading ? (
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={colors.green[700]} />
@@ -488,7 +514,7 @@ export default function TransactionsScreen() {
           )}
         </ScrollEdgeHost>
       )}
-      </MonthSwipeTransition>
+      </MonthCardPager>
 
       <Modal
         visible={overflowOpen}
@@ -536,7 +562,6 @@ export default function TransactionsScreen() {
         onApply={applyBulk}
       />
     </View>
-    </TransactionsMonthSwipe>
   );
 }
 

@@ -16,7 +16,7 @@ import {
 } from 'react-native';
 
 import { ConnectionRequired } from '@/components/ConnectionRequired';
-import { MonthSwipeTransition } from '@/components/MonthSwipeTransition';
+import { MonthCardPager } from '@/components/MonthCardPager';
 import { OfflineBanner } from '@/components/OfflineBanner';
 import {
   ScrollEdgeHost,
@@ -26,7 +26,7 @@ import { CategoryBreakdownList } from '@/components/stats/CategoryBreakdownList'
 import { CategoryPieChart } from '@/components/stats/CategoryPieChart';
 import { PeriodSelector } from '@/components/stats/PeriodSelector';
 import { StatsEmptyState } from '@/components/stats/StatsEmptyState';
-import { StatsMonthSwipe } from '@/components/stats/StatsMonthSwipe';
+import { StatsMonthPeek } from '@/components/stats/StatsMonthPeek';
 import { TrendLineChart } from '@/components/stats/TrendLineChart';
 import { CaptionText, StrongText, TitleText } from '@/components/StyledText';
 import type { TransactionType } from '@/constants/categories';
@@ -68,10 +68,13 @@ export default function StatsScreen() {
   const navigation = useNavigation();
   const { profile } = useAuth();
   const { formatWhole } = useFormatMoney();
-  const formatSigned = (n: number): string => {
-    const sign = n < 0 ? '−' : '';
-    return `${sign}${formatWhole(Math.abs(n))}`;
-  };
+  const formatSigned = useCallback(
+    (n: number): string => {
+      const sign = n < 0 ? '−' : '';
+      return `${sign}${formatWhole(Math.abs(n))}`;
+    },
+    [formatWhole]
+  );
   const timeZone = profile?.timezone || 'UTC';
   const partnerLink = usePartnerLink();
   const { offline, pairStatsBlocked } = useOfflineGates();
@@ -216,13 +219,30 @@ export default function StatsScreen() {
     setFocus((current) => shiftPeriodFocus(current, 'month', delta));
   }, []);
 
+  const renderAdjacent = useCallback(
+    (adjacentFocus: PeriodFocus) => (
+      <StatsMonthPeek
+        focus={adjacentFocus}
+        timeZone={timeZone}
+        pieType={pieType}
+        pairLive={pairLive}
+        formatSigned={formatSigned}
+      />
+    ),
+    [timeZone, pieType, pairLive, formatSigned]
+  );
+
   return (
-    <StatsMonthSwipe enabled={preset === 'month'} onStep={onMonthStep}>
     <View style={styles.container}>
     <OfflineBanner
       message={offline ? STATS_PERSONAL_OFFLINE_BANNER : null}
     />
-    <MonthSwipeTransition focus={focus} active={preset === 'month'}>
+    <MonthCardPager
+      focus={focus}
+      enabled={preset === 'month'}
+      onStep={onMonthStep}
+      renderAdjacent={renderAdjacent}
+    >
     <ScrollEdgeHost edges={edges} style={styles.scrollHost}>
     <ScrollView
       style={styles.scroll}
@@ -455,9 +475,8 @@ export default function StatsScreen() {
       )}
     </ScrollView>
     </ScrollEdgeHost>
-    </MonthSwipeTransition>
+    </MonthCardPager>
     </View>
-    </StatsMonthSwipe>
   );
 }
 

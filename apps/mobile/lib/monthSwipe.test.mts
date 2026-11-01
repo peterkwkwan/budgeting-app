@@ -2,10 +2,14 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import {
+  MONTH_CARD_SNAP_RATIO,
+  MONTH_CARD_VELOCITY_PX,
   MONTH_SWIPE_DISTANCE_PX,
   monthContentKey,
   monthStepDirection,
+  monthStepFromCardSwipe,
   monthStepFromSwipe,
+  shiftYearMonth,
 } from './monthSwipe.ts';
 
 test('swipe left moves forward one month', () => {
@@ -55,4 +59,51 @@ test('monthStepDirection compares calendar months', () => {
     monthStepDirection({ year: 2026, month: 5 }, { year: 2026, month: 5 }),
     0
   );
+});
+
+test('card swipe commits past the width snap ratio', () => {
+  const width = 400;
+  const threshold = width * MONTH_CARD_SNAP_RATIO;
+  assert.equal(monthStepFromCardSwipe(-(threshold + 1), 0, width), 1);
+  assert.equal(monthStepFromCardSwipe(threshold + 1, 0, width), -1);
+  assert.equal(monthStepFromCardSwipe(-(threshold - 1), 0, width), 0);
+  assert.equal(monthStepFromCardSwipe(threshold - 1, 0, width), 0);
+});
+
+test('card swipe commits on a flick even with a short drag', () => {
+  const width = 400;
+  assert.equal(
+    monthStepFromCardSwipe(-10, -(MONTH_CARD_VELOCITY_PX + 1), width),
+    1
+  );
+  assert.equal(
+    monthStepFromCardSwipe(10, MONTH_CARD_VELOCITY_PX + 1, width),
+    -1
+  );
+});
+
+test('card swipe ignores bad width or ratio', () => {
+  assert.equal(monthStepFromCardSwipe(-200, 0, 0), 0);
+  assert.equal(monthStepFromCardSwipe(-200, 0, Number.NaN), 0);
+  assert.equal(monthStepFromCardSwipe(-200, 0, 400, 0), 0);
+  assert.equal(monthStepFromCardSwipe(-200, 0, 400, 1), 0);
+});
+
+test('shiftYearMonth steps across year boundaries', () => {
+  assert.deepEqual(shiftYearMonth({ year: 2026, month: 11 }, 1), {
+    year: 2026,
+    month: 12,
+  });
+  assert.deepEqual(shiftYearMonth({ year: 2026, month: 12 }, 1), {
+    year: 2027,
+    month: 1,
+  });
+  assert.deepEqual(shiftYearMonth({ year: 2026, month: 1 }, -1), {
+    year: 2025,
+    month: 12,
+  });
+  assert.deepEqual(shiftYearMonth({ year: 2026, month: 6 }, 0), {
+    year: 2026,
+    month: 6,
+  });
 });

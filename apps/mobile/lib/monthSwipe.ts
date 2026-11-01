@@ -1,14 +1,10 @@
 /**
- * Month swipe.
+ * Month card swipe.
  * Left (negative X) moves forward one month; right moves back one month.
- * Shorter drags do not change the month.
+ * During the drag, prev/next month cards peek in from the sides.
  */
-export const MONTH_SWIPE_DISTANCE_PX = 48;
 
-/**
- * Horizontal travel before the pan claims the touch, so taps and short
- * nudges still reach buttons inside the scroll view.
- */
+/** Horizontal travel before the pan claims the touch. */
 export const MONTH_SWIPE_ACTIVATION_PX = 24;
 
 /**
@@ -17,8 +13,25 @@ export const MONTH_SWIPE_ACTIVATION_PX = 24;
  */
 export const MONTH_SWIPE_FAIL_Y_PX = 16;
 
-/** Content fade/slide length when the focused month changes. */
-export const MONTH_SWIPE_TRANSITION_MS = 220;
+/** Fraction of pager width that commits a month change on release. */
+export const MONTH_CARD_SNAP_RATIO = 0.28;
+
+/** Flick speed (px/s) that commits a month change even on a short drag. */
+export const MONTH_CARD_VELOCITY_PX = 700;
+
+/** Snap / chevron slide length. */
+export const MONTH_CARD_SNAP_MS = 240;
+
+/**
+ * Legacy short-drag threshold (tests + older call sites).
+ * Card pager uses width-based {@link monthStepFromCardSwipe} instead.
+ */
+export const MONTH_SWIPE_DISTANCE_PX = 48;
+
+/** @deprecated Prefer {@link MONTH_CARD_SNAP_MS}. */
+export const MONTH_SWIPE_TRANSITION_MS = MONTH_CARD_SNAP_MS;
+
+type YearMonth = { year: number; month: number };
 
 /** +1 next month, −1 previous month, 0 when the drag is too short. */
 export function monthStepFromSwipe(
@@ -31,7 +44,43 @@ export function monthStepFromSwipe(
   return 0;
 }
 
-type YearMonth = { year: number; month: number };
+/**
+ * Commit helper for the card pager: distance vs pager width, or a flick.
+ * +1 next month, −1 previous month, 0 snap back.
+ */
+export function monthStepFromCardSwipe(
+  translationX: number,
+  velocityX: number,
+  width: number,
+  snapRatio = MONTH_CARD_SNAP_RATIO,
+  velocityPx = MONTH_CARD_VELOCITY_PX
+): -1 | 0 | 1 {
+  if (!Number.isFinite(translationX) || !Number.isFinite(width) || !(width > 0)) {
+    return 0;
+  }
+  if (!(snapRatio > 0 && snapRatio < 1)) return 0;
+
+  if (Number.isFinite(velocityX) && velocityPx > 0) {
+    if (velocityX <= -velocityPx) return 1;
+    if (velocityX >= velocityPx) return -1;
+  }
+
+  const threshold = width * snapRatio;
+  if (translationX <= -threshold) return 1;
+  if (translationX >= threshold) return -1;
+  return 0;
+}
+
+/** Step a calendar month by ±N (month is 1–12). */
+export function shiftYearMonth(focus: YearMonth, delta: number): YearMonth {
+  if (!Number.isFinite(delta) || delta === 0) {
+    return { year: focus.year, month: focus.month };
+  }
+  const idx = focus.year * 12 + (focus.month - 1) + delta;
+  const year = Math.floor(idx / 12);
+  const month = ((idx % 12) + 12) % 12 + 1;
+  return { year, month };
+}
 
 /** Stable key for a focused calendar month (`2026-11`). */
 export function monthContentKey(focus: YearMonth): string {
