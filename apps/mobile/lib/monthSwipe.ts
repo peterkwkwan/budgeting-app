@@ -1,5 +1,5 @@
 /**
- * Month swipe on Transactions and Stats.
+ * Month swipe.
  * Left (negative X) moves forward one month; right moves back one month.
  * Shorter drags do not change the month.
  */
