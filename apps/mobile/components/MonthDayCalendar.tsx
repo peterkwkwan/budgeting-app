@@ -92,12 +92,6 @@ export function MonthDayCalendar({
           );
         })}
       </View>
-      <View style={styles.hint}>
-        <CaptionText style={styles.hintText}>
-          Amounts are each day’s net (income − expenses) · tap a day to filter
-          the list
-        </CaptionText>
-      </View>
     </View>
   );
 }
@@ -106,7 +100,7 @@ const styles = StyleSheet.create({
   wrap: {
     paddingHorizontal: space.sm + 4,
     paddingTop: space.sm,
-    paddingBottom: space.sm,
+    paddingBottom: space.xs,
   },
   weekdayRow: {
     flexDirection: 'row',
@@ -156,19 +150,5 @@ const styles = StyleSheet.create({
   },
   amountSlot: {
     height: 12,
-  },
-  hint: {
-    marginTop: space.sm,
-    paddingVertical: space.sm,
-    paddingHorizontal: space.sm + 2,
-    borderRadius: radius.md,
-    backgroundColor: colors.surfaceMuted,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  hintText: {
-    color: colors.inkMuted,
-    fontSize: 12,
-    lineHeight: 16,
   },
 });

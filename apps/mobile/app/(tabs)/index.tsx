@@ -33,7 +33,14 @@ import { TransactionRow } from '@/components/TransactionRow';
 import { TxnSelectionHeader } from '@/components/TxnSelectionHeader';
 import { UpcomingRepeatsBar } from '@/components/UpcomingRepeatsBar';
 import { WeekDayStrip } from '@/components/WeekDayStrip';
-import { colors, fonts, radius, space, typography } from '@/constants/theme';
+import {
+  chromeHairline,
+  colors,
+  fonts,
+  radius,
+  space,
+  typography,
+} from '@/constants/theme';
 import {
   useBulkPatchTransactions,
   useBulkSoftDeleteTransactions,
@@ -336,7 +343,12 @@ export default function TransactionsScreen() {
       ) : null}
       {monthHasTransactions &&
       (dateView === 'week' || dateView === 'month') ? (
-        <View style={styles.dayHeading}>
+        <View
+          style={[
+            styles.dayHeading,
+            dateView === 'month' && styles.dayHeadingBelowCalendar,
+          ]}
+        >
           <StrongText style={styles.dayHeadingText}>
             {selectedDayHeading}
           </StrongText>
@@ -569,10 +581,15 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: space.sm,
     paddingHorizontal: space.md,
-    paddingTop: space.sm + 2,
-    paddingBottom: space.xs,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
+    paddingVertical: space.sm,
+    backgroundColor: colors.surfaceMuted,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  /** Stronger than a hairline so the month grid and this row stay separate. */
+  dayHeadingBelowCalendar: {
+    borderTopWidth: chromeHairline.width,
+    borderTopColor: chromeHairline.color,
   },
   dayHeadingText: {
     flexShrink: 1,
