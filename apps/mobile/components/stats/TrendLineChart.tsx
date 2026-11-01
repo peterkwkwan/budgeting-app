@@ -27,7 +27,6 @@ type Props = {
 
 /** Shared with Planner ProjectionChart — open / full-bleed chrome. */
 const CHART_H = 176;
-const PAD_LEFT = 46;
 const PAD_RIGHT = 10;
 const PAD_Y = 16;
 /** Inward inset so first/last nodes are not flush to the plot edges. */
@@ -35,7 +34,14 @@ const EDGE_PAD = 12;
 const STROKE = 2.5;
 const DOT = 8;
 const GHOST_DOT = 7;
-const Y_LABEL_W = 42;
+/**
+ * Compact ticks such as `HK$100k` need more than `HK$50k`.
+ * 42px ellipsizes the longer label (`HK$10...`); +12px is the room
+ * requested so the full number sits in the left gutter.
+ */
+const Y_LABEL_INSET = 2;
+const Y_LABEL_W = 54;
+const PAD_LEFT = Y_LABEL_INSET + Y_LABEL_W + Y_LABEL_INSET;
 /** Max X tick labels so dense day series stay readable. */
 const MAX_X_LABELS = 5;
 
@@ -511,7 +517,7 @@ const styles = StyleSheet.create({
   },
   yLabel: {
     position: 'absolute',
-    left: 2,
+    left: Y_LABEL_INSET,
     color: colors.inkMuted,
     fontSize: 11,
     lineHeight: 14,
