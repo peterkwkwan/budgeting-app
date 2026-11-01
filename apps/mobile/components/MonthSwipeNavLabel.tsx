@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
 import Animated, {
   useAnimatedStyle,
@@ -24,6 +24,10 @@ type Props = {
  *
  * Viewport width is the natural width of the longest of prev/current/next —
  * never the flex leftover in the header — so › packs beside the month.
+ *
+ * Shared values are only written from layout/effects (never during render or
+ * inside setState updaters), and the last slot width is kept across label
+ * changes so the strip does not flash the previous month at translateX 0.
  */
 export function MonthSwipeNavLabel({
   prevLabel,
@@ -34,27 +38,32 @@ export function MonthSwipeNavLabel({
 }: Props) {
   const slotSV = useSharedValue(0);
   const [slotW, setSlotW] = useState(0);
+  const probeWidths = useRef({ prev: 0, nav: 0, next: 0 });
 
-  // Remeasure when the trio changes; plain-text fallback keeps › packed
-  // until the new max lands (no flex-grown gap).
+  // Clear per-label probes when the trio changes; keep last slotW / slotSV
+  // until the new max lands so the strip stays on “current” (−slotW), not
+  // flashing “prev” while slotSV is briefly 0 with slotW still > 0.
   useEffect(() => {
-    slotSV.value = 0;
-    setSlotW(0);
-  }, [prevLabel, navLabel, nextLabel, slotSV]);
+    probeWidths.current = { prev: 0, nav: 0, next: 0 };
+  }, [prevLabel, navLabel, nextLabel]);
 
-  const onProbeLayout = useCallback(
-    (event: LayoutChangeEvent) => {
+  // Mirror React width into the shared value after commit — never in render.
+  useLayoutEffect(() => {
+    slotSV.value = slotW;
+  }, [slotW, slotSV]);
+
+  const onMeasure = useCallback(
+    (key: 'prev' | 'nav' | 'next') => (event: LayoutChangeEvent) => {
       const w = Math.ceil(event.nativeEvent.layout.width);
       if (!(w > 0)) return;
-      setSlotW((prev) => {
-        const next = Math.max(prev, w);
-        if (next !== prev) {
-          slotSV.value = next;
-        }
-        return next;
-      });
+      probeWidths.current[key] = w;
+      const { prev, nav, next } = probeWidths.current;
+      // Wait for all three so we do not shrink to nav-only then grow again.
+      if (!(prev > 0 && nav > 0 && next > 0)) return;
+      const measured = Math.max(prev, nav, next);
+      setSlotW((prevW) => (prevW === measured ? prevW : measured));
     },
-    [slotSV]
+    []
   );
 
   const stripStyle = useAnimatedStyle(() => {
@@ -89,12 +98,18 @@ export function MonthSwipeNavLabel({
         accessibilityElementsHidden
         importantForAccessibility="no-hide-descendants"
       >
-        {[prevLabel, navLabel, nextLabel].map((label, index) => (
+        {(
+          [
+            ['prev', prevLabel],
+            ['nav', navLabel],
+            ['next', nextLabel],
+          ] as const
+        ).map(([key, label]) => (
           <Text
-            key={`${index}-${label}`}
+            key={`${key}-${label}`}
             style={styles.measureLabel}
             numberOfLines={1}
-            onLayout={onProbeLayout}
+            onLayout={onMeasure(key)}
           >
             {label}
           </Text>
