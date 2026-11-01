@@ -14,6 +14,7 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
+import { useSharedValue } from 'react-native-reanimated';
 
 import { ConnectionRequired } from '@/components/ConnectionRequired';
 import { MonthCardPager } from '@/components/MonthCardPager';
@@ -28,6 +29,11 @@ import { PeriodSelector } from '@/components/stats/PeriodSelector';
 import { StatsEmptyState } from '@/components/stats/StatsEmptyState';
 import { StatsMonthPeek } from '@/components/stats/StatsMonthPeek';
 import { StatsQuietPeers } from '@/components/stats/StatsQuietPeers';
+import {
+  PIE_TYPE_OPTIONS,
+  StatsSegmentToggle,
+  TREND_METRIC_OPTIONS,
+} from '@/components/stats/StatsSegmentToggle';
 import { StatsTrendPlaceholder } from '@/components/stats/StatsTrendPlaceholder';
 import { TrendLineChart } from '@/components/stats/TrendLineChart';
 import { CaptionText, StrongText, TitleText } from '@/components/StyledText';
@@ -97,6 +103,10 @@ export default function StatsScreen() {
   const [trendMetric, setTrendMetric] = useState<StatsMetric>('expense');
   const { edges, scrollProps } = useScrollEdges();
 
+  // Shared with PeriodSelector so the header month tracks the card swipe.
+  const swipeTranslateX = useSharedValue(0);
+  const swipePagerWidth = useSharedValue(0);
+
   // Unlink → Pair scope disappears immediately; fall back to personal.
   useEffect(() => {
     if (!isPaired && scope === 'pair') {
@@ -114,6 +124,44 @@ export default function StatsScreen() {
     [preset, timeZone, focus, customStart, customEnd]
   );
 
+  const prevMonthFocus = useMemo(
+    () => shiftPeriodFocus(focus, 'month', -1),
+    [focus.year, focus.month]
+  );
+  const nextMonthFocus = useMemo(
+    () => shiftPeriodFocus(focus, 'month', 1),
+    [focus.year, focus.month]
+  );
+  const prevNavLabel = useMemo(
+    () =>
+      resolvePeriodBounds('month', timeZone, { focus: prevMonthFocus }).navLabel,
+    [timeZone, prevMonthFocus.year, prevMonthFocus.month]
+  );
+  const nextNavLabel = useMemo(
+    () =>
+      resolvePeriodBounds('month', timeZone, { focus: nextMonthFocus }).navLabel,
+    [timeZone, nextMonthFocus.year, nextMonthFocus.month]
+  );
+
+  const swipeMotion = useMemo(
+    () =>
+      preset === 'month'
+        ? {
+            translateX: swipeTranslateX,
+            pagerWidth: swipePagerWidth,
+            prevLabel: prevNavLabel,
+            nextLabel: nextNavLabel,
+          }
+        : null,
+    [
+      preset,
+      swipeTranslateX,
+      swipePagerWidth,
+      prevNavLabel,
+      nextNavLabel,
+    ]
+  );
+
   useLayoutEffect(() => {
     navigation.setOptions(
       periodNavScreenOptions(() => (
@@ -126,6 +174,7 @@ export default function StatsScreen() {
             customStart={customStart}
             customEnd={customEnd}
             showModeMenu
+            swipeMotion={swipeMotion}
             onPresetChange={setPreset}
             onFocusChange={setFocus}
             onCustomStartChange={(date) => {
@@ -152,6 +201,7 @@ export default function StatsScreen() {
     timeZone,
     customStart,
     customEnd,
+    swipeMotion,
   ]);
 
   const personal = usePersonalStats(period, pieType);
@@ -267,263 +317,263 @@ export default function StatsScreen() {
         pieType={pieType}
         pairLive={pairLive}
         formatSigned={formatSigned}
+        /** Tabs live in stable chrome above the pager on Monthly. */
+        showSectionChrome={false}
       />
     ),
     [timeZone, pieType, pairLive, formatSigned]
   );
 
-  return (
-    <View style={styles.container}>
-    <OfflineBanner
-      message={offline ? STATS_PERSONAL_OFFLINE_BANNER : null}
-    />
-    <MonthCardPager
-      focus={focus}
-      enabled={preset === 'month'}
-      onStep={onMonthStep}
-      renderAdjacent={renderAdjacent}
-    >
-    <ScrollEdgeHost edges={edges} style={styles.scrollHost}>
-    <ScrollView
-      style={styles.scroll}
-      contentContainerStyle={[
-        styles.content,
-        (isPeriodEmpty || (awaitingTotals && preset === 'month')) &&
-          styles.contentEmpty,
-      ]}
-      {...scrollProps}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={onRefresh}
-          tintColor={colors.green[700]}
-        />
+  /** Monthly: keep By-category title + tabs above the sliding cards (no CLS). */
+  const monthlyChromeOutside =
+    preset === 'month' && !pairBlocked && !error;
+
+  const byCategoryChrome = (placement: 'outside' | 'inside') => (
+    <View
+      style={
+        placement === 'outside' ? styles.sectionChrome : styles.section
       }
     >
-      {isPaired ? (
-        <View style={styles.scopeRow}>
-          {(
-            [
-              { value: 'personal', label: 'Personal' },
-              { value: 'pair', label: 'Pair' },
-            ] as const
-          ).map((opt) => {
-            const selected = scope === opt.value;
-            return (
-              <Pressable
-                key={opt.value}
-                onPress={() => setScope(opt.value)}
-                style={[styles.scopeChip, selected && styles.scopeChipSelected]}
-                accessibilityRole="button"
-                accessibilityState={{ selected }}
-                accessibilityLabel={`${opt.label} stats`}
-              >
-                <CaptionText
-                  style={[
-                    styles.scopeText,
-                    selected && styles.scopeTextSelected,
-                  ]}
-                >
-                  {opt.label}
-                </CaptionText>
-              </Pressable>
-            );
-          })}
-        </View>
-      ) : null}
+      <StrongText style={styles.sectionTitle}>By category</StrongText>
+      <StatsSegmentToggle
+        options={PIE_TYPE_OPTIONS}
+        value={pieType}
+        onChange={setPieType}
+        accessibilityLabel="Category type"
+      />
+    </View>
+  );
 
-      {pairLive ? (
-        <CaptionText style={styles.pairHint}>
-          Combined totals with {partnerLink.data?.partnerDisplayName ?? 'partner'}.
-          Category sums only — no individual transactions.
-        </CaptionText>
-      ) : null}
-
-      {pairBlocked ? (
-        <ConnectionRequired message={STATS_OFFLINE_COPY} />
-      ) : error ? (
-        <View style={styles.centered}>
-          <TitleText style={styles.emptyTitle}>Couldn’t load stats</TitleText>
-          <CaptionText style={styles.emptyBody}>{error}</CaptionText>
-          <Pressable
-            style={({ pressed }) => [
-              styles.secondary,
-              pressed && styles.secondaryPressed,
-            ]}
-            onPress={onRefresh}
-          >
-            <CaptionText style={styles.secondaryText}>Try again</CaptionText>
-          </Pressable>
-        </View>
-      ) : awaitingTotals && preset === 'month' ? (
-        <StatsEmptyState
-          periodLabel={period.navLabel}
-          preset={preset}
-          interactive={false}
+  const trendBlock =
+    !pairLive && !pairBlocked && !error ? (
+      <View style={styles.section}>
+        <TitleText style={styles.trendTitle}>Trend</TitleText>
+        <StatsSegmentToggle
+          options={TREND_METRIC_OPTIONS}
+          value={trendMetric}
+          onChange={setTrendMetric}
+          accessibilityLabel="Trend metric"
         />
-      ) : isPeriodEmpty ? (
-        <StatsEmptyState
-          periodLabel={period.navLabel}
-          preset={preset}
-          onAddTransaction={() => guardedPush(router, ADD_TRANSACTION)}
-          onGoToThisMonth={
-            onCurrentMonthMonthly ? undefined : goToThisMonth
+        {trend.isLoading || trend.data == null ? (
+          <View style={styles.chartBleed}>
+            <StatsTrendPlaceholder />
+          </View>
+        ) : (
+          <View style={styles.chartBleed}>
+            <TrendLineChart
+              data={trend.data}
+              emptyLabel="No trend data for this period."
+              bucket={personal.bucket}
+              timeZone={timeZone}
+              strokeColor={trendStrokeForMetric(trendMetric)}
+            />
+          </View>
+        )}
+      </View>
+    ) : null;
+
+  const categoryBody = (
+    <>
+      <CategoryPieChart
+        data={categoriesReady ? (categories.data ?? []) : []}
+        type={pieType}
+        centerTotal={pieType === 'expense' ? expenseSum : incomeSum}
+        emptyLabel={
+          categoriesReady
+            ? pieType === 'expense'
+              ? 'No expenses in this period.'
+              : 'No income in this period.'
+            : 'Loading categories…'
+        }
+      />
+
+      <CaptionText
+        style={[
+          styles.savingsRate,
+          { color: savingsRateColor(periodSavingsPct) },
+        ]}
+        accessibilityLabel={
+          periodSavingsPct == null
+            ? 'Savings rate not available'
+            : `Savings rate ${periodSavingsPct} percent`
+        }
+      >
+        Savings rate{' '}
+        {periodSavingsPct == null ? 'n/a' : `${periodSavingsPct}%`}
+      </CaptionText>
+
+      <StatsQuietPeers peers={quietPeers} placeholder={!totalsReady} />
+
+      {categoriesReady ? (
+        <CategoryBreakdownList
+          data={categories.data ?? []}
+          type={pieType}
+          onSelect={
+            pairLive
+              ? undefined
+              : (row) => {
+                  router.push({
+                    pathname: '/stats/category',
+                    params: {
+                      category: row.category,
+                      type: row.type,
+                      start: period.start.toISOString(),
+                      end: period.end.toISOString(),
+                      periodLabel: period.label,
+                    },
+                  });
+                }
           }
         />
-      ) : awaitingTotals || (loading && !knownActiveMonth) ? (
-        <View style={styles.centered}>
-          <ActivityIndicator size="large" color={colors.green[700]} />
-        </View>
       ) : (
-        <>
-          <View style={styles.section}>
-            <StrongText style={styles.sectionTitle}>By category</StrongText>
-            <View style={styles.toggleRow}>
-              {(['expense', 'income'] as const).map((t) => {
-                const selected = pieType === t;
-                return (
-                  <Pressable
-                    key={t}
-                    onPress={() => setPieType(t)}
-                    style={[styles.toggle, selected && styles.toggleSelected]}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected }}
-                  >
-                    <CaptionText
-                      style={[
-                        styles.toggleText,
-                        selected && styles.toggleTextSelected,
-                      ]}
-                    >
-                      {t === 'expense' ? 'Expenses' : 'Income'}
-                    </CaptionText>
-                  </Pressable>
-                );
-              })}
-            </View>
-
-            <CategoryPieChart
-              data={categoriesReady ? (categories.data ?? []) : []}
-              type={pieType}
-              centerTotal={pieType === 'expense' ? expenseSum : incomeSum}
-              emptyLabel={
-                categoriesReady
-                  ? pieType === 'expense'
-                    ? 'No expenses in this period.'
-                    : 'No income in this period.'
-                  : 'Loading categories…'
-              }
-            />
-
-            <CaptionText
-              style={[
-                styles.savingsRate,
-                { color: savingsRateColor(periodSavingsPct) },
-              ]}
-              accessibilityLabel={
-                periodSavingsPct == null
-                  ? 'Savings rate not available'
-                  : `Savings rate ${periodSavingsPct} percent`
-              }
-            >
-              Savings rate{' '}
-              {periodSavingsPct == null ? 'n/a' : `${periodSavingsPct}%`}
-            </CaptionText>
-
-            <StatsQuietPeers
-              peers={quietPeers}
-              placeholder={!totalsReady}
-            />
-
-            {categoriesReady ? (
-              <CategoryBreakdownList
-                data={categories.data ?? []}
-                type={pieType}
-                onSelect={
-                  pairLive
-                    ? undefined
-                    : (row) => {
-                        router.push({
-                          pathname: '/stats/category',
-                          params: {
-                            category: row.category,
-                            type: row.type,
-                            start: period.start.toISOString(),
-                            end: period.end.toISOString(),
-                            periodLabel: period.label,
-                          },
-                        });
-                      }
-                }
-              />
-            ) : (
-              <View
-                style={styles.listPlaceholder}
-                accessibilityLabel="Loading categories"
-              >
-                <View style={styles.listBone} />
-                <View style={[styles.listBone, styles.listBoneMid]} />
-                <View style={[styles.listBone, styles.listBoneShort]} />
-              </View>
-            )}
-          </View>
-
-          {!pairLive ? (
-            <View style={styles.section}>
-              <TitleText style={styles.trendTitle}>Trend</TitleText>
-              <View style={styles.toggleRow}>
-                {(
-                  [
-                    { value: 'expense', label: 'Expenses' },
-                    { value: 'income', label: 'Income' },
-                    { value: 'net', label: 'Net' },
-                  ] as const
-                ).map((opt) => {
-                  const selected = trendMetric === opt.value;
-                  return (
-                    <Pressable
-                      key={opt.value}
-                      onPress={() => setTrendMetric(opt.value)}
-                      style={[styles.toggle, selected && styles.toggleSelected]}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected }}
-                    >
-                      <CaptionText
-                        style={[
-                          styles.toggleText,
-                          selected && styles.toggleTextSelected,
-                        ]}
-                      >
-                        {opt.label}
-                      </CaptionText>
-                    </Pressable>
-                  );
-                })}
-              </View>
-
-              {trend.isLoading || trend.data == null ? (
-                <View style={styles.chartBleed}>
-                  <StatsTrendPlaceholder />
-                </View>
-              ) : (
-                /* Full-bleed: cancel content padding so Trend matches Planner Projection. */
-                <View style={styles.chartBleed}>
-                  <TrendLineChart
-                    data={trend.data}
-                    emptyLabel="No trend data for this period."
-                    bucket={personal.bucket}
-                    timeZone={timeZone}
-                    strokeColor={trendStrokeForMetric(trendMetric)}
-                  />
-                </View>
-              )}
-            </View>
-          ) : null}
-        </>
+        <View
+          style={styles.listPlaceholder}
+          accessibilityLabel="Loading categories"
+        >
+          <View style={styles.listBone} />
+          <View style={[styles.listBone, styles.listBoneMid]} />
+          <View style={[styles.listBone, styles.listBoneShort]} />
+        </View>
       )}
-    </ScrollView>
-    </ScrollEdgeHost>
-    </MonthCardPager>
+    </>
+  );
+
+  return (
+    <View style={styles.container}>
+      <OfflineBanner
+        message={offline ? STATS_PERSONAL_OFFLINE_BANNER : null}
+      />
+
+      {isPaired ? (
+        <View style={styles.scopeRowPad}>
+          <View style={styles.scopeRow}>
+            {(
+              [
+                { value: 'personal', label: 'Personal' },
+                { value: 'pair', label: 'Pair' },
+              ] as const
+            ).map((opt) => {
+              const selected = scope === opt.value;
+              return (
+                <Pressable
+                  key={opt.value}
+                  onPress={() => setScope(opt.value)}
+                  style={[
+                    styles.scopeChip,
+                    selected && styles.scopeChipSelected,
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected }}
+                  accessibilityLabel={`${opt.label} stats`}
+                >
+                  <CaptionText
+                    style={[
+                      styles.scopeText,
+                      selected && styles.scopeTextSelected,
+                    ]}
+                  >
+                    {opt.label}
+                  </CaptionText>
+                </Pressable>
+              );
+            })}
+          </View>
+          {pairLive ? (
+            <CaptionText style={styles.pairHint}>
+              Combined totals with{' '}
+              {partnerLink.data?.partnerDisplayName ?? 'partner'}. Category sums
+              only — no individual transactions.
+            </CaptionText>
+          ) : null}
+        </View>
+      ) : null}
+
+      {monthlyChromeOutside ? byCategoryChrome('outside') : null}
+
+      <MonthCardPager
+        focus={focus}
+        enabled={preset === 'month'}
+        onStep={onMonthStep}
+        renderAdjacent={renderAdjacent}
+        translateX={swipeTranslateX}
+        pagerWidth={swipePagerWidth}
+      >
+        <ScrollEdgeHost edges={edges} style={styles.scrollHost}>
+          <ScrollView
+            style={styles.scroll}
+            contentContainerStyle={[
+              styles.content,
+              (isPeriodEmpty || (awaitingTotals && preset === 'month')) &&
+                styles.contentEmpty,
+              monthlyChromeOutside && styles.contentBelowChrome,
+            ]}
+            {...scrollProps}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor={colors.green[700]}
+              />
+            }
+          >
+            {pairBlocked ? (
+              <ConnectionRequired message={STATS_OFFLINE_COPY} />
+            ) : error ? (
+              <View style={styles.centered}>
+                <TitleText style={styles.emptyTitle}>
+                  Couldn’t load stats
+                </TitleText>
+                <CaptionText style={styles.emptyBody}>{error}</CaptionText>
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.secondary,
+                    pressed && styles.secondaryPressed,
+                  ]}
+                  onPress={onRefresh}
+                >
+                  <CaptionText style={styles.secondaryText}>
+                    Try again
+                  </CaptionText>
+                </Pressable>
+              </View>
+            ) : (
+              <>
+                {!monthlyChromeOutside ? byCategoryChrome('inside') : null}
+
+                {awaitingTotals && preset === 'month' ? (
+                  <StatsEmptyState
+                    periodLabel={period.navLabel}
+                    preset={preset}
+                    interactive={false}
+                  />
+                ) : isPeriodEmpty ? (
+                  <StatsEmptyState
+                    periodLabel={period.navLabel}
+                    preset={preset}
+                    onAddTransaction={() =>
+                      guardedPush(router, ADD_TRANSACTION)
+                    }
+                    onGoToThisMonth={
+                      onCurrentMonthMonthly ? undefined : goToThisMonth
+                    }
+                  />
+                ) : awaitingTotals || (loading && !knownActiveMonth) ? (
+                  <View style={styles.centered}>
+                    <ActivityIndicator
+                      size="large"
+                      color={colors.green[700]}
+                    />
+                  </View>
+                ) : (
+                  <View style={styles.section}>{categoryBody}</View>
+                )}
+
+                {trendBlock}
+              </>
+            )}
+          </ScrollView>
+        </ScrollEdgeHost>
+      </MonthCardPager>
     </View>
   );
 }
@@ -545,8 +595,17 @@ const styles = StyleSheet.create({
     paddingBottom: space.xxl,
     gap: space.lg,
   },
+  contentBelowChrome: {
+    // Section chrome above the pager already padded the top.
+    paddingTop: space.sm,
+  },
   contentEmpty: {
     flexGrow: 1,
+  },
+  scopeRowPad: {
+    paddingHorizontal: space.md,
+    paddingTop: space.md,
+    gap: space.sm,
   },
   scopeRow: {
     flexDirection: 'row',
@@ -575,7 +634,13 @@ const styles = StyleSheet.create({
   },
   pairHint: {
     color: colors.inkMuted,
-    marginTop: -space.sm,
+  },
+  sectionChrome: {
+    paddingHorizontal: space.md,
+    paddingTop: space.md,
+    paddingBottom: space.sm,
+    gap: space.sm,
+    backgroundColor: colors.canvas,
   },
   centered: {
     paddingVertical: space.xxl,
@@ -621,31 +686,6 @@ const styles = StyleSheet.create({
   },
   trendTitle: {
     color: colors.ink,
-  },
-  toggleRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: space.sm,
-    justifyContent: 'center',
-  },
-  toggle: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: radius.sm,
-    backgroundColor: colors.surfaceMuted,
-    minHeight: 36,
-    justifyContent: 'center',
-  },
-  toggleSelected: {
-    backgroundColor: colors.green[700],
-  },
-  toggleText: {
-    color: colors.inkMuted,
-    fontFamily: fonts.bodyStrong,
-  },
-  toggleTextSelected: {
-    color: colors.inkInverse,
-    fontFamily: fonts.bodyStrong,
   },
   savingsRate: {
     color: colors.inkMuted,

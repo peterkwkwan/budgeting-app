@@ -15,6 +15,7 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
+import { useSharedValue } from 'react-native-reanimated';
 
 import {
   BulkEditSheet,
@@ -93,9 +94,41 @@ export default function TransactionsScreen() {
     defaultSelectedDay(currentPeriodFocus(timeZone), timeZone)
   );
 
+  // Shared with PeriodSelector so the header month tracks the card swipe.
+  const swipeTranslateX = useSharedValue(0);
+  const swipePagerWidth = useSharedValue(0);
+
   const period = useMemo(
     () => resolvePeriodBounds('month', timeZone, { focus }),
     [timeZone, focus]
+  );
+
+  const prevMonthFocus = useMemo(
+    () => shiftPeriodFocus(focus, 'month', -1),
+    [focus.year, focus.month]
+  );
+  const nextMonthFocus = useMemo(
+    () => shiftPeriodFocus(focus, 'month', 1),
+    [focus.year, focus.month]
+  );
+  const prevNavLabel = useMemo(
+    () =>
+      resolvePeriodBounds('month', timeZone, { focus: prevMonthFocus }).navLabel,
+    [timeZone, prevMonthFocus.year, prevMonthFocus.month]
+  );
+  const nextNavLabel = useMemo(
+    () =>
+      resolvePeriodBounds('month', timeZone, { focus: nextMonthFocus }).navLabel,
+    [timeZone, nextMonthFocus.year, nextMonthFocus.month]
+  );
+  const swipeMotion = useMemo(
+    () => ({
+      translateX: swipeTranslateX,
+      pagerWidth: swipePagerWidth,
+      prevLabel: prevNavLabel,
+      nextLabel: nextNavLabel,
+    }),
+    [swipeTranslateX, swipePagerWidth, prevNavLabel, nextNavLabel]
   );
 
   const {
@@ -286,6 +319,7 @@ export default function TransactionsScreen() {
             focus={focus}
             timeZone={timeZone}
             showModeMenu={false}
+            swipeMotion={swipeMotion}
             onFocusChange={setFocus}
           />
         </PeriodNavHeader>
@@ -301,6 +335,7 @@ export default function TransactionsScreen() {
     period.navLabel,
     focus,
     timeZone,
+    swipeMotion,
   ]);
 
   function onRowPress(item: Transaction) {
@@ -434,6 +469,8 @@ export default function TransactionsScreen() {
         enabled={!selectionMode}
         onStep={onMonthStep}
         renderAdjacent={renderAdjacent}
+        translateX={swipeTranslateX}
+        pagerWidth={swipePagerWidth}
       >
       {isLoading || allRows == null ? (
         <MonthSwipeSkeleton variant="transactions" />

@@ -19,6 +19,7 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withTiming,
+  type SharedValue,
 } from 'react-native-reanimated';
 
 import {
@@ -44,6 +45,13 @@ type MonthCardPagerProps = {
   children: ReactNode;
   /** Non-interactive peek for the adjacent month (placeholder or ready content). */
   renderAdjacent: (focus: PeriodFocus, side: 'prev' | 'next') => ReactNode;
+  /**
+   * Optional shared motion (e.g. header month label). When omitted the pager
+   * owns internal values; when provided, parent drives header sync from the
+   * same translateX / width as the sliding track.
+   */
+  translateX?: SharedValue<number>;
+  pagerWidth?: SharedValue<number>;
 };
 
 const easeOut = Easing.out(Easing.cubic);
@@ -59,9 +67,13 @@ export function MonthCardPager({
   style,
   children,
   renderAdjacent,
+  translateX: translateXProp,
+  pagerWidth: pagerWidthProp,
 }: MonthCardPagerProps) {
-  const widthSV = useSharedValue(0);
-  const translateX = useSharedValue(0);
+  const widthInternal = useSharedValue(0);
+  const translateInternal = useSharedValue(0);
+  const widthSV = pagerWidthProp ?? widthInternal;
+  const translateX = translateXProp ?? translateInternal;
 
   const ignoreFocusAnimRef = useRef(false);
   const prevFocusRef = useRef(focus);

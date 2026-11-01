@@ -11,8 +11,10 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import type { SharedValue } from 'react-native-reanimated';
 
 import { CalendarIcon } from '@/components/icons';
+import { MonthSwipeNavLabel } from '@/components/MonthSwipeNavLabel';
 import { CaptionText, StrongText } from '@/components/StyledText';
 import { colors, fonts, radius, space } from '@/constants/theme';
 import {
@@ -23,6 +25,14 @@ import {
   type PeriodFocus,
   type PeriodPreset,
 } from '@/lib/periods';
+
+/** Shared with MonthCardPager so the header month slides with the cards. */
+export type PeriodSwipeMotion = {
+  translateX: SharedValue<number>;
+  pagerWidth: SharedValue<number>;
+  prevLabel: string;
+  nextLabel: string;
+};
 
 export type PeriodSelectorProps = {
   preset: PeriodPreset;
@@ -38,6 +48,11 @@ export type PeriodSelectorProps = {
   onPresetChange?: (preset: PeriodPreset) => void;
   onCustomStartChange?: (date: Date) => void;
   onCustomEndChange?: (date: Date) => void;
+  /**
+   * When set (Monthly + card pager), animate the center label with the swipe
+   * instead of waiting for focus to commit after settle.
+   */
+  swipeMotion?: PeriodSwipeMotion | null;
 };
 
 function startOfDay(d: Date): Date {
@@ -56,6 +71,7 @@ export function PeriodSelector({
   onCustomStartChange,
   onCustomEndChange,
   showModeMenu = true,
+  swipeMotion = null,
 }: PeriodSelectorProps) {
   const insets = useSafeAreaInsets();
   const modeTriggerRef = useRef<ComponentRef<typeof View>>(null);
@@ -172,13 +188,23 @@ export function PeriodSelector({
             >
               <StrongText style={styles.chevronGlyph}>‹</StrongText>
             </Pressable>
-            <StrongText
-              style={styles.navLabel}
-              numberOfLines={1}
-              accessibilityRole="header"
-            >
-              {navLabel}
-            </StrongText>
+            {swipeMotion ? (
+              <MonthSwipeNavLabel
+                prevLabel={swipeMotion.prevLabel}
+                navLabel={navLabel}
+                nextLabel={swipeMotion.nextLabel}
+                translateX={swipeMotion.translateX}
+                pagerWidth={swipeMotion.pagerWidth}
+              />
+            ) : (
+              <StrongText
+                style={styles.navLabel}
+                numberOfLines={1}
+                accessibilityRole="header"
+              >
+                {navLabel}
+              </StrongText>
+            )}
             <Pressable
               onPress={() => step(1)}
               style={({ pressed }) => [

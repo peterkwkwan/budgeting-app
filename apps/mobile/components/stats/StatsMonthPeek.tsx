@@ -5,6 +5,10 @@ import { CategoryBreakdownList } from '@/components/stats/CategoryBreakdownList'
 import { CategoryPieChart } from '@/components/stats/CategoryPieChart';
 import { StatsEmptyState } from '@/components/stats/StatsEmptyState';
 import { StatsQuietPeers } from '@/components/stats/StatsQuietPeers';
+import {
+  PIE_TYPE_OPTIONS,
+  StatsSegmentToggle,
+} from '@/components/stats/StatsSegmentToggle';
 import { CaptionText, StrongText } from '@/components/StyledText';
 import type { TransactionType } from '@/constants/categories';
 import { colors, space } from '@/constants/theme';
@@ -22,6 +26,12 @@ type StatsMonthPeekProps = {
   /** Mirror the live Stats scope for adjacent peeks. */
   pairLive: boolean;
   formatSigned: (n: number) => string;
+  /**
+   * When false, omit By-category title + Expenses|Income tabs — Monthly
+   * Stats keeps that chrome stable above MonthCardPager. Default true for
+   * standalone use.
+   */
+  showSectionChrome?: boolean;
 };
 
 /**
@@ -36,6 +46,7 @@ export function StatsMonthPeek({
   pieType,
   pairLive,
   formatSigned,
+  showSectionChrome = true,
 }: StatsMonthPeekProps) {
   const period = useMemo(
     () => resolvePeriodBounds('month', timeZone, { focus }),
@@ -62,10 +73,23 @@ export function StatsMonthPeek({
     { label: 'Net', value: formatSigned(netSum) },
   ] as const;
 
-  // Unknown / empty → Quiet month (no skeleton flash).
+  const chrome = showSectionChrome ? (
+    <>
+      <StrongText style={styles.sectionTitle}>By category</StrongText>
+      <StatsSegmentToggle
+        options={PIE_TYPE_OPTIONS}
+        value={pieType}
+        readOnly
+        accessibilityLabel="Category type"
+      />
+    </>
+  ) : null;
+
+  // Unknown / empty → Quiet month (tabs reserved above when chrome shown).
   if (!totalsReady || knownEmpty) {
     return (
       <View style={styles.emptyRoot}>
+        {chrome}
         <StatsEmptyState
           periodLabel={period.navLabel}
           preset="month"
@@ -77,7 +101,7 @@ export function StatsMonthPeek({
 
   return (
     <View style={styles.root}>
-      <StrongText style={styles.sectionTitle}>By category</StrongText>
+      {chrome}
       <CategoryPieChart
         data={categoriesReady ? (categories.data ?? []) : []}
         type={pieType}
@@ -118,6 +142,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.canvas,
     paddingHorizontal: space.md,
+    gap: space.sm,
   },
   root: {
     flex: 1,
