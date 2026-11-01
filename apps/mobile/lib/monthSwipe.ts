@@ -17,6 +17,9 @@ export const MONTH_SWIPE_ACTIVATION_PX = 24;
  */
 export const MONTH_SWIPE_FAIL_Y_PX = 16;
 
+/** Content fade/slide length when the focused month changes. */
+export const MONTH_SWIPE_TRANSITION_MS = 220;
+
 /** +1 next month, −1 previous month, 0 when the drag is too short. */
 export function monthStepFromSwipe(
   translationX: number,
@@ -26,4 +29,25 @@ export function monthStepFromSwipe(
   if (translationX <= -distancePx) return 1;
   if (translationX >= distancePx) return -1;
   return 0;
+}
+
+type YearMonth = { year: number; month: number };
+
+/** Stable key for a focused calendar month (`2026-11`). */
+export function monthContentKey(focus: YearMonth): string {
+  return `${focus.year}-${focus.month}`;
+}
+
+/**
+ * Direction of a month change for content transitions.
+ * +1 moved forward, −1 moved back, 0 when the month did not change.
+ */
+export function monthStepDirection(
+  from: YearMonth,
+  to: YearMonth
+): -1 | 0 | 1 {
+  const a = from.year * 12 + from.month;
+  const b = to.year * 12 + to.month;
+  if (!(Number.isFinite(a) && Number.isFinite(b)) || a === b) return 0;
+  return b > a ? 1 : -1;
 }

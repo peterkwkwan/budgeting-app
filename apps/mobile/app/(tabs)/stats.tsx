@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 
 import { ConnectionRequired } from '@/components/ConnectionRequired';
+import { MonthSwipeTransition } from '@/components/MonthSwipeTransition';
 import { OfflineBanner } from '@/components/OfflineBanner';
 import {
   ScrollEdgeHost,
@@ -221,6 +222,7 @@ export default function StatsScreen() {
     <OfflineBanner
       message={offline ? STATS_PERSONAL_OFFLINE_BANNER : null}
     />
+    <MonthSwipeTransition focus={focus} active={preset === 'month'}>
     <ScrollEdgeHost edges={edges} style={styles.scrollHost}>
     <ScrollView
       style={styles.scroll}
@@ -453,6 +455,7 @@ export default function StatsScreen() {
       )}
     </ScrollView>
     </ScrollEdgeHost>
+    </MonthSwipeTransition>
     </View>
     </StatsMonthSwipe>
   );

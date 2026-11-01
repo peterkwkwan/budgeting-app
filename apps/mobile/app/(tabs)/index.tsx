@@ -22,6 +22,7 @@ import {
   type BulkEditField,
 } from '@/components/BulkEditSheet';
 import { MonthDayCalendar } from '@/components/MonthDayCalendar';
+import { MonthSwipeTransition } from '@/components/MonthSwipeTransition';
 import { TransactionsMonthSwipe } from '@/components/TransactionsMonthSwipe';
 import { OfflineBanner } from '@/components/OfflineBanner';
 import {
@@ -403,6 +404,7 @@ export default function TransactionsScreen() {
     <TransactionsMonthSwipe enabled={!selectionMode} onStep={onMonthStep}>
     <View style={styles.container}>
       <OfflineBanner message={banner} />
+      <MonthSwipeTransition focus={focus}>
       {isLoading ? (
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={colors.green[700]} />
@@ -486,6 +488,7 @@ export default function TransactionsScreen() {
           )}
         </ScrollEdgeHost>
       )}
+      </MonthSwipeTransition>
 
       <Modal
         visible={overflowOpen}
