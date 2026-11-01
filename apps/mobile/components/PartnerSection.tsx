@@ -143,14 +143,15 @@ export function PartnerSection() {
             <CaptionText style={styles.dangerText}>Unlink</CaptionText>
           </Pressable>
         </View>
-      ) : link?.status === 'pending' && link.inviteCode ? (
+      ) : link?.status === 'pending' && link.inviteCode && !showEnterCode ? (
         <View style={styles.block}>
           <CaptionText style={styles.label}>Your invite code</CaptionText>
           <StrongText style={styles.code} accessibilityLabel={`Code ${link.inviteCode}`}>
             {link.inviteCode}
           </StrongText>
           <CaptionText style={styles.meta}>
-            Share this code. It works once, for one partner.
+            Share this code. It works once, for one partner. Or enter a code
+            from your partner — that cancels this invite.
           </CaptionText>
           <View style={styles.rowActions}>
             <Pressable
@@ -182,6 +183,23 @@ export function PartnerSection() {
           </View>
           <Pressable
             style={({ pressed }) => [
+              styles.secondary,
+              styles.enterInstead,
+              pressed && !locked && styles.secondaryPressed,
+              locked && styles.disabled,
+            ]}
+            onPress={() => {
+              if (locked) return;
+              setShowEnterCode(true);
+            }}
+            disabled={locked}
+            accessibilityRole="button"
+            accessibilityLabel="Enter a partner's invite code"
+          >
+            <CaptionText style={styles.secondaryText}>Enter code</CaptionText>
+          </Pressable>
+          <Pressable
+            style={({ pressed }) => [
               styles.dangerOutline,
               pressed && styles.dangerPressed,
               locked && styles.disabled,
@@ -197,6 +215,11 @@ export function PartnerSection() {
       ) : showEnterCode ? (
         <View style={styles.block}>
           <CaptionText style={styles.label}>Invite code</CaptionText>
+          {link?.status === 'pending' ? (
+            <CaptionText style={styles.meta}>
+              Accepting a code cancels your invite.
+            </CaptionText>
+          ) : null}
           <TextInput
             value={codeInput}
             onChangeText={(t) => setCodeInput(t.toUpperCase())}
@@ -359,6 +382,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: space.md,
     backgroundColor: colors.surface,
+  },
+  enterInstead: {
+    alignSelf: 'stretch',
   },
   secondaryPressed: {
     backgroundColor: colors.surfaceMuted,
