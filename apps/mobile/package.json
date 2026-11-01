@@ -1,6 +1,6 @@
 {
   "name": "fudget",
-  "version": "1.0.0",
+  "version": "0.2.3",
   "main": "expo-router/entry",
   "dependencies": {
     "@expo-google-fonts/dm-sans": "^0.4.2",
