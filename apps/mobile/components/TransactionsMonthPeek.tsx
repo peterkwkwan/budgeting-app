@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { MonthDayCalendar } from '@/components/MonthDayCalendar';
+import { MonthSwipeSkeleton } from '@/components/MonthSwipeSkeleton';
 import { StrongText } from '@/components/StyledText';
 import { TransactionRow } from '@/components/TransactionRow';
 import { TransactionsEmptyMonth } from '@/components/TransactionsEmptyMonth';
@@ -35,8 +36,9 @@ type TransactionsMonthPeekProps = {
 
 /**
  * Non-interactive adjacent-month peek for Transactions.
- * Loading and zero-txn months both use TransactionsEmptyMonth so the
- * “No transactions in {Month}” block doesn’t jump when the list settles.
+ * Shared list is prefetched — peeks render real calendar/list when warm.
+ * Full empty screen only when the month is known empty; skeleton only on
+ * cold miss before the list arrives.
  */
 export function TransactionsMonthPeek({
   focus,
@@ -79,8 +81,12 @@ export function TransactionsMonthPeek({
     return dayRows.slice(0, 6);
   }, [dateView, data, dayRows]);
 
-  // Unknown / empty → same empty-month block (no calendar skeleton CLS).
-  if (!ready || data.length === 0) {
+  // Cold miss only — never paint empty as a loading stand-in.
+  if (!ready) {
+    return <MonthSwipeSkeleton />;
+  }
+
+  if (data.length === 0) {
     return (
       <View style={styles.emptyRoot}>
         <TransactionsEmptyMonth periodLabel={periodLabel} />

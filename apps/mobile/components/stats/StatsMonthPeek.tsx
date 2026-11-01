@@ -31,8 +31,9 @@ type StatsMonthPeekProps = {
 
 /**
  * Non-interactive adjacent-month peek for Stats (Monthly).
- * Quiet-month empty UI while totals are unknown/empty (no By-category chrome).
- * Active months carry their own By category + Expenses|Income with the card.
+ * Prefetch warms React Query — peeks render real By-category content when
+ * totals are cached. Quiet only when the month is known empty; By-category
+ * shell + bones only on a cold cache miss.
  */
 export function StatsMonthPeek({
   focus,
@@ -66,8 +67,8 @@ export function StatsMonthPeek({
     { label: 'Net', value: formatSigned(netSum) },
   ] as const;
 
-  // Unknown / empty → Quiet month only (no By-category section chrome).
-  if (!totalsReady || knownEmpty) {
+  // Known empty only — never use Quiet as a loading stand-in.
+  if (knownEmpty) {
     return (
       <View style={styles.emptyRoot}>
         <StatsEmptyState
@@ -79,6 +80,8 @@ export function StatsMonthPeek({
     );
   }
 
+  // Cold miss: By-category shell with donut/list bones (matches settled CLS).
+  // Warm cache: same shell with real totals/categories — no empty flash.
   return (
     <View style={styles.root}>
       <StrongText style={styles.sectionTitle}>By category</StrongText>
@@ -92,7 +95,7 @@ export function StatsMonthPeek({
         data={categoriesReady ? (categories.data ?? []) : []}
         type={pieType}
         centerTotal={pieType === 'expense' ? expenseSum : incomeSum}
-        loading={!categoriesReady}
+        loading={!totalsReady || !categoriesReady}
         emptyLabel={
           pieType === 'expense'
             ? 'No expenses in this period.'
@@ -102,14 +105,16 @@ export function StatsMonthPeek({
       <CaptionText
         style={[
           styles.savingsRate,
-          { color: savingsRateColor(periodSavingsPct) },
+          { color: savingsRateColor(totalsReady ? periodSavingsPct : null) },
         ]}
       >
         Savings rate{' '}
-        {periodSavingsPct == null ? 'n/a' : `${periodSavingsPct}%`}
+        {!totalsReady || periodSavingsPct == null
+          ? 'n/a'
+          : `${periodSavingsPct}%`}
       </CaptionText>
-      <StatsQuietPeers peers={peers} />
-      {categoriesReady ? (
+      <StatsQuietPeers peers={peers} placeholder={!totalsReady} />
+      {totalsReady && categoriesReady ? (
         <CategoryBreakdownList data={categories.data ?? []} type={pieType} />
       ) : (
         <CategoryListSkeleton />

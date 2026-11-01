@@ -256,7 +256,7 @@ export default function StatsScreen() {
     totalsReady &&
     !totals.isLoading &&
     txnCount === 0;
-  /** Totals still in flight — Quiet month on Monthly; spinner elsewhere. */
+  /** Totals still in flight — Monthly uses By-category bones; spinner elsewhere. */
   const awaitingTotals =
     !pairBlocked && !error && (!totalsReady || totals.isLoading);
   /**
@@ -490,8 +490,7 @@ export default function StatsScreen() {
             style={styles.scroll}
             contentContainerStyle={[
               styles.content,
-              (isPeriodEmpty || (awaitingTotals && preset === 'month')) &&
-                styles.contentEmpty,
+              isPeriodEmpty && styles.contentEmpty,
             ]}
             {...scrollProps}
             refreshControl={
@@ -524,13 +523,7 @@ export default function StatsScreen() {
               </View>
             ) : (
               <>
-                {awaitingTotals && preset === 'month' ? (
-                  <StatsEmptyState
-                    periodLabel={period.navLabel}
-                    preset={preset}
-                    interactive={false}
-                  />
-                ) : isPeriodEmpty ? (
+                {isPeriodEmpty ? (
                   <StatsEmptyState
                     periodLabel={period.navLabel}
                     preset={preset}
@@ -541,18 +534,23 @@ export default function StatsScreen() {
                       onCurrentMonthMonthly ? undefined : goToThisMonth
                     }
                   />
-                ) : awaitingTotals || (loading && !knownActiveMonth) ? (
+                ) : preset === 'month' ||
+                  knownActiveMonth ||
+                  !(awaitingTotals || loading) ? (
+                  // Monthly: always the By-category shell (warm content or
+                  // cold-miss bones). Prefetch usually fills M±1 before swipe.
+                  // Quiet only when isPeriodEmpty above.
+                  <>
+                    {byCategoryChrome}
+                    <View style={styles.section}>{categoryBody}</View>
+                  </>
+                ) : (
                   <View style={styles.centered}>
                     <ActivityIndicator
                       size="large"
                       color={colors.green[700]}
                     />
                   </View>
-                ) : (
-                  <>
-                    {byCategoryChrome}
-                    <View style={styles.section}>{categoryBody}</View>
-                  </>
                 )}
 
                 {trendBlock}

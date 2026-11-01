@@ -43,7 +43,7 @@ type MonthCardPagerProps = {
   onStep: (delta: -1 | 1) => void;
   style?: StyleProp<ViewStyle>;
   children: ReactNode;
-  /** Non-interactive peek for the adjacent month (placeholder or ready content). */
+  /** Non-interactive peek for the adjacent month (warm content, empty, or cold skeleton). */
   renderAdjacent: (focus: PeriodFocus, side: 'prev' | 'next') => ReactNode;
   /**
    * Optional shared motion (e.g. header month label). When omitted the pager

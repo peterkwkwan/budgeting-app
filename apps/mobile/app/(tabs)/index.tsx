@@ -23,6 +23,7 @@ import {
 } from '@/components/BulkEditSheet';
 import { MonthCardPager } from '@/components/MonthCardPager';
 import { MonthDayCalendar } from '@/components/MonthDayCalendar';
+import { MonthSwipeSkeleton } from '@/components/MonthSwipeSkeleton';
 import { OfflineBanner } from '@/components/OfflineBanner';
 import { TransactionsEmptyMonth } from '@/components/TransactionsEmptyMonth';
 import { TransactionsMonthPeek } from '@/components/TransactionsMonthPeek';
@@ -464,11 +465,8 @@ export default function TransactionsScreen() {
         pagerWidth={swipePagerWidth}
       >
       {isLoading || allRows == null ? (
-        // Same empty-month block as the loaded zero-txn state — avoids CLS
-        // when a quiet month finishes loading (calendar skeleton → copy).
-        <View style={styles.loadingEmpty}>
-          <TransactionsEmptyMonth periodLabel={period.navLabel} />
-        </View>
+        // Cold miss only — warm peeks / settle use real rows or true empty.
+        <MonthSwipeSkeleton />
       ) : isError ? (
         <View style={styles.centered}>
           <TitleText style={styles.emptyTitle}>
@@ -628,12 +626,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.canvas,
-  },
-  /** Match ListEmptyComponent emptyList so loading ↔ loaded empty don’t jump. */
-  loadingEmpty: {
-    flex: 1,
-    justifyContent: 'center',
-    paddingBottom: space.xxl,
   },
   list: {
     paddingBottom: space.xxl,
