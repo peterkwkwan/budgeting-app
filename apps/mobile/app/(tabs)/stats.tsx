@@ -24,6 +24,7 @@ import {
   useScrollEdges,
 } from '@/components/ScrollEdgeShadows';
 import { CategoryBreakdownList } from '@/components/stats/CategoryBreakdownList';
+import { CategoryListSkeleton } from '@/components/stats/CategoryListSkeleton';
 import { CategoryPieChart } from '@/components/stats/CategoryPieChart';
 import { PeriodSelector } from '@/components/stats/PeriodSelector';
 import { StatsEmptyState } from '@/components/stats/StatsEmptyState';
@@ -34,7 +35,6 @@ import {
   StatsSegmentToggle,
   TREND_METRIC_OPTIONS,
 } from '@/components/stats/StatsSegmentToggle';
-import { StatsTrendPlaceholder } from '@/components/stats/StatsTrendPlaceholder';
 import { TrendLineChart } from '@/components/stats/TrendLineChart';
 import { CaptionText, StrongText, TitleText } from '@/components/StyledText';
 import type { TransactionType } from '@/constants/categories';
@@ -317,23 +317,14 @@ export default function StatsScreen() {
         pieType={pieType}
         pairLive={pairLive}
         formatSigned={formatSigned}
-        /** Tabs live in stable chrome above the pager on Monthly. */
-        showSectionChrome={false}
       />
     ),
     [timeZone, pieType, pairLive, formatSigned]
   );
 
-  /** Monthly: keep By-category title + tabs above the sliding cards (no CLS). */
-  const monthlyChromeOutside =
-    preset === 'month' && !pairBlocked && !error;
-
-  const byCategoryChrome = (placement: 'outside' | 'inside') => (
-    <View
-      style={
-        placement === 'outside' ? styles.sectionChrome : styles.section
-      }
-    >
+  /** By category + tabs travel with each month card (hidden on quiet months). */
+  const byCategoryChrome = (
+    <View style={styles.section}>
       <StrongText style={styles.sectionTitle}>By category</StrongText>
       <StatsSegmentToggle
         options={PIE_TYPE_OPTIONS}
@@ -354,11 +345,7 @@ export default function StatsScreen() {
           onChange={setTrendMetric}
           accessibilityLabel="Trend metric"
         />
-        {trend.isLoading || trend.data == null ? (
-          <View style={styles.chartBleed}>
-            <StatsTrendPlaceholder />
-          </View>
-        ) : (
+        {trend.isLoading || trend.data == null ? null : (
           <View style={styles.chartBleed}>
             <TrendLineChart
               data={trend.data}
@@ -426,14 +413,7 @@ export default function StatsScreen() {
           }
         />
       ) : (
-        <View
-          style={styles.listPlaceholder}
-          accessibilityLabel="Loading categories"
-        >
-          <View style={styles.listBone} />
-          <View style={[styles.listBone, styles.listBoneMid]} />
-          <View style={[styles.listBone, styles.listBoneShort]} />
-        </View>
+        <CategoryListSkeleton />
       )}
     </>
   );
@@ -488,8 +468,6 @@ export default function StatsScreen() {
         </View>
       ) : null}
 
-      {monthlyChromeOutside ? byCategoryChrome('outside') : null}
-
       <MonthCardPager
         focus={focus}
         enabled={preset === 'month'}
@@ -505,7 +483,6 @@ export default function StatsScreen() {
               styles.content,
               (isPeriodEmpty || (awaitingTotals && preset === 'month')) &&
                 styles.contentEmpty,
-              monthlyChromeOutside && styles.contentBelowChrome,
             ]}
             {...scrollProps}
             refreshControl={
@@ -538,8 +515,6 @@ export default function StatsScreen() {
               </View>
             ) : (
               <>
-                {!monthlyChromeOutside ? byCategoryChrome('inside') : null}
-
                 {awaitingTotals && preset === 'month' ? (
                   <StatsEmptyState
                     periodLabel={period.navLabel}
@@ -565,7 +540,10 @@ export default function StatsScreen() {
                     />
                   </View>
                 ) : (
-                  <View style={styles.section}>{categoryBody}</View>
+                  <>
+                    {byCategoryChrome}
+                    <View style={styles.section}>{categoryBody}</View>
+                  </>
                 )}
 
                 {trendBlock}
@@ -594,10 +572,6 @@ const styles = StyleSheet.create({
     paddingTop: space.md,
     paddingBottom: space.xxl,
     gap: space.lg,
-  },
-  contentBelowChrome: {
-    // Section chrome above the pager already padded the top.
-    paddingTop: space.sm,
   },
   contentEmpty: {
     flexGrow: 1,
@@ -634,13 +608,6 @@ const styles = StyleSheet.create({
   },
   pairHint: {
     color: colors.inkMuted,
-  },
-  sectionChrome: {
-    paddingHorizontal: space.md,
-    paddingTop: space.md,
-    paddingBottom: space.sm,
-    gap: space.sm,
-    backgroundColor: colors.canvas,
   },
   centered: {
     paddingVertical: space.xxl,
@@ -693,22 +660,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 16,
     marginTop: -space.xs,
-  },
-  listPlaceholder: {
-    gap: space.sm,
-    minHeight: 72,
-  },
-  listBone: {
-    height: 14,
-    width: '100%',
-    borderRadius: radius.sm / 2,
-    backgroundColor: colors.surfaceMuted,
-  },
-  listBoneMid: {
-    width: '78%',
-  },
-  listBoneShort: {
-    width: '56%',
   },
   /** Break out of `content` horizontal padding so the chart is edge-to-edge. */
   chartBleed: {

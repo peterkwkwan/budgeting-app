@@ -3,11 +3,15 @@ import { StyleSheet, View } from 'react-native';
 
 import { MonthDayCalendar } from '@/components/MonthDayCalendar';
 import { MonthSwipeSkeleton } from '@/components/MonthSwipeSkeleton';
-import { CaptionText, StrongText } from '@/components/StyledText';
+import { StrongText } from '@/components/StyledText';
 import { TransactionRow } from '@/components/TransactionRow';
+import { TransactionsEmptyMonth } from '@/components/TransactionsEmptyMonth';
 import { WeekDayStrip } from '@/components/WeekDayStrip';
 import { colors, space, typography } from '@/constants/theme';
-import type { PeriodFocus } from '@/lib/periods';
+import {
+  resolvePeriodBounds,
+  type PeriodFocus,
+} from '@/lib/periods';
 import type { TransactionsDateView } from '@/lib/profile';
 import { filterTransactionsForMonth } from '@/lib/transactionModel';
 import type { Transaction } from '@/lib/transactions';
@@ -33,6 +37,7 @@ type TransactionsMonthPeekProps = {
 /**
  * Non-interactive adjacent-month peek for Transactions.
  * Skeleton while the shared list is loading; otherwise real month values.
+ * Empty months reuse the full “No transactions in {Month}” empty screen.
  */
 export function TransactionsMonthPeek({
   focus,
@@ -43,6 +48,11 @@ export function TransactionsMonthPeek({
   currency,
 }: TransactionsMonthPeekProps) {
   const ready = !listLoading && allRows != null;
+
+  const periodLabel = useMemo(
+    () => resolvePeriodBounds('month', timeZone, { focus }).navLabel,
+    [timeZone, focus.year, focus.month]
+  );
 
   const data = useMemo(
     () =>
@@ -80,11 +90,7 @@ export function TransactionsMonthPeek({
   return (
     <View style={styles.root}>
       {data.length === 0 ? (
-        <View style={styles.empty}>
-          <CaptionText style={styles.emptyBody}>
-            No transactions this month
-          </CaptionText>
-        </View>
+        <TransactionsEmptyMonth periodLabel={periodLabel} />
       ) : (
         <>
           {dateView === 'week' ? (
@@ -158,16 +164,6 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: colors.canvas,
-  },
-  empty: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: space.lg,
-  },
-  emptyBody: {
-    color: colors.inkMuted,
-    textAlign: 'center',
   },
   dayHeading: {
     flexDirection: 'row',

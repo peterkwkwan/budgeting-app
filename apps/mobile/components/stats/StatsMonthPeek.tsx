@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { CategoryBreakdownList } from '@/components/stats/CategoryBreakdownList';
+import { CategoryListSkeleton } from '@/components/stats/CategoryListSkeleton';
 import { CategoryPieChart } from '@/components/stats/CategoryPieChart';
 import { StatsEmptyState } from '@/components/stats/StatsEmptyState';
 import { StatsQuietPeers } from '@/components/stats/StatsQuietPeers';
@@ -26,19 +27,12 @@ type StatsMonthPeekProps = {
   /** Mirror the live Stats scope for adjacent peeks. */
   pairLive: boolean;
   formatSigned: (n: number) => string;
-  /**
-   * When false, omit By-category title + Expenses|Income tabs — Monthly
-   * Stats keeps that chrome stable above MonthCardPager. Default true for
-   * standalone use.
-   */
-  showSectionChrome?: boolean;
 };
 
 /**
  * Non-interactive adjacent-month peek for Stats (Monthly).
- * Quiet-month empty UI while totals are unknown/empty; once totals show
- * activity, paint the shell with a reserved Spent/Earned/Net row even if
- * categories are still loading (avoids CLS when the list arrives).
+ * Quiet-month empty UI while totals are unknown/empty (no By-category chrome).
+ * Active months carry their own By category + Expenses|Income with the card.
  */
 export function StatsMonthPeek({
   focus,
@@ -46,7 +40,6 @@ export function StatsMonthPeek({
   pieType,
   pairLive,
   formatSigned,
-  showSectionChrome = true,
 }: StatsMonthPeekProps) {
   const period = useMemo(
     () => resolvePeriodBounds('month', timeZone, { focus }),
@@ -73,23 +66,10 @@ export function StatsMonthPeek({
     { label: 'Net', value: formatSigned(netSum) },
   ] as const;
 
-  const chrome = showSectionChrome ? (
-    <>
-      <StrongText style={styles.sectionTitle}>By category</StrongText>
-      <StatsSegmentToggle
-        options={PIE_TYPE_OPTIONS}
-        value={pieType}
-        readOnly
-        accessibilityLabel="Category type"
-      />
-    </>
-  ) : null;
-
-  // Unknown / empty → Quiet month (tabs reserved above when chrome shown).
+  // Unknown / empty → Quiet month only (no By-category section chrome).
   if (!totalsReady || knownEmpty) {
     return (
       <View style={styles.emptyRoot}>
-        {chrome}
         <StatsEmptyState
           periodLabel={period.navLabel}
           preset="month"
@@ -101,7 +81,13 @@ export function StatsMonthPeek({
 
   return (
     <View style={styles.root}>
-      {chrome}
+      <StrongText style={styles.sectionTitle}>By category</StrongText>
+      <StatsSegmentToggle
+        options={PIE_TYPE_OPTIONS}
+        value={pieType}
+        readOnly
+        accessibilityLabel="Category type"
+      />
       <CategoryPieChart
         data={categoriesReady ? (categories.data ?? []) : []}
         type={pieType}
@@ -127,11 +113,7 @@ export function StatsMonthPeek({
       {categoriesReady ? (
         <CategoryBreakdownList data={categories.data ?? []} type={pieType} />
       ) : (
-        <View style={styles.listPlaceholder} accessibilityLabel="Loading categories">
-          <View style={styles.listBone} />
-          <View style={[styles.listBone, styles.listBoneMid]} />
-          <View style={[styles.listBone, styles.listBoneShort]} />
-        </View>
+        <CategoryListSkeleton />
       )}
     </View>
   );
@@ -162,21 +144,5 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 12,
     lineHeight: 16,
-  },
-  listPlaceholder: {
-    gap: space.sm,
-    minHeight: 72,
-  },
-  listBone: {
-    height: 14,
-    width: '100%',
-    borderRadius: 4,
-    backgroundColor: colors.surfaceMuted,
-  },
-  listBoneMid: {
-    width: '78%',
-  },
-  listBoneShort: {
-    width: '56%',
   },
 });

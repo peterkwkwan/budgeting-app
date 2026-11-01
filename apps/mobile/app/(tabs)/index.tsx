@@ -25,6 +25,7 @@ import { MonthCardPager } from '@/components/MonthCardPager';
 import { MonthDayCalendar } from '@/components/MonthDayCalendar';
 import { MonthSwipeSkeleton } from '@/components/MonthSwipeSkeleton';
 import { OfflineBanner } from '@/components/OfflineBanner';
+import { TransactionsEmptyMonth } from '@/components/TransactionsEmptyMonth';
 import { TransactionsMonthPeek } from '@/components/TransactionsMonthPeek';
 import {
   ScrollEdgeHost,
@@ -413,16 +414,7 @@ export default function TransactionsScreen() {
   );
 
   const emptyMonth = (
-    <View style={styles.empty}>
-      <TitleText style={styles.emptyTitle}>
-        No transactions in {period.navLabel}
-      </TitleText>
-      <CaptionText style={styles.emptyBody}>
-        Tap + to add an expense or income. On the Add screen you can type it, or
-        tap the mic to speak a draft before saving. It syncs for every device on
-        this account.
-      </CaptionText>
-    </View>
+    <TransactionsEmptyMonth periodLabel={period.navLabel} />
   );
 
   const emptyDay = (
@@ -701,11 +693,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: space.md,
-    gap: space.sm,
-  },
-  empty: {
-    paddingHorizontal: space.xl,
-    alignItems: 'center',
     gap: space.sm,
   },
   emptyTitle: {
