@@ -335,29 +335,39 @@ export default function StatsScreen() {
     </View>
   );
 
-  const trendBlock =
-    !pairLive && !pairBlocked && !error ? (
-      <View style={styles.section}>
-        <TitleText style={styles.trendTitle}>Trend</TitleText>
-        <StatsSegmentToggle
-          options={TREND_METRIC_OPTIONS}
-          value={trendMetric}
-          onChange={setTrendMetric}
-          accessibilityLabel="Trend metric"
-        />
-        {trend.isLoading || trend.data == null ? null : (
-          <View style={styles.chartBleed}>
-            <TrendLineChart
-              data={trend.data}
-              emptyLabel="No trend data for this period."
-              bucket={personal.bucket}
-              timeZone={timeZone}
-              strokeColor={trendStrokeForMetric(trendMetric)}
-            />
-          </View>
-        )}
-      </View>
-    ) : null;
+  /**
+   * Quiet / empty periods: hide Trend entirely (no title, toggles, or chart).
+   * Active periods keep the section even while the series is still loading.
+   */
+  const showTrend =
+    !pairLive &&
+    !pairBlocked &&
+    !error &&
+    !isPeriodEmpty &&
+    !awaitingTotals;
+
+  const trendBlock = showTrend ? (
+    <View style={styles.section}>
+      <TitleText style={styles.trendTitle}>Trend</TitleText>
+      <StatsSegmentToggle
+        options={TREND_METRIC_OPTIONS}
+        value={trendMetric}
+        onChange={setTrendMetric}
+        accessibilityLabel="Trend metric"
+      />
+      {trend.isLoading || trend.data == null ? null : (
+        <View style={styles.chartBleed}>
+          <TrendLineChart
+            data={trend.data}
+            emptyLabel="No trend data for this period."
+            bucket={personal.bucket}
+            timeZone={timeZone}
+            strokeColor={trendStrokeForMetric(trendMetric)}
+          />
+        </View>
+      )}
+    </View>
+  ) : null;
 
   const categoryBody = (
     <>
@@ -365,12 +375,11 @@ export default function StatsScreen() {
         data={categoriesReady ? (categories.data ?? []) : []}
         type={pieType}
         centerTotal={pieType === 'expense' ? expenseSum : incomeSum}
+        loading={!categoriesReady}
         emptyLabel={
-          categoriesReady
-            ? pieType === 'expense'
-              ? 'No expenses in this period.'
-              : 'No income in this period.'
-            : 'Loading categories…'
+          pieType === 'expense'
+            ? 'No expenses in this period.'
+            : 'No income in this period.'
         }
       />
 

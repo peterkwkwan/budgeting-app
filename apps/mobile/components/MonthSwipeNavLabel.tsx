@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { StyleSheet, View, type LayoutChangeEvent } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -22,8 +22,8 @@ type Props = {
  * Month title strip that tracks the card pager’s translateX so
  * ‹ November › slides toward October with the swipe (not after settle).
  *
- * Viewport width comes from a single-label measure probe — not the three-slot
- * strip — so the right › stays beside the month (not at the end of the navbar).
+ * Viewport width is the natural width of the longest of prev/current/next —
+ * never the flex leftover in the header — so › packs beside the month.
  */
 export function MonthSwipeNavLabel({
   prevLabel,
@@ -34,30 +34,28 @@ export function MonthSwipeNavLabel({
 }: Props) {
   const slotSV = useSharedValue(0);
   const [slotW, setSlotW] = useState(0);
-  const probeWidths = useRef({ prev: 0, nav: 0, next: 0 });
 
-  // Clear per-label probes when the trio changes; keep last slotW until the
-  // new max lands so the chevron cluster does not collapse mid-swipe.
+  // Remeasure when the trio changes; plain-text fallback keeps › packed
+  // until the new max lands (no flex-grown gap).
   useEffect(() => {
-    probeWidths.current = { prev: 0, nav: 0, next: 0 };
-  }, [prevLabel, navLabel, nextLabel]);
+    slotSV.value = 0;
+    setSlotW(0);
+  }, [prevLabel, navLabel, nextLabel, slotSV]);
 
-  const commitMax = useCallback(() => {
-    const { prev, nav, next } = probeWidths.current;
-    if (!(nav > 0)) return;
-    const measured = Math.max(prev, nav, next);
-    if (!(measured > 0) || measured === slotW) return;
-    slotSV.value = measured;
-    setSlotW(measured);
-  }, [slotSV, slotW]);
-
-  const onMeasure =
-    (key: 'prev' | 'nav' | 'next') => (event: LayoutChangeEvent) => {
+  const onProbeLayout = useCallback(
+    (event: LayoutChangeEvent) => {
       const w = Math.ceil(event.nativeEvent.layout.width);
       if (!(w > 0)) return;
-      probeWidths.current[key] = w;
-      commitMax();
-    };
+      setSlotW((prev) => {
+        const next = Math.max(prev, w);
+        if (next !== prev) {
+          slotSV.value = next;
+        }
+        return next;
+      });
+    },
+    [slotSV]
+  );
 
   const stripStyle = useAnimatedStyle(() => {
     const pw = pagerWidth.value;
@@ -76,11 +74,14 @@ export function MonthSwipeNavLabel({
   const slotStyle = slotW > 0 ? { width: slotW } : undefined;
 
   return (
-    <View style={styles.wrap}>
+    <View
+      style={[styles.wrap, slotW > 0 ? { width: slotW } : null]}
+      // Content-sized — never grow into the header leftover (that pushed › away).
+      collapsable={false}
+    >
       {/*
-        Hidden probe: natural width of the longest of prev/current/next so the
-        viewport is one slot wide (› packs beside the label). Absolute so it
-        does not affect layout.
+        Off-flow probes: each label at its natural text width (not clipped to
+        the visible slot). Max width becomes the swipe viewport.
       */}
       <View
         style={styles.measureLayer}
@@ -88,33 +89,27 @@ export function MonthSwipeNavLabel({
         accessibilityElementsHidden
         importantForAccessibility="no-hide-descendants"
       >
-        {(
-          [
-            ['prev', prevLabel],
-            ['nav', navLabel],
-            ['next', nextLabel],
-          ] as const
-        ).map(([key, label]) => (
-          <Animated.Text
-            key={`${key}-${label}`}
+        {[prevLabel, navLabel, nextLabel].map((label, index) => (
+          <Text
+            key={`${index}-${label}`}
             style={styles.measureLabel}
             numberOfLines={1}
-            onLayout={onMeasure(key)}
+            onLayout={onProbeLayout}
           >
             {label}
-          </Animated.Text>
+          </Text>
         ))}
       </View>
 
       {slotW <= 0 ? (
-        <Animated.Text
+        <Text
           style={styles.label}
           numberOfLines={1}
           accessibilityRole="header"
           accessibilityLabel={navLabel}
         >
           {navLabel}
-        </Animated.Text>
+        </Text>
       ) : (
         <View
           style={[styles.viewport, { width: slotW }]}
@@ -155,7 +150,10 @@ const styles = StyleSheet.create({
   wrap: {
     flexGrow: 0,
     flexShrink: 1,
+    flexBasis: 'auto',
     minWidth: 0,
+    maxWidth: '100%',
+    alignSelf: 'flex-start',
     position: 'relative',
   },
   measureLayer: {
@@ -163,21 +161,17 @@ const styles = StyleSheet.create({
     opacity: 0,
     left: 0,
     top: 0,
+    // Stack probes at intrinsic width; do not constrain to the visible slot.
   },
   measureLabel: {
     color: colors.ink,
     fontSize: 17,
     lineHeight: 22,
     fontFamily: fonts.bodyStrong,
-    // Let each probe size to its string; onLayout keeps the max.
-    position: 'absolute',
-    left: 0,
-    top: 0,
   },
   viewport: {
     flexGrow: 0,
-    flexShrink: 1,
-    minWidth: 0,
+    flexShrink: 0,
     overflow: 'hidden',
   },
   strip: {

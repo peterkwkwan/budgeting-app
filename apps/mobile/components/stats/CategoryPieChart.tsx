@@ -17,6 +17,11 @@ type Props = {
    * (Spent for expenses, Earned for income).
    */
   centerTotal: number;
+  /**
+   * Soft donut shell (same height as a loaded chart) while categories load —
+   * avoids CLS when wedges replace the placeholder.
+   */
+  loading?: boolean;
 };
 
 /** Modest bump from mockup D (168 / 104) for readable center totals. */
@@ -24,12 +29,15 @@ const SIZE = 188;
 const INNER_RATIO = 104 / 168;
 /** Radial wedges — View-only donut (no Skia / SVG). */
 const WEDGES = 90;
+/** Outer wrap height — loading, empty, and loaded share this for CLS. */
+export const CATEGORY_DONUT_HEIGHT = SIZE + 12;
 
 export function CategoryPieChart({
   data,
   emptyLabel,
   type,
   centerTotal,
+  loading = false,
 }: Props) {
   const { formatWhole } = useFormatMoney();
   const formatCenterMoney = (n: number): string => {
@@ -39,10 +47,28 @@ export function CategoryPieChart({
   const centerLabel = type === 'expense' ? 'Spent' : 'Earned';
   const centerColor = type === 'expense' ? colors.expense : colors.income;
 
-  if (data.length === 0) {
+  if (loading || data.length === 0) {
     return (
-      <View style={styles.empty}>
-        <CaptionText style={styles.emptyText}>{emptyLabel}</CaptionText>
+      <View
+        style={styles.wrap}
+        accessibilityLabel={loading ? 'Loading categories' : undefined}
+      >
+        <View style={[styles.disk, styles.diskMuted]}>
+          <View
+            style={styles.hole}
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+          >
+            {loading ? (
+              <>
+                <View style={styles.centerLabelBone} />
+                <View style={styles.centerValueBone} />
+              </>
+            ) : (
+              <CaptionText style={styles.emptyText}>{emptyLabel}</CaptionText>
+            )}
+          </View>
+        </View>
       </View>
     );
   }
@@ -117,7 +143,7 @@ const holeSize = SIZE * INNER_RATIO;
 
 const styles = StyleSheet.create({
   wrap: {
-    height: SIZE + 12,
+    height: CATEGORY_DONUT_HEIGHT,
     width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
@@ -128,6 +154,9 @@ const styles = StyleSheet.create({
     borderRadius: SIZE / 2,
     overflow: 'hidden',
     backgroundColor: colors.canvas,
+  },
+  diskMuted: {
+    backgroundColor: colors.surfaceMuted,
   },
   wedge: {
     position: 'absolute',
@@ -143,6 +172,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: space.xs,
+    gap: 4,
   },
   centerLabel: {
     color: colors.inkMuted,
@@ -156,14 +186,22 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     textAlign: 'center',
   },
-  empty: {
-    height: SIZE,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: space.lg,
+  centerLabelBone: {
+    width: 36,
+    height: 10,
+    borderRadius: 3,
+    backgroundColor: colors.surfaceMuted,
+  },
+  centerValueBone: {
+    width: 56,
+    height: 16,
+    borderRadius: 4,
+    backgroundColor: colors.surfaceMuted,
   },
   emptyText: {
     color: colors.inkMuted,
     textAlign: 'center',
+    fontSize: 13,
+    lineHeight: 18,
   },
 });

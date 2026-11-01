@@ -92,12 +92,11 @@ export function StatsMonthPeek({
         data={categoriesReady ? (categories.data ?? []) : []}
         type={pieType}
         centerTotal={pieType === 'expense' ? expenseSum : incomeSum}
+        loading={!categoriesReady}
         emptyLabel={
-          categoriesReady
-            ? pieType === 'expense'
-              ? 'No expenses in this period.'
-              : 'No income in this period.'
-            : 'Loading categories…'
+          pieType === 'expense'
+            ? 'No expenses in this period.'
+            : 'No income in this period.'
         }
       />
       <CaptionText
@@ -131,7 +130,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.canvas,
     paddingHorizontal: space.md,
     paddingTop: space.md,
-    gap: space.md,
+    // Match settled Stats section rhythm (title → tabs → donut → peers → list).
+    gap: space.sm,
   },
   sectionTitle: {
     color: colors.ink,
@@ -144,5 +144,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 12,
     lineHeight: 16,
+    marginTop: -space.xs,
   },
 });

@@ -2,7 +2,6 @@ import { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { MonthDayCalendar } from '@/components/MonthDayCalendar';
-import { MonthSwipeSkeleton } from '@/components/MonthSwipeSkeleton';
 import { StrongText } from '@/components/StyledText';
 import { TransactionRow } from '@/components/TransactionRow';
 import { TransactionsEmptyMonth } from '@/components/TransactionsEmptyMonth';
@@ -36,8 +35,8 @@ type TransactionsMonthPeekProps = {
 
 /**
  * Non-interactive adjacent-month peek for Transactions.
- * Skeleton while the shared list is loading; otherwise real month values.
- * Empty months reuse the full “No transactions in {Month}” empty screen.
+ * Loading and zero-txn months both use TransactionsEmptyMonth so the
+ * “No transactions in {Month}” block doesn’t jump when the list settles.
  */
 export function TransactionsMonthPeek({
   focus,
@@ -80,8 +79,13 @@ export function TransactionsMonthPeek({
     return dayRows.slice(0, 6);
   }, [dateView, data, dayRows]);
 
-  if (!ready) {
-    return <MonthSwipeSkeleton variant="transactions" />;
+  // Unknown / empty → same empty-month block (no calendar skeleton CLS).
+  if (!ready || data.length === 0) {
+    return (
+      <View style={styles.emptyRoot}>
+        <TransactionsEmptyMonth periodLabel={periodLabel} />
+      </View>
+    );
   }
 
   const dayNet = dayNets.get(selectedDay);
@@ -89,55 +93,49 @@ export function TransactionsMonthPeek({
 
   return (
     <View style={styles.root}>
-      {data.length === 0 ? (
-        <TransactionsEmptyMonth periodLabel={periodLabel} />
-      ) : (
-        <>
-          {dateView === 'week' ? (
-            <WeekDayStrip
-              focus={focus}
-              selectedDay={selectedDay}
-              dayNets={dayNets}
-              onSelectDay={() => {}}
-              currency={currency}
-            />
-          ) : null}
-          {dateView === 'month' ? (
-            <MonthDayCalendar
-              focus={focus}
-              selectedDay={clampDayInMonth(
-                focus.year,
-                focus.month,
-                selectedDay
-              )}
-              dayNets={dayNets}
-              onSelectDay={() => {}}
-              currency={currency}
-            />
-          ) : null}
-          {dateView === 'week' || dateView === 'month' ? (
-            <View
-              style={[
-                styles.dayHeading,
-                dateView === 'month' && styles.dayHeadingBelowCalendar,
-              ]}
-            >
-              <StrongText style={styles.dayHeadingText}>{heading}</StrongText>
-              <PeekDayNet net={dayNet} currency={currency} />
-            </View>
-          ) : null}
-          <View style={styles.list}>
-            {previewRows.map((item) => (
-              <TransactionRow
-                key={item.id}
-                transaction={item}
-                hideDate={dateView !== 'list'}
-                onPress={() => {}}
-              />
-            ))}
-          </View>
-        </>
-      )}
+      {dateView === 'week' ? (
+        <WeekDayStrip
+          focus={focus}
+          selectedDay={selectedDay}
+          dayNets={dayNets}
+          onSelectDay={() => {}}
+          currency={currency}
+        />
+      ) : null}
+      {dateView === 'month' ? (
+        <MonthDayCalendar
+          focus={focus}
+          selectedDay={clampDayInMonth(
+            focus.year,
+            focus.month,
+            selectedDay
+          )}
+          dayNets={dayNets}
+          onSelectDay={() => {}}
+          currency={currency}
+        />
+      ) : null}
+      {dateView === 'week' || dateView === 'month' ? (
+        <View
+          style={[
+            styles.dayHeading,
+            dateView === 'month' && styles.dayHeadingBelowCalendar,
+          ]}
+        >
+          <StrongText style={styles.dayHeadingText}>{heading}</StrongText>
+          <PeekDayNet net={dayNet} currency={currency} />
+        </View>
+      ) : null}
+      <View style={styles.list}>
+        {previewRows.map((item) => (
+          <TransactionRow
+            key={item.id}
+            transaction={item}
+            hideDate={dateView !== 'list'}
+            onPress={() => {}}
+          />
+        ))}
+      </View>
     </View>
   );
 }
@@ -161,6 +159,12 @@ function PeekDayNet({
 }
 
 const styles = StyleSheet.create({
+  emptyRoot: {
+    flex: 1,
+    backgroundColor: colors.canvas,
+    justifyContent: 'center',
+    paddingBottom: space.xxl,
+  },
   root: {
     flex: 1,
     backgroundColor: colors.canvas,

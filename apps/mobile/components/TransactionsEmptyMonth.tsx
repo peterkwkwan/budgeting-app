@@ -29,7 +29,9 @@ export function TransactionsEmptyMonth({ periodLabel }: Props) {
 
 const styles = StyleSheet.create({
   empty: {
+    // flexGrow so ListEmptyComponent and full-screen loading share centering.
     flexGrow: 1,
+    width: '100%',
     paddingHorizontal: space.xl,
     alignItems: 'center',
     justifyContent: 'center',

@@ -354,6 +354,7 @@ const styles = StyleSheet.create({
   stepper: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'flex-start',
     gap: space.xs,
     // Basis 0 + grow so this row's width is the free space in the header
     // (the gap before [Monthly] on Stats), not the label's own width.
@@ -361,6 +362,8 @@ const styles = StyleSheet.create({
     // Yoga ellipsized the month ("October" → "Octo...") in that narrow box.
     // Children stay packed at the start, so ‹ October › stays a cluster
     // and the label only ellipsizes when the string exceeds that width.
+    // MonthSwipeNavLabel must stay content-sized (flexGrow 0) — a growing
+    // label is what shoved › to the far end of the navbar.
     flex: 1,
     minWidth: 0,
   },
@@ -370,6 +373,7 @@ const styles = StyleSheet.create({
     minHeight: 32,
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
   chevronGlyph: {
     color: colors.ink,
