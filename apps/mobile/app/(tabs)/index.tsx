@@ -7,7 +7,6 @@ import {
   useState,
 } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   FlatList,
   Modal,
@@ -23,6 +22,7 @@ import {
 } from '@/components/BulkEditSheet';
 import { MonthCardPager } from '@/components/MonthCardPager';
 import { MonthDayCalendar } from '@/components/MonthDayCalendar';
+import { MonthSwipeSkeleton } from '@/components/MonthSwipeSkeleton';
 import { OfflineBanner } from '@/components/OfflineBanner';
 import { TransactionsMonthPeek } from '@/components/TransactionsMonthPeek';
 import {
@@ -43,6 +43,7 @@ import {
   space,
   typography,
 } from '@/constants/theme';
+import { usePrefetchTransactionMonths } from '@/hooks/useMonthPrefetch';
 import {
   useBulkPatchTransactions,
   useBulkSoftDeleteTransactions,
@@ -107,6 +108,9 @@ export default function TransactionsScreen() {
     refetch,
     isRefetching,
   } = useTransactionList(focus);
+
+  // Shared list feeds peeks + settled month (client-filtered); keep it warm.
+  usePrefetchTransactionMonths(true);
 
   const bulkDelete = useBulkSoftDeleteTransactions();
   const bulkPatch = useBulkPatchTransactions();
@@ -431,10 +435,8 @@ export default function TransactionsScreen() {
         onStep={onMonthStep}
         renderAdjacent={renderAdjacent}
       >
-      {isLoading ? (
-        <View style={styles.centered}>
-          <ActivityIndicator size="large" color={colors.green[700]} />
-        </View>
+      {isLoading || allRows == null ? (
+        <MonthSwipeSkeleton variant="transactions" />
       ) : isError ? (
         <View style={styles.centered}>
           <TitleText style={styles.emptyTitle}>

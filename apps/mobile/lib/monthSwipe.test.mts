@@ -5,6 +5,7 @@ import {
   MONTH_CARD_SNAP_RATIO,
   MONTH_CARD_VELOCITY_PX,
   MONTH_SWIPE_DISTANCE_PX,
+  adjacentMonthFocuses,
   monthContentKey,
   monthStepDirection,
   monthStepFromCardSwipe,
@@ -36,6 +37,17 @@ test('non-finite movement does not change the month', () => {
 
 test('monthContentKey is year-month', () => {
   assert.equal(monthContentKey({ year: 2026, month: 11 }), '2026-11');
+});
+
+test('adjacentMonthFocuses returns prev and next', () => {
+  assert.deepEqual(adjacentMonthFocuses({ year: 2026, month: 11 }), {
+    prev: { year: 2026, month: 10 },
+    next: { year: 2026, month: 12 },
+  });
+  assert.deepEqual(adjacentMonthFocuses({ year: 2026, month: 1 }), {
+    prev: { year: 2025, month: 12 },
+    next: { year: 2026, month: 2 },
+  });
 });
 
 test('monthStepDirection compares calendar months', () => {

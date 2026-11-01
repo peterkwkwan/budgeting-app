@@ -87,6 +87,17 @@ export function monthContentKey(focus: YearMonth): string {
   return `${focus.year}-${focus.month}`;
 }
 
+/** Previous and next calendar months around `focus` (for peek prefetch). */
+export function adjacentMonthFocuses(focus: YearMonth): {
+  prev: YearMonth;
+  next: YearMonth;
+} {
+  return {
+    prev: shiftYearMonth(focus, -1),
+    next: shiftYearMonth(focus, 1),
+  };
+}
+
 /**
  * Direction of a month change for content transitions.
  * +1 moved forward, −1 moved back, 0 when the month did not change.

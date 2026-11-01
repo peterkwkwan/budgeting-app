@@ -44,13 +44,17 @@ export function StatsMonthPeek({
   const totals = pairLive ? aggregate.totals : personal.totals;
   const categories = pairLive ? aggregate.categories : personal.categories;
 
-  const loading = totals.isLoading || categories.isLoading;
+  // Cache hit from adjacent prefetch → ready immediately; else skeleton only.
+  const ready =
+    totals.data != null &&
+    !totals.isLoading &&
+    !categories.isLoading;
   const expenseSum = totals.data?.expenseSum ?? 0;
   const incomeSum = totals.data?.incomeSum ?? 0;
   const netSum = totals.data?.net ?? 0;
   const periodSavingsPct = savingsRatePercent(incomeSum, expenseSum);
 
-  if (loading || totals.data == null) {
+  if (!ready) {
     return <MonthSwipeSkeleton variant="stats" />;
   }
 

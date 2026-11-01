@@ -17,6 +17,7 @@ import {
 
 import { ConnectionRequired } from '@/components/ConnectionRequired';
 import { MonthCardPager } from '@/components/MonthCardPager';
+import { MonthSwipeSkeleton } from '@/components/MonthSwipeSkeleton';
 import { OfflineBanner } from '@/components/OfflineBanner';
 import {
   ScrollEdgeHost,
@@ -32,6 +33,7 @@ import { CaptionText, StrongText, TitleText } from '@/components/StyledText';
 import type { TransactionType } from '@/constants/categories';
 import { trendStrokeForMetric } from '@/constants/chartColors';
 import { colors, fonts, radius, space, typography } from '@/constants/theme';
+import { usePrefetchAdjacentStatsMonths } from '@/hooks/useMonthPrefetch';
 import { useOfflineGates } from '@/hooks/useOfflineGates';
 import { usePartnerLink } from '@/hooks/usePartner';
 import {
@@ -160,6 +162,16 @@ export default function StatsScreen() {
   const totals = pairLive ? aggregate.totals : personal.totals;
   const categories = pairLive ? aggregate.categories : personal.categories;
 
+  // Warm M−1 / M+1 so peeks and settle hit cache (no previous-month flash).
+  usePrefetchAdjacentStatsMonths({
+    focus,
+    timeZone,
+    pieType,
+    pairLive,
+    trendMetric,
+    enabled: preset === 'month',
+  });
+
   const refreshing =
     totals.isRefetching ||
     categories.isRefetching ||
@@ -172,6 +184,8 @@ export default function StatsScreen() {
     : totals.isLoading ||
       categories.isLoading ||
       (!offline && partnerLink.isLoading);
+  // Never paint charts from a missing totals payload (wrong-month / empty flash).
+  const totalsReady = totals.data != null;
   const error = pairBlocked
     ? null
     : (totals.error instanceof Error && totals.error.message) ||
@@ -184,11 +198,13 @@ export default function StatsScreen() {
   const txnCount =
     (totals.data?.expenseCount ?? 0) + (totals.data?.incomeCount ?? 0);
   const isPeriodEmpty =
-    !pairBlocked && !loading && !error && txnCount === 0;
+    !pairBlocked && !loading && totalsReady && !error && txnCount === 0;
   const expenseSum = totals.data?.expenseSum ?? 0;
   const incomeSum = totals.data?.incomeSum ?? 0;
   const netSum = totals.data?.net ?? 0;
   const periodSavingsPct = savingsRatePercent(incomeSum, expenseSum);
+  const awaitingMonthData =
+    preset === 'month' && !pairBlocked && (loading || !totalsReady) && !error;
 
   // Fresh each render so midnight / timezone wall-clock stays correct.
   const currentFocus = currentPeriodFocus(timeZone);
@@ -300,7 +316,9 @@ export default function StatsScreen() {
 
       {pairBlocked ? (
         <ConnectionRequired message={STATS_OFFLINE_COPY} />
-      ) : loading ? (
+      ) : awaitingMonthData ? (
+        <MonthSwipeSkeleton variant="stats" />
+      ) : loading || !totalsReady ? (
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={colors.green[700]} />
         </View>

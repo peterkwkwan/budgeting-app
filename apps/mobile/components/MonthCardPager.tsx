@@ -1,6 +1,6 @@
 import {
   useCallback,
-  useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   type ReactNode,
@@ -82,7 +82,12 @@ export function MonthCardPager({
     onStepRef.current(delta);
   }, []);
 
-  /** Snap / commit on the JS thread (`monthStepFromCardSwipe` is not a worklet). */
+  /**
+   * Snap / commit on the JS thread (`monthStepFromCardSwipe` is not a worklet).
+   * On a committed step, keep translateX at the peek offset until focus updates,
+   * then reset to 0 in useLayoutEffect before paint — avoids a flash of the
+   * previous month’s current card after the snap.
+   */
   const settleSwipe = useCallback(
     (translationXValue: number, velocityX: number, width: number) => {
       const step = monthStepFromCardSwipe(
@@ -97,7 +102,6 @@ export function MonthCardPager({
         (finished) => {
           'worklet';
           if (!finished || step === 0) return;
-          translateX.value = 0;
           runOnJS(commitStep)(step);
         }
       );
@@ -113,13 +117,15 @@ export function MonthCardPager({
     [widthSV]
   );
 
-  // Chevron / header month change: slide the new card in from the side.
-  useEffect(() => {
+  // Chevron / header: slide in. Card-swipe settle: recenter before paint.
+  useLayoutEffect(() => {
     const from = prevFocusRef.current;
     const step = monthStepDirection(from, focus);
     prevFocusRef.current = focus;
     if (ignoreFocusAnimRef.current) {
       ignoreFocusAnimRef.current = false;
+      // New month content is already mounted; show it centered before paint.
+      translateX.value = 0;
       return;
     }
     if (!enabled || step === 0 || widthSV.value <= 0) return;
