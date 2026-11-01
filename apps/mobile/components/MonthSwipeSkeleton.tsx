@@ -3,36 +3,18 @@ import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { colors, radius, space } from '@/constants/theme';
 
 type MonthSwipeSkeletonProps = {
-  /** Layout hint for the peek card. */
-  variant: 'transactions' | 'stats';
+  /** Transactions peek only — Stats peeks reuse Quiet-month empty UI. */
+  variant?: 'transactions';
   style?: StyleProp<ViewStyle>;
 };
 
 /**
- * Soft paper placeholders for an adjacent month while its data loads.
- * Amounts / list rows / chart blocks — not a spinner.
+ * Soft paper placeholders for an adjacent Transactions month while its
+ * data loads. Amounts / list rows / calendar blocks — not a spinner.
  */
 export function MonthSwipeSkeleton({
-  variant,
   style,
 }: MonthSwipeSkeletonProps) {
-  if (variant === 'stats') {
-    return (
-      <View style={[styles.pad, style]} accessibilityLabel="Loading month">
-        <View style={styles.chartBlock} />
-        <View style={styles.rateBar} />
-        <View style={styles.peerRow}>
-          <View style={styles.peer} />
-          <View style={styles.peer} />
-          <View style={styles.peer} />
-        </View>
-        <View style={styles.listBar} />
-        <View style={[styles.listBar, styles.listBarShort]} />
-        <View style={[styles.listBar, styles.listBarMid]} />
-      </View>
-    );
-  }
-
   return (
     <View style={[styles.pad, style]} accessibilityLabel="Loading month">
       <View style={styles.calGrid}>
@@ -63,28 +45,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.md,
     paddingTop: space.md,
     gap: space.md,
-  },
-  chartBlock: {
-    ...bone,
-    height: 180,
-    borderRadius: radius.md,
-    alignSelf: 'center',
-    width: '72%',
-  },
-  rateBar: {
-    ...bone,
-    height: 14,
-    width: '40%',
-    alignSelf: 'center',
-  },
-  peerRow: {
-    flexDirection: 'row',
-    gap: space.md,
-  },
-  peer: {
-    ...bone,
-    flex: 1,
-    height: 44,
   },
   listBar: {
     ...bone,

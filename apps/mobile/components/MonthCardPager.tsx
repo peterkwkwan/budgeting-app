@@ -42,7 +42,7 @@ type MonthCardPagerProps = {
   onStep: (delta: -1 | 1) => void;
   style?: StyleProp<ViewStyle>;
   children: ReactNode;
-  /** Non-interactive peek for the adjacent month (skeleton or ready content). */
+  /** Non-interactive peek for the adjacent month (placeholder or ready content). */
   renderAdjacent: (focus: PeriodFocus, side: 'prev' | 'next') => ReactNode;
 };
 

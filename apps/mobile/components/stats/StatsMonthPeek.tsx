@@ -1,9 +1,10 @@
 import { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { MonthSwipeSkeleton } from '@/components/MonthSwipeSkeleton';
 import { CategoryBreakdownList } from '@/components/stats/CategoryBreakdownList';
 import { CategoryPieChart } from '@/components/stats/CategoryPieChart';
+import { StatsEmptyState } from '@/components/stats/StatsEmptyState';
+import { StatsQuietPeers } from '@/components/stats/StatsQuietPeers';
 import { CaptionText, StrongText } from '@/components/StyledText';
 import type { TransactionType } from '@/constants/categories';
 import { colors, space } from '@/constants/theme';
@@ -25,7 +26,9 @@ type StatsMonthPeekProps = {
 
 /**
  * Non-interactive adjacent-month peek for Stats (Monthly).
- * Skeleton while totals/categories load; otherwise real amounts + charts.
+ * Quiet-month empty UI while totals are unknown/empty; once totals show
+ * activity, paint the shell with a reserved Spent/Earned/Net row even if
+ * categories are still loading (avoids CLS when the list arrives).
  */
 export function StatsMonthPeek({
   focus,
@@ -44,31 +47,47 @@ export function StatsMonthPeek({
   const totals = pairLive ? aggregate.totals : personal.totals;
   const categories = pairLive ? aggregate.categories : personal.categories;
 
-  // Cache hit from adjacent prefetch → ready immediately; else skeleton only.
-  const ready =
-    totals.data != null &&
-    !totals.isLoading &&
-    !categories.isLoading;
+  const totalsReady = totals.data != null && !totals.isLoading;
+  const categoriesReady = !categories.isLoading;
   const expenseSum = totals.data?.expenseSum ?? 0;
   const incomeSum = totals.data?.incomeSum ?? 0;
   const netSum = totals.data?.net ?? 0;
   const periodSavingsPct = savingsRatePercent(incomeSum, expenseSum);
+  const txnCount =
+    (totals.data?.expenseCount ?? 0) + (totals.data?.incomeCount ?? 0);
+  const knownEmpty = totalsReady && txnCount === 0;
+  const peers = [
+    { label: 'Spent', value: formatSigned(expenseSum) },
+    { label: 'Earned', value: formatSigned(incomeSum) },
+    { label: 'Net', value: formatSigned(netSum) },
+  ] as const;
 
-  if (!ready) {
-    return <MonthSwipeSkeleton variant="stats" />;
+  // Unknown / empty → Quiet month (no skeleton flash).
+  if (!totalsReady || knownEmpty) {
+    return (
+      <View style={styles.emptyRoot}>
+        <StatsEmptyState
+          periodLabel={period.navLabel}
+          preset="month"
+          interactive={false}
+        />
+      </View>
+    );
   }
 
   return (
     <View style={styles.root}>
       <StrongText style={styles.sectionTitle}>By category</StrongText>
       <CategoryPieChart
-        data={categories.data ?? []}
+        data={categoriesReady ? (categories.data ?? []) : []}
         type={pieType}
         centerTotal={pieType === 'expense' ? expenseSum : incomeSum}
         emptyLabel={
-          pieType === 'expense'
-            ? 'No expenses in this period.'
-            : 'No income in this period.'
+          categoriesReady
+            ? pieType === 'expense'
+              ? 'No expenses in this period.'
+              : 'No income in this period.'
+            : 'Loading categories…'
         }
       />
       <CaptionText
@@ -80,26 +99,26 @@ export function StatsMonthPeek({
         Savings rate{' '}
         {periodSavingsPct == null ? 'n/a' : `${periodSavingsPct}%`}
       </CaptionText>
-      <View style={styles.quietPeers}>
-        {(
-          [
-            { label: 'Spent', value: formatSigned(expenseSum) },
-            { label: 'Earned', value: formatSigned(incomeSum) },
-            { label: 'Net', value: formatSigned(netSum) },
-          ] as const
-        ).map((peer) => (
-          <View key={peer.label} style={styles.quietPeer}>
-            <CaptionText style={styles.quietPeerLabel}>{peer.label}</CaptionText>
-            <StrongText style={styles.quietPeerValue}>{peer.value}</StrongText>
-          </View>
-        ))}
-      </View>
-      <CategoryBreakdownList data={categories.data ?? []} type={pieType} />
+      <StatsQuietPeers peers={peers} />
+      {categoriesReady ? (
+        <CategoryBreakdownList data={categories.data ?? []} type={pieType} />
+      ) : (
+        <View style={styles.listPlaceholder} accessibilityLabel="Loading categories">
+          <View style={styles.listBone} />
+          <View style={[styles.listBone, styles.listBoneMid]} />
+          <View style={[styles.listBone, styles.listBoneShort]} />
+        </View>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  emptyRoot: {
+    flex: 1,
+    backgroundColor: colors.canvas,
+    paddingHorizontal: space.md,
+  },
   root: {
     flex: 1,
     backgroundColor: colors.canvas,
@@ -119,26 +138,20 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 16,
   },
-  quietPeers: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: space.md,
+  listPlaceholder: {
+    gap: space.sm,
+    minHeight: 72,
   },
-  quietPeer: {
-    alignItems: 'center',
-    gap: 2,
-    minWidth: 72,
+  listBone: {
+    height: 14,
+    width: '100%',
+    borderRadius: 4,
+    backgroundColor: colors.surfaceMuted,
   },
-  quietPeerLabel: {
-    color: colors.inkMuted,
-    fontSize: 11,
-    lineHeight: 14,
+  listBoneMid: {
+    width: '78%',
   },
-  quietPeerValue: {
-    color: colors.inkMuted,
-    fontSize: 13,
-    lineHeight: 18,
-    fontVariant: ['tabular-nums'],
+  listBoneShort: {
+    width: '56%',
   },
 });

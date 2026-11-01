@@ -8,12 +8,18 @@ type Props = {
   /** Compact period label from period bounds (e.g. "October", "2026"). */
   periodLabel: string;
   preset: PeriodPreset;
-  onAddTransaction: () => void;
+  onAddTransaction?: () => void;
   /**
    * Jump Stats period nav to the current calendar month (Monthly mode).
    * Omit when already on that month — secondary CTA hidden.
    */
   onGoToThisMonth?: () => void;
+  /**
+   * When false, render Quiet-month chrome only (no CTAs) — used for
+   * adjacent Stats peeks while loading or when the month has no txns.
+   * Default true.
+   */
+  interactive?: boolean;
 };
 
 /** Soft ledger mark — three quiet rows fading out (no emoji). */
@@ -71,26 +77,30 @@ export function StatsEmptyState({
   preset,
   onAddTransaction,
   onGoToThisMonth,
+  interactive = true,
 }: Props) {
   const { title, body } = emptyCopy(preset, periodLabel);
+  const showActions = interactive && onAddTransaction != null;
 
   return (
     <View style={styles.wrap} accessibilityRole="summary">
       <SoftLedgerMark />
       <TitleText style={styles.title}>{title}</TitleText>
       <CaptionText style={styles.body}>{body}</CaptionText>
-      <Pressable
-        style={({ pressed }) => [
-          styles.primary,
-          pressed && styles.primaryPressed,
-        ]}
-        onPress={onAddTransaction}
-        accessibilityRole="button"
-        accessibilityLabel="Add transaction"
-      >
-        <StrongText style={styles.primaryText}>Add transaction</StrongText>
-      </Pressable>
-      {onGoToThisMonth ? (
+      {showActions ? (
+        <Pressable
+          style={({ pressed }) => [
+            styles.primary,
+            pressed && styles.primaryPressed,
+          ]}
+          onPress={onAddTransaction}
+          accessibilityRole="button"
+          accessibilityLabel="Add transaction"
+        >
+          <StrongText style={styles.primaryText}>Add transaction</StrongText>
+        </Pressable>
+      ) : null}
+      {showActions && onGoToThisMonth ? (
         <Pressable
           style={({ pressed }) => [
             styles.secondary,

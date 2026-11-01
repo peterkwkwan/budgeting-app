@@ -17,7 +17,6 @@ import {
 
 import { ConnectionRequired } from '@/components/ConnectionRequired';
 import { MonthCardPager } from '@/components/MonthCardPager';
-import { MonthSwipeSkeleton } from '@/components/MonthSwipeSkeleton';
 import { OfflineBanner } from '@/components/OfflineBanner';
 import {
   ScrollEdgeHost,
@@ -28,6 +27,8 @@ import { CategoryPieChart } from '@/components/stats/CategoryPieChart';
 import { PeriodSelector } from '@/components/stats/PeriodSelector';
 import { StatsEmptyState } from '@/components/stats/StatsEmptyState';
 import { StatsMonthPeek } from '@/components/stats/StatsMonthPeek';
+import { StatsQuietPeers } from '@/components/stats/StatsQuietPeers';
+import { StatsTrendPlaceholder } from '@/components/stats/StatsTrendPlaceholder';
 import { TrendLineChart } from '@/components/stats/TrendLineChart';
 import { CaptionText, StrongText, TitleText } from '@/components/StyledText';
 import type { TransactionType } from '@/constants/categories';
@@ -197,14 +198,37 @@ export default function StatsScreen() {
 
   const txnCount =
     (totals.data?.expenseCount ?? 0) + (totals.data?.incomeCount ?? 0);
+  const categoriesReady = !categories.isLoading;
+  /** Confirmed zero txns for the period (ignore partner-link spinner). */
   const isPeriodEmpty =
-    !pairBlocked && !loading && totalsReady && !error && txnCount === 0;
+    !pairBlocked &&
+    !error &&
+    totalsReady &&
+    !totals.isLoading &&
+    txnCount === 0;
+  /** Totals still in flight — Quiet month on Monthly; spinner elsewhere. */
+  const awaitingTotals =
+    !pairBlocked && !error && (!totalsReady || totals.isLoading);
+  /**
+   * Totals say this month has activity — paint the By-category shell (with a
+   * reserved Spent/Earned/Net row) even while categories are still loading.
+   */
+  const knownActiveMonth =
+    preset === 'month' &&
+    !pairBlocked &&
+    !error &&
+    totalsReady &&
+    !totals.isLoading &&
+    txnCount > 0;
   const expenseSum = totals.data?.expenseSum ?? 0;
   const incomeSum = totals.data?.incomeSum ?? 0;
   const netSum = totals.data?.net ?? 0;
   const periodSavingsPct = savingsRatePercent(incomeSum, expenseSum);
-  const awaitingMonthData =
-    preset === 'month' && !pairBlocked && (loading || !totalsReady) && !error;
+  const quietPeers = [
+    { label: 'Spent', value: formatSigned(expenseSum) },
+    { label: 'Earned', value: formatSigned(incomeSum) },
+    { label: 'Net', value: formatSigned(netSum) },
+  ] as const;
 
   // Fresh each render so midnight / timezone wall-clock stays correct.
   const currentFocus = currentPeriodFocus(timeZone);
@@ -264,7 +288,8 @@ export default function StatsScreen() {
       style={styles.scroll}
       contentContainerStyle={[
         styles.content,
-        isPeriodEmpty && styles.contentEmpty,
+        (isPeriodEmpty || (awaitingTotals && preset === 'month')) &&
+          styles.contentEmpty,
       ]}
       {...scrollProps}
       refreshControl={
@@ -316,12 +341,6 @@ export default function StatsScreen() {
 
       {pairBlocked ? (
         <ConnectionRequired message={STATS_OFFLINE_COPY} />
-      ) : awaitingMonthData ? (
-        <MonthSwipeSkeleton variant="stats" />
-      ) : loading || !totalsReady ? (
-        <View style={styles.centered}>
-          <ActivityIndicator size="large" color={colors.green[700]} />
-        </View>
       ) : error ? (
         <View style={styles.centered}>
           <TitleText style={styles.emptyTitle}>Couldn’t load stats</TitleText>
@@ -336,6 +355,12 @@ export default function StatsScreen() {
             <CaptionText style={styles.secondaryText}>Try again</CaptionText>
           </Pressable>
         </View>
+      ) : awaitingTotals && preset === 'month' ? (
+        <StatsEmptyState
+          periodLabel={period.navLabel}
+          preset={preset}
+          interactive={false}
+        />
       ) : isPeriodEmpty ? (
         <StatsEmptyState
           periodLabel={period.navLabel}
@@ -345,6 +370,10 @@ export default function StatsScreen() {
             onCurrentMonthMonthly ? undefined : goToThisMonth
           }
         />
+      ) : awaitingTotals || (loading && !knownActiveMonth) ? (
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color={colors.green[700]} />
+        </View>
       ) : (
         <>
           <View style={styles.section}>
@@ -374,13 +403,15 @@ export default function StatsScreen() {
             </View>
 
             <CategoryPieChart
-              data={categories.data ?? []}
+              data={categoriesReady ? (categories.data ?? []) : []}
               type={pieType}
               centerTotal={pieType === 'expense' ? expenseSum : incomeSum}
               emptyLabel={
-                pieType === 'expense'
-                  ? 'No expenses in this period.'
-                  : 'No income in this period.'
+                categoriesReady
+                  ? pieType === 'expense'
+                    ? 'No expenses in this period.'
+                    : 'No income in this period.'
+                  : 'Loading categories…'
               }
             />
 
@@ -399,45 +430,42 @@ export default function StatsScreen() {
               {periodSavingsPct == null ? 'n/a' : `${periodSavingsPct}%`}
             </CaptionText>
 
-            <View style={styles.quietPeers}>
-              {(
-                [
-                  { label: 'Spent', value: formatSigned(expenseSum) },
-                  { label: 'Earned', value: formatSigned(incomeSum) },
-                  { label: 'Net', value: formatSigned(netSum) },
-                ] as const
-              ).map((peer) => (
-                <View key={peer.label} style={styles.quietPeer}>
-                  <CaptionText style={styles.quietPeerLabel}>
-                    {peer.label}
-                  </CaptionText>
-                  <StrongText style={styles.quietPeerValue}>
-                    {peer.value}
-                  </StrongText>
-                </View>
-              ))}
-            </View>
-
-            <CategoryBreakdownList
-              data={categories.data ?? []}
-              type={pieType}
-              onSelect={
-                pairLive
-                  ? undefined
-                  : (row) => {
-                      router.push({
-                        pathname: '/stats/category',
-                        params: {
-                          category: row.category,
-                          type: row.type,
-                          start: period.start.toISOString(),
-                          end: period.end.toISOString(),
-                          periodLabel: period.label,
-                        },
-                      });
-                    }
-              }
+            <StatsQuietPeers
+              peers={quietPeers}
+              placeholder={!totalsReady}
             />
+
+            {categoriesReady ? (
+              <CategoryBreakdownList
+                data={categories.data ?? []}
+                type={pieType}
+                onSelect={
+                  pairLive
+                    ? undefined
+                    : (row) => {
+                        router.push({
+                          pathname: '/stats/category',
+                          params: {
+                            category: row.category,
+                            type: row.type,
+                            start: period.start.toISOString(),
+                            end: period.end.toISOString(),
+                            periodLabel: period.label,
+                          },
+                        });
+                      }
+                }
+              />
+            ) : (
+              <View
+                style={styles.listPlaceholder}
+                accessibilityLabel="Loading categories"
+              >
+                <View style={styles.listBone} />
+                <View style={[styles.listBone, styles.listBoneMid]} />
+                <View style={[styles.listBone, styles.listBoneShort]} />
+              </View>
+            )}
           </View>
 
           {!pairLive ? (
@@ -473,13 +501,15 @@ export default function StatsScreen() {
                 })}
               </View>
 
-              {trend.isLoading ? (
-                <ActivityIndicator color={colors.green[700]} />
+              {trend.isLoading || trend.data == null ? (
+                <View style={styles.chartBleed}>
+                  <StatsTrendPlaceholder />
+                </View>
               ) : (
                 /* Full-bleed: cancel content padding so Trend matches Planner Projection. */
                 <View style={styles.chartBleed}>
                   <TrendLineChart
-                    data={trend.data ?? []}
+                    data={trend.data}
                     emptyLabel="No trend data for this period."
                     bucket={personal.bucket}
                     timeZone={timeZone}
@@ -624,28 +654,21 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     marginTop: -space.xs,
   },
-  quietPeers: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: space.md,
-    paddingBottom: space.xs,
+  listPlaceholder: {
+    gap: space.sm,
+    minHeight: 72,
   },
-  quietPeer: {
-    alignItems: 'center',
-    gap: 2,
-    minWidth: 72,
+  listBone: {
+    height: 14,
+    width: '100%',
+    borderRadius: radius.sm / 2,
+    backgroundColor: colors.surfaceMuted,
   },
-  quietPeerLabel: {
-    color: colors.inkMuted,
-    fontSize: 11,
-    lineHeight: 14,
+  listBoneMid: {
+    width: '78%',
   },
-  quietPeerValue: {
-    color: colors.inkMuted,
-    fontSize: 13,
-    lineHeight: 18,
-    fontVariant: ['tabular-nums'],
+  listBoneShort: {
+    width: '56%',
   },
   /** Break out of `content` horizontal padding so the chart is edge-to-edge. */
   chartBleed: {
