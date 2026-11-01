@@ -1,5 +1,11 @@
 import { useNavigation, useRouter } from 'expo-router';
-import { useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useState,
+} from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -19,6 +25,7 @@ import { CategoryBreakdownList } from '@/components/stats/CategoryBreakdownList'
 import { CategoryPieChart } from '@/components/stats/CategoryPieChart';
 import { PeriodSelector } from '@/components/stats/PeriodSelector';
 import { StatsEmptyState } from '@/components/stats/StatsEmptyState';
+import { StatsMonthSwipe } from '@/components/stats/StatsMonthSwipe';
 import { TrendLineChart } from '@/components/stats/TrendLineChart';
 import { CaptionText, StrongText, TitleText } from '@/components/StyledText';
 import type { TransactionType } from '@/constants/categories';
@@ -42,6 +49,7 @@ import {
 import {
   currentPeriodFocus,
   resolvePeriodBounds,
+  shiftPeriodFocus,
   type PeriodFocus,
   type PeriodPreset,
 } from '@/lib/periods';
@@ -203,7 +211,12 @@ export default function StatsScreen() {
     setFocus(currentPeriodFocus(timeZone));
   };
 
+  const onMonthStep = useCallback((delta: -1 | 1) => {
+    setFocus((current) => shiftPeriodFocus(current, 'month', delta));
+  }, []);
+
   return (
+    <StatsMonthSwipe enabled={preset === 'month'} onStep={onMonthStep}>
     <View style={styles.container}>
     <OfflineBanner
       message={offline ? STATS_PERSONAL_OFFLINE_BANNER : null}
@@ -441,6 +454,7 @@ export default function StatsScreen() {
     </ScrollView>
     </ScrollEdgeHost>
     </View>
+    </StatsMonthSwipe>
   );
 }
 
