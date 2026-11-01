@@ -49,7 +49,7 @@ import {
   STATS_OFFLINE_COPY,
   STATS_PERSONAL_OFFLINE_BANNER,
 } from '@/lib/offline/ux';
-import { savingsRatePercent } from '@/lib/savingsRate';
+import { savingsRateColor, savingsRatePercent } from '@/lib/savingsRate';
 import type { StatsMetric } from '@/lib/stats';
 
 const ADD_TRANSACTION = '/transaction/new';
@@ -332,7 +332,10 @@ export default function StatsScreen() {
             />
 
             <CaptionText
-              style={styles.savingsRate}
+              style={[
+                styles.savingsRate,
+                { color: savingsRateColor(periodSavingsPct) },
+              ]}
               accessibilityLabel={
                 periodSavingsPct == null
                   ? 'Savings rate not available'
