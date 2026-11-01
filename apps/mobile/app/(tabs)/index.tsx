@@ -22,6 +22,7 @@ import {
   type BulkEditField,
 } from '@/components/BulkEditSheet';
 import { MonthDayCalendar } from '@/components/MonthDayCalendar';
+import { TransactionsMonthSwipe } from '@/components/TransactionsMonthSwipe';
 import { OfflineBanner } from '@/components/OfflineBanner';
 import {
   ScrollEdgeHost,
@@ -56,6 +57,7 @@ import {
 import {
   currentPeriodFocus,
   resolvePeriodBounds,
+  shiftPeriodFocus,
   type PeriodFocus,
 } from '@/lib/periods';
 import { parseTransactionsDateView } from '@/lib/profile';
@@ -313,6 +315,10 @@ export default function TransactionsScreen() {
     );
   }
 
+  const onMonthStep = useCallback((delta: -1 | 1) => {
+    setFocus((current) => shiftPeriodFocus(current, 'month', delta));
+  }, []);
+
   const monthHasTransactions = (data?.length ?? 0) > 0;
 
   const sharedHeader = (
@@ -394,6 +400,7 @@ export default function TransactionsScreen() {
     ) : undefined;
 
   return (
+    <TransactionsMonthSwipe enabled={!selectionMode} onStep={onMonthStep}>
     <View style={styles.container}>
       <OfflineBanner message={banner} />
       {isLoading ? (
@@ -526,6 +533,7 @@ export default function TransactionsScreen() {
         onApply={applyBulk}
       />
     </View>
+    </TransactionsMonthSwipe>
   );
 }
 

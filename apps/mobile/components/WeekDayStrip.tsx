@@ -1,5 +1,6 @@
 import { useEffect, useRef, type ComponentRef } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { GestureDetector, useNativeGesture } from 'react-native-gesture-handler';
 
 import { CaptionText, StrongText } from '@/components/StyledText';
 import { colors, radius, space } from '@/constants/theme';
@@ -41,6 +42,9 @@ export function WeekDayStrip({
 }: Props) {
   const scrollRef = useRef<ComponentRef<typeof ScrollView>>(null);
   const count = daysInMonth(focus.year, focus.month);
+  // The transactions screen treats a horizontal drag as a month change.
+  // Once this strip starts scrolling, cancel that pan so the days scroll instead.
+  const dayStripScroll = useNativeGesture({ disallowInterruption: true });
 
   useEffect(() => {
     const index = Math.max(0, selectedDay - 1);
@@ -57,6 +61,7 @@ export function WeekDayStrip({
 
   return (
     <View style={styles.wrap}>
+      <GestureDetector gesture={dayStripScroll} touchAction="pan-x">
       <ScrollView
         ref={scrollRef}
         horizontal
@@ -115,6 +120,7 @@ export function WeekDayStrip({
           );
         })}
       </ScrollView>
+      </GestureDetector>
     </View>
   );
 }

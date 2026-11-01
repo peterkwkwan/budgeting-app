@@ -1,5 +1,5 @@
 /**
- * Stats month swipe.
+ * Month swipe on Transactions and Stats.
  * Left (negative X) moves forward one month; right moves back one month.
  * Shorter drags do not change the month.
  */
@@ -7,12 +7,12 @@ export const MONTH_SWIPE_DISTANCE_PX = 48;
 
 /**
  * Horizontal travel before the pan claims the touch, so taps and short
- * nudges still reach buttons inside the stats scroll view.
+ * nudges still reach buttons inside the scroll view.
  */
 export const MONTH_SWIPE_ACTIVATION_PX = 24;
 
 /**
- * Vertical travel that gives the gesture back to the stats scroll view
+ * Vertical travel that gives the gesture back to the scroll view
  * when the finger moves up or down before the horizontal pan activates.
  */
 export const MONTH_SWIPE_FAIL_Y_PX = 16;
