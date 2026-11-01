@@ -12,7 +12,7 @@ import {
 } from '@/components/ScrollEdgeShadows';
 import { CaptionText, StrongText, TitleText } from '@/components/StyledText';
 import { Text } from '@/components/Themed';
-import { colors, fonts, radius, space, typography } from '@/constants/theme';
+import { colors, fonts, radius, space } from '@/constants/theme';
 import { useOfflineGates } from '@/hooks/useOfflineGates';
 import { useAuth } from '@/lib/auth';
 
@@ -89,15 +89,6 @@ export default function AccountScreen() {
             </CaptionText>
           </Pressable>
 
-          <Text style={styles.note} lightColor={colors.inkMuted} darkColor={colors.green[200]}>
-            Transactions sync from Supabase while online. Soft-deleted rows stay in
-            the cloud but leave this device’s list. Recurring rules auto-add
-            matching transactions about 90 days ahead (or until a series ends).
-            Partner stats are combined totals only — never each other’s rows. Wipe
-            my data (Settings) clears product data with a 30-day restore; Delete my
-            account removes Auth and all data permanently.
-          </Text>
-
           <Pressable
             style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
             onPress={() => void signOut()}
@@ -150,11 +141,6 @@ const styles = StyleSheet.create({
   },
   value: {
     color: colors.ink,
-  },
-  note: {
-    ...typography.body,
-    fontSize: 14,
-    lineHeight: 20,
   },
   settingsEntry: {
     flexDirection: 'row',
