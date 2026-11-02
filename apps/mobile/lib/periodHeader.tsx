@@ -43,7 +43,8 @@ function NavHeaderChrome({ children, trailing }: NavHeaderChromeProps) {
 /**
  * Period nav replaces the page title on Transactions + Stats.
  * Full custom header so default titles cannot linger.
- * Period cluster is left-aligned; optional `trailing` (gear) stays right.
+ * Period cluster (‹ Month ›) is centered in the row; optional `trailing`
+ * (gear) stays right when present.
  */
 export function PeriodNavHeader({
   children,

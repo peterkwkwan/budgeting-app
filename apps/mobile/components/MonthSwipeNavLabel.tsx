@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useLayoutEffect, useState } from 'react';
 import { StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
 import Animated, {
   useAnimatedStyle,
@@ -7,6 +7,9 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { colors, fonts } from '@/constants/theme';
+
+/** Longest English month name — fixed slot so ‹ › do not shift (May vs September). */
+export const LONGEST_MONTH_NAV_LABEL = 'September';
 
 type Props = {
   prevLabel: string;
@@ -18,16 +21,49 @@ type Props = {
   pagerWidth: SharedValue<number>;
 };
 
+type FixedLabelProps = {
+  label: string;
+};
+
+/**
+ * Single month/year label in a September-width slot (static path when there is
+ * no swipe motion — Yearly, or Monthly before the pager mounts).
+ */
+export function FixedMonthNavLabel({ label }: FixedLabelProps) {
+  const [slotW, setSlotW] = useState(0);
+
+  const onMeasure = useCallback((event: LayoutChangeEvent) => {
+    const w = Math.ceil(event.nativeEvent.layout.width);
+    if (!(w > 0)) return;
+    setSlotW((prevW) => (prevW === w ? prevW : w));
+  }, []);
+
+  return (
+    <View
+      style={[styles.wrap, slotW > 0 ? { width: slotW } : null]}
+      collapsable={false}
+    >
+      <SeptemberWidthProbe onLayout={onMeasure} />
+      <Text
+        style={[styles.label, slotW > 0 ? { width: slotW } : null]}
+        numberOfLines={1}
+        accessibilityRole="header"
+        accessibilityLabel={label}
+      >
+        {label}
+      </Text>
+    </View>
+  );
+}
+
 /**
  * Month title strip that tracks the card pager’s translateX so
  * ‹ November › slides toward October with the swipe (not after settle).
  *
- * Viewport width is the natural width of the longest of prev/current/next —
- * never the flex leftover in the header — so › packs beside the month.
+ * Slot width is locked to “September” (longest English month) so chevrons
+ * stay put when swiping May ↔ September. Labels are centered in that slot.
  *
- * Shared values are only written from layout/effects (never during render or
- * inside setState updaters), and the last slot width is kept across label
- * changes so the strip does not flash the previous month at translateX 0.
+ * Shared values are only written from layout/effects (never during render).
  */
 export function MonthSwipeNavLabel({
   prevLabel,
@@ -38,33 +74,17 @@ export function MonthSwipeNavLabel({
 }: Props) {
   const slotSV = useSharedValue(0);
   const [slotW, setSlotW] = useState(0);
-  const probeWidths = useRef({ prev: 0, nav: 0, next: 0 });
-
-  // Clear per-label probes when the trio changes; keep last slotW / slotSV
-  // until the new max lands so the strip stays on “current” (−slotW), not
-  // flashing “prev” while slotSV is briefly 0 with slotW still > 0.
-  useEffect(() => {
-    probeWidths.current = { prev: 0, nav: 0, next: 0 };
-  }, [prevLabel, navLabel, nextLabel]);
 
   // Mirror React width into the shared value after commit — never in render.
   useLayoutEffect(() => {
     slotSV.value = slotW;
   }, [slotW, slotSV]);
 
-  const onMeasure = useCallback(
-    (key: 'prev' | 'nav' | 'next') => (event: LayoutChangeEvent) => {
-      const w = Math.ceil(event.nativeEvent.layout.width);
-      if (!(w > 0)) return;
-      probeWidths.current[key] = w;
-      const { prev, nav, next } = probeWidths.current;
-      // Wait for all three so we do not shrink to nav-only then grow again.
-      if (!(prev > 0 && nav > 0 && next > 0)) return;
-      const measured = Math.max(prev, nav, next);
-      setSlotW((prevW) => (prevW === measured ? prevW : measured));
-    },
-    []
-  );
+  const onMeasure = useCallback((event: LayoutChangeEvent) => {
+    const w = Math.ceil(event.nativeEvent.layout.width);
+    if (!(w > 0)) return;
+    setSlotW((prevW) => (prevW === w ? prevW : w));
+  }, []);
 
   const stripStyle = useAnimatedStyle(() => {
     const pw = pagerWidth.value;
@@ -88,33 +108,7 @@ export function MonthSwipeNavLabel({
       // Content-sized — never grow into the header leftover (that pushed › away).
       collapsable={false}
     >
-      {/*
-        Off-flow probes: each label at its natural text width (not clipped to
-        the visible slot). Max width becomes the swipe viewport.
-      */}
-      <View
-        style={styles.measureLayer}
-        pointerEvents="none"
-        accessibilityElementsHidden
-        importantForAccessibility="no-hide-descendants"
-      >
-        {(
-          [
-            ['prev', prevLabel],
-            ['nav', navLabel],
-            ['next', nextLabel],
-          ] as const
-        ).map(([key, label]) => (
-          <Text
-            key={`${key}-${label}`}
-            style={styles.measureLabel}
-            numberOfLines={1}
-            onLayout={onMeasure(key)}
-          >
-            {label}
-          </Text>
-        ))}
-      </View>
+      <SeptemberWidthProbe onLayout={onMeasure} />
 
       {slotW <= 0 ? (
         <Text
@@ -161,14 +155,35 @@ export function MonthSwipeNavLabel({
   );
 }
 
+function SeptemberWidthProbe({
+  onLayout,
+}: {
+  onLayout: (event: LayoutChangeEvent) => void;
+}) {
+  return (
+    <View
+      style={styles.measureLayer}
+      pointerEvents="none"
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+    >
+      <Text
+        style={styles.measureLabel}
+        numberOfLines={1}
+        onLayout={onLayout}
+      >
+        {LONGEST_MONTH_NAV_LABEL}
+      </Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   wrap: {
     flexGrow: 0,
-    flexShrink: 1,
+    flexShrink: 0,
     flexBasis: 'auto',
-    minWidth: 0,
-    maxWidth: '100%',
-    alignSelf: 'flex-start',
+    alignSelf: 'center',
     position: 'relative',
   },
   measureLayer: {
@@ -176,7 +191,6 @@ const styles = StyleSheet.create({
     opacity: 0,
     left: 0,
     top: 0,
-    // Stack probes at intrinsic width; do not constrain to the visible slot.
   },
   measureLabel: {
     color: colors.ink,
@@ -197,7 +211,7 @@ const styles = StyleSheet.create({
     color: colors.ink,
     fontSize: 17,
     lineHeight: 22,
-    textAlign: 'left',
+    textAlign: 'center',
     fontFamily: fonts.bodyStrong,
   },
 });

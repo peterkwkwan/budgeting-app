@@ -14,7 +14,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { SharedValue } from 'react-native-reanimated';
 
 import { CalendarIcon } from '@/components/icons';
-import { MonthSwipeNavLabel } from '@/components/MonthSwipeNavLabel';
+import {
+  FixedMonthNavLabel,
+  MonthSwipeNavLabel,
+} from '@/components/MonthSwipeNavLabel';
 import { CaptionText, StrongText } from '@/components/StyledText';
 import { colors, fonts, radius, space } from '@/constants/theme';
 import {
@@ -142,7 +145,7 @@ export function PeriodSelector({
   return (
     <View style={styles.wrap}>
       <View
-        style={[styles.bar, showModeMenu && styles.barWithMode]}
+        style={styles.bar}
         accessibilityRole="toolbar"
         accessibilityLabel="Period navigation"
       >
@@ -197,13 +200,7 @@ export function PeriodSelector({
                 pagerWidth={swipeMotion.pagerWidth}
               />
             ) : (
-              <StrongText
-                style={styles.navLabel}
-                numberOfLines={1}
-                accessibilityRole="header"
-              >
-                {navLabel}
-              </StrongText>
+              <FixedMonthNavLabel label={navLabel} />
             )}
             <Pressable
               onPress={() => step(1)}
@@ -223,22 +220,24 @@ export function PeriodSelector({
         )}
 
         {showModeMenu ? (
-          <View ref={modeTriggerRef} collapsable={false}>
-            <Pressable
-              style={({ pressed }) => [
-                styles.modeTrigger,
-                pressed && styles.pressed,
-              ]}
-              onPress={openModeMenu}
-              accessibilityRole="button"
-              accessibilityLabel={`Period mode ${periodModeLabel(preset)}. Change mode.`}
-              accessibilityHint="Opens Monthly, Yearly, or Period options"
-            >
-              <CaptionText style={styles.modeTriggerText}>
-                {periodModeLabel(preset)}
-              </CaptionText>
-              <CaptionText style={styles.modeCaret}>▾</CaptionText>
-            </Pressable>
+          <View style={styles.modeMenuSlot} pointerEvents="box-none">
+            <View ref={modeTriggerRef} collapsable={false}>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.modeTrigger,
+                  pressed && styles.pressed,
+                ]}
+                onPress={openModeMenu}
+                accessibilityRole="button"
+                accessibilityLabel={`Period mode ${periodModeLabel(preset)}. Change mode.`}
+                accessibilityHint="Opens Monthly, Yearly, or Period options"
+              >
+                <CaptionText style={styles.modeTriggerText}>
+                  {periodModeLabel(preset)}
+                </CaptionText>
+                <CaptionText style={styles.modeCaret}>▾</CaptionText>
+              </Pressable>
+            </View>
           </View>
         ) : null}
       </View>
@@ -337,35 +336,32 @@ const styles = StyleSheet.create({
     gap: space.xs,
   },
   bar: {
-    // Transactions (no mode): left-packed ‹ label ›.
+    // ‹ Month › (or Period dates) centered in the header row. Stats pins
+    // [Monthly] absolutely on the right so it does not shift the cluster.
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-start',
+    justifyContent: 'center',
     flexWrap: 'nowrap',
-    gap: space.sm,
     minHeight: 36,
     alignSelf: 'stretch',
     width: '100%',
-  },
-  barWithMode: {
-    // Stats: left = chevrons/label or dates; right = [Monthly] (gear is outside).
-    justifyContent: 'space-between',
+    position: 'relative',
   },
   stepper: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-start',
+    justifyContent: 'center',
     gap: space.xs,
-    // Basis 0 + grow so this row's width is the free space in the header
-    // (the gap before [Monthly] on Stats), not the label's own width.
-    // flexGrow: 0 left the row content-sized while the label shrinks, so
-    // Yoga ellipsized the month ("October" → "Octo...") in that narrow box.
-    // Children stay packed at the start, so ‹ October › stays a cluster
-    // and the label only ellipsizes when the string exceeds that width.
-    // MonthSwipeNavLabel must stay content-sized (flexGrow 0) — a growing
-    // label is what shoved › to the far end of the navbar.
-    flex: 1,
-    minWidth: 0,
+    // Hug ‹ label › — fixed September slot keeps chevrons from shifting.
+    flexGrow: 0,
+    flexShrink: 0,
+  },
+  modeMenuSlot: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    justifyContent: 'center',
   },
   chevronBtn: {
     // Hug the glyph. A fixed 32px box centered ‹ › and pushed the visible
@@ -379,14 +375,6 @@ const styles = StyleSheet.create({
     color: colors.ink,
     fontSize: 22,
     lineHeight: 26,
-  },
-  navLabel: {
-    flexShrink: 1,
-    color: colors.ink,
-    fontSize: 17,
-    lineHeight: 22,
-    textAlign: 'left',
-    fontFamily: fonts.bodyStrong,
   },
   periodRange: {
     flexDirection: 'row',
