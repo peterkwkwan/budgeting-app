@@ -9,8 +9,8 @@ type Props = {
 };
 
 /**
- * Full empty-month screen for Transactions (current card + adjacent peeks).
- * Title + supporting copy — same pattern as the settled empty list state.
+ * Full empty-month screen for Transactions (any pager slot).
+ * Title + supporting copy — same tree for prev / current / next.
  */
 export function TransactionsEmptyMonth({ periodLabel }: Props) {
   return (

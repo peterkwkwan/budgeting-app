@@ -7,8 +7,8 @@ type MonthSwipeSkeletonProps = {
 };
 
 /**
- * Soft paper placeholders for an adjacent Transactions month while the
- * shared list is still cold. Last resort — warm cache peeks render real rows.
+ * Soft paper placeholders for a Transactions month while the shared list
+ * is still cold. Last resort — warm cache renders the full month body.
  */
 export function MonthSwipeSkeleton({ style }: MonthSwipeSkeletonProps) {
   return (

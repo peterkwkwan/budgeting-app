@@ -12,7 +12,7 @@ type Props<T extends string> = {
   options: readonly SegmentOption<T>[];
   value: T;
   onChange?: (value: T) => void;
-  /** When true, chips render selected state but ignore presses (peek chrome). */
+  /** When true, chips render selected state but ignore presses (inactive slots). */
   readOnly?: boolean;
   accessibilityLabel?: string;
 };

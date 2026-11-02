@@ -15,8 +15,8 @@ type Props = {
    */
   onGoToThisMonth?: () => void;
   /**
-   * When false, render Quiet-month chrome only (no CTAs) — used for
-   * adjacent Stats peeks while loading or when the month has no txns.
+   * When false, render Quiet-month chrome only (no CTAs).
+   * Prefer omitting handlers on inactive pager slots instead.
    * Default true.
    */
   interactive?: boolean;

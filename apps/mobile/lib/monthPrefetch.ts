@@ -1,6 +1,6 @@
 /**
  * Warm React Query caches for months adjacent to the focused card.
- * Peeks and the settled month read the same keys — no flash of wrong-month data.
+ * Prev/current/next full month UIs read the same keys — no flash of wrong-month data.
  */
 
 import type { QueryClient } from '@tanstack/react-query';

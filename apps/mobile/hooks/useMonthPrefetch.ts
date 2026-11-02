@@ -21,8 +21,8 @@ function usePersonalStatsLocal(): boolean {
 }
 
 /**
- * While viewing month M, warm caches for M−1 and M+1 so peeks and settle
- * render ready data (skeleton only when truly uncached).
+ * While viewing month M, warm caches for M−1 and M+1 so adjacent full month
+ * UIs render ready data (skeleton only when truly uncached).
  */
 export function usePrefetchAdjacentStatsMonths(args: {
   focus: PeriodFocus;
@@ -71,7 +71,7 @@ export function usePrefetchAdjacentStatsMonths(args: {
 
 /**
  * Keep the shared transactions list warm. Adjacent months are filtered
- * client-side from the same cache (list + calendar peeks).
+ * client-side from the same cache (three full month bodies).
  */
 export function usePrefetchTransactionMonths(enabled: boolean) {
   const queryClient = useQueryClient();

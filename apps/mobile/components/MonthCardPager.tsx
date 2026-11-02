@@ -32,19 +32,24 @@ import {
 } from '@/lib/monthSwipe';
 import type { PeriodFocus } from '@/lib/periods';
 
+export type MonthCardSlot = 'prev' | 'current' | 'next';
+
 type MonthCardPagerProps = {
-  /** Focused calendar month — drives prev/next peek cards. */
+  /** Focused calendar month — drives prev/current/next full-month slots. */
   focus: PeriodFocus;
   /**
-   * When false, render children only (no gesture / peeks).
+   * When false, render only the current page (no gesture / adjacent months).
    * Stats uses this outside Monthly mode.
    */
   enabled: boolean;
   onStep: (delta: -1 | 1) => void;
   style?: StyleProp<ViewStyle>;
-  children: ReactNode;
-  /** Non-interactive peek for the adjacent month (warm content, empty, or cold skeleton). */
-  renderAdjacent: (focus: PeriodFocus, side: 'prev' | 'next') => ReactNode;
+  /**
+   * Full month UI for a slot. Same component family for all three so settle
+   * never swaps trees (date-line / Trend / Quiet chrome stay isomorphic).
+   * `active` is true only for the center slot.
+   */
+  renderPage: (focus: PeriodFocus, slot: MonthCardSlot) => ReactNode;
   /**
    * Optional shared motion (e.g. header month label). When omitted the pager
    * owns internal values; when provided, parent drives header sync from the
@@ -59,14 +64,14 @@ const easeOut = Easing.out(Easing.cubic);
 /**
  * Tinder-style horizontal month cards.
  * Drag left/right to peek the next/previous month; release to snap.
+ * Hosts three full month UIs; on settle, focus recycles to the new M±1.
  */
 export function MonthCardPager({
   focus,
   enabled,
   onStep,
   style,
-  children,
-  renderAdjacent,
+  renderPage,
   translateX: translateXProp,
   pagerWidth: pagerWidthProp,
 }: MonthCardPagerProps) {
@@ -96,7 +101,7 @@ export function MonthCardPager({
 
   /**
    * Snap / commit on the JS thread (`monthStepFromCardSwipe` is not a worklet).
-   * On a committed step, keep translateX at the peek offset until focus updates,
+   * On a committed step, keep translateX at the page offset until focus updates,
    * then reset to 0 in useLayoutEffect before paint — avoids a flash of the
    * previous month’s current card after the snap.
    */
@@ -178,7 +183,9 @@ export function MonthCardPager({
   }));
 
   if (!enabled) {
-    return <View style={[styles.clip, style]}>{children}</View>;
+    return (
+      <View style={[styles.clip, style]}>{renderPage(focus, 'current')}</View>
+    );
   }
 
   return (
@@ -191,10 +198,10 @@ export function MonthCardPager({
             accessibilityElementsHidden
             importantForAccessibility="no-hide-descendants"
           >
-            {renderAdjacent(prevMonth, 'prev')}
+            {renderPage(prevMonth, 'prev')}
           </View>
           <View style={styles.pageCurrent} pointerEvents="box-none">
-            {children}
+            {renderPage(focus, 'current')}
           </View>
           <View
             style={[styles.page, styles.pageNext]}
@@ -202,7 +209,7 @@ export function MonthCardPager({
             accessibilityElementsHidden
             importantForAccessibility="no-hide-descendants"
           >
-            {renderAdjacent(nextMonth, 'next')}
+            {renderPage(nextMonth, 'next')}
           </View>
         </Animated.View>
       </View>

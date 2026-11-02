@@ -1,7 +1,7 @@
 /**
  * Month card swipe.
  * Left (negative X) moves forward one month; right moves back one month.
- * During the drag, prev/next month cards peek in from the sides.
+ * During the drag, full prev/next month UIs slide in from the sides.
  */
 
 /** Horizontal travel before the pan claims the touch. */
@@ -87,7 +87,7 @@ export function monthContentKey(focus: YearMonth): string {
   return `${focus.year}-${focus.month}`;
 }
 
-/** Previous and next calendar months around `focus` (for peek prefetch). */
+/** Previous and next calendar months around `focus` (for adjacent prefetch). */
 export function adjacentMonthFocuses(focus: YearMonth): {
   prev: YearMonth;
   next: YearMonth;

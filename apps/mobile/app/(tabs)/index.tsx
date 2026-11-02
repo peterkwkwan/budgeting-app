@@ -8,10 +8,8 @@ import {
 } from 'react';
 import {
   Alert,
-  FlatList,
   Modal,
   Pressable,
-  SectionList,
   StyleSheet,
   View,
 } from 'react-native';
@@ -21,30 +19,16 @@ import {
   BulkEditSheet,
   type BulkEditField,
 } from '@/components/BulkEditSheet';
-import { MonthCardPager } from '@/components/MonthCardPager';
-import { MonthDayCalendar } from '@/components/MonthDayCalendar';
-import { MonthSwipeSkeleton } from '@/components/MonthSwipeSkeleton';
+import {
+  MonthCardPager,
+  type MonthCardSlot,
+} from '@/components/MonthCardPager';
 import { OfflineBanner } from '@/components/OfflineBanner';
-import { TransactionsEmptyMonth } from '@/components/TransactionsEmptyMonth';
-import { TransactionsMonthPeek } from '@/components/TransactionsMonthPeek';
-import {
-  ScrollEdgeHost,
-  useScrollEdges,
-} from '@/components/ScrollEdgeShadows';
 import { PeriodSelector } from '@/components/stats/PeriodSelector';
-import { CaptionText, StrongText, TitleText } from '@/components/StyledText';
-import { TransactionRow } from '@/components/TransactionRow';
+import { StrongText } from '@/components/StyledText';
+import { TransactionsMonthBody } from '@/components/TransactionsMonthBody';
 import { TxnSelectionHeader } from '@/components/TxnSelectionHeader';
-import { UpcomingRepeatsBar } from '@/components/UpcomingRepeatsBar';
-import { WeekDayStrip } from '@/components/WeekDayStrip';
-import {
-  chromeHairline,
-  colors,
-  fonts,
-  radius,
-  space,
-  typography,
-} from '@/constants/theme';
+import { colors, radius, space } from '@/constants/theme';
 import { usePrefetchTransactionMonths } from '@/hooks/useMonthPrefetch';
 import {
   useBulkPatchTransactions,
@@ -65,19 +49,14 @@ import {
   type PeriodFocus,
 } from '@/lib/periods';
 import { parseTransactionsDateView } from '@/lib/profile';
-import { zonedYmd } from '@/lib/dates';
 import {
   clampDayInMonth,
-  dayNetsInMonth,
   defaultSelectedDay,
   filterTransactionsForDay,
-  formatDayNet,
-  formatFocusDayHeading,
-  groupTransactionsByDay,
-  netOfTransactions,
-  type DayNetTone,
 } from '@/lib/transactionsDateView';
+import { filterTransactionsForMonth } from '@/lib/transactionModel';
 import type { Transaction } from '@/lib/transactions';
+import { zonedYmd } from '@/lib/dates';
 
 export default function TransactionsScreen() {
   const router = useRouter();
@@ -133,9 +112,7 @@ export default function TransactionsScreen() {
   );
 
   const {
-    data,
     allRows,
-    upcoming,
     isLoading,
     isError,
     error,
@@ -143,7 +120,7 @@ export default function TransactionsScreen() {
     isRefetching,
   } = useTransactionList(focus);
 
-  // Shared list feeds peeks + settled month (client-filtered); keep it warm.
+  // Shared list feeds all three month slots; keep it warm.
   usePrefetchTransactionMonths(true);
 
   const bulkDelete = useBulkSoftDeleteTransactions();
@@ -156,10 +133,9 @@ export default function TransactionsScreen() {
 
   const busy = bulkDelete.isPending || bulkPatch.isPending;
   const { pendingIds, categoryFixIds, banner } = useOfflineGates();
-  const { edges, scrollProps } = useScrollEdges();
 
-  // Month ‹ ›: jump to today when focus is the current month; else clamp.
-  useEffect(() => {
+  // Clamp before paint so settle matches the adjacent slot’s projected day.
+  useLayoutEffect(() => {
     setSelectedDay((prev) => {
       const today = zonedYmd(new Date(), timeZone);
       if (today.year === focus.year && today.month === focus.month) {
@@ -169,28 +145,20 @@ export default function TransactionsScreen() {
     });
   }, [focus.year, focus.month, timeZone]);
 
-  const daySections = useMemo(
-    () => groupTransactionsByDay(data ?? [], timeZone),
-    [data, timeZone]
-  );
-
-  const dayNets = useMemo(
-    () => dayNetsInMonth(data ?? [], focus, timeZone),
-    [data, focus, timeZone]
+  const monthRows = useMemo(
+    () =>
+      allRows != null
+        ? filterTransactionsForMonth(allRows, timeZone, focus)
+        : [],
+    [allRows, timeZone, focus.year, focus.month]
   );
 
   const dayRows = useMemo(
-    () =>
-      filterTransactionsForDay(data ?? [], focus, selectedDay, timeZone),
-    [data, focus, selectedDay, timeZone]
+    () => filterTransactionsForDay(monthRows, focus, selectedDay, timeZone),
+    [monthRows, focus, selectedDay, timeZone]
   );
 
-  const selectedDayHeading = useMemo(
-    () => formatFocusDayHeading(focus, selectedDay, timeZone),
-    [focus, selectedDay, timeZone]
-  );
-
-  const listForSelection = dateView === 'list' ? (data ?? []) : dayRows;
+  const listForSelection = dateView === 'list' ? monthRows : dayRows;
 
   const selectedRows = useMemo(() => {
     return listForSelection.filter((t) => selectedIds.has(t.id));
@@ -339,118 +307,84 @@ export default function TransactionsScreen() {
     swipeMotion,
   ]);
 
-  function onRowPress(item: Transaction) {
-    if (selectionMode) {
-      toggleSelection(item.id);
-      return;
-    }
-    router.push(`/transaction/${item.id}`);
-  }
+  const onRowPress = useCallback(
+    (item: Transaction) => {
+      if (selectionMode) {
+        toggleSelection(item.id);
+        return;
+      }
+      router.push(`/transaction/${item.id}`);
+    },
+    [selectionMode, toggleSelection, router]
+  );
 
-  function renderRow(item: Transaction) {
-    return (
-      <TransactionRow
-        transaction={item}
-        hideDate
-        pending={pendingIds.has(item.id)}
-        categoryFix={categoryFixIds.has(item.id)}
-        selectionMode={selectionMode}
-        selected={selectedIds.has(item.id)}
-        onPress={() => onRowPress(item)}
-        onLongPress={() => {
-          if (!selectionMode) enterSelection(item.id);
-        }}
-      />
-    );
-  }
+  const onRowLongPress = useCallback(
+    (id: string) => {
+      if (!selectionMode) enterSelection(id);
+    },
+    [selectionMode, enterSelection]
+  );
 
   const onMonthStep = useCallback((delta: -1 | 1) => {
     setFocus((current) => shiftPeriodFocus(current, 'month', delta));
   }, []);
 
-  const monthHasTransactions = (data?.length ?? 0) > 0;
+  const onRefetch = useCallback(() => {
+    void refetch();
+  }, [refetch]);
 
-  const sharedHeader = (
-    <View>
-      {upcoming ? (
-        <UpcomingRepeatsBar
-          summary={upcoming}
-          onPress={() => router.push('/recurring')}
-        />
-      ) : null}
-      {monthHasTransactions && dateView === 'week' ? (
-        <WeekDayStrip
-          focus={focus}
-          selectedDay={selectedDay}
-          dayNets={dayNets}
-          onSelectDay={setSelectedDay}
+  const renderPage = useCallback(
+    (pageFocus: PeriodFocus, slot: MonthCardSlot) => {
+      // Same day rule as the focus effect — adjacent slots match settle.
+      const today = zonedYmd(new Date(), timeZone);
+      const pageDay =
+        today.year === pageFocus.year && today.month === pageFocus.month
+          ? today.day
+          : clampDayInMonth(pageFocus.year, pageFocus.month, selectedDay);
+      return (
+        <TransactionsMonthBody
+          focus={pageFocus}
+          allRows={allRows}
+          listLoading={isLoading}
+          isError={isError}
+          error={error}
+          isRefetching={isRefetching}
+          onRefetch={onRefetch}
+          timeZone={timeZone}
+          dateView={dateView}
           currency={currency}
+          pendingIds={pendingIds}
+          categoryFixIds={categoryFixIds}
+          active={slot === 'current'}
+          selectedDay={slot === 'current' ? selectedDay : pageDay}
+          onSelectedDayChange={
+            slot === 'current' ? setSelectedDay : undefined
+          }
+          selectionMode={selectionMode}
+          selectedIds={selectedIds}
+          onRowPress={onRowPress}
+          onRowLongPress={onRowLongPress}
         />
-      ) : null}
-      {monthHasTransactions && dateView === 'month' ? (
-        <MonthDayCalendar
-          focus={focus}
-          selectedDay={selectedDay}
-          dayNets={dayNets}
-          onSelectDay={setSelectedDay}
-          currency={currency}
-        />
-      ) : null}
-      {monthHasTransactions &&
-      (dateView === 'week' || dateView === 'month') ? (
-        <View
-          style={[
-            styles.dayHeading,
-            dateView === 'month' && styles.dayHeadingBelowCalendar,
-          ]}
-        >
-          <StrongText style={styles.dayHeadingText}>
-            {selectedDayHeading}
-          </StrongText>
-          <DayNetAmount net={dayNets.get(selectedDay)} currency={currency} />
-        </View>
-      ) : null}
-    </View>
-  );
-
-  const emptyMonth = (
-    <TransactionsEmptyMonth periodLabel={period.navLabel} />
-  );
-
-  const emptyDay = (
-    <View style={styles.emptyDay}>
-      <CaptionText style={styles.emptyBody}>
-        No transactions this day
-      </CaptionText>
-    </View>
-  );
-
-  const emptyListBody =
-    (data?.length ?? 0) === 0 ? (
-      upcoming ? (
-        <View style={styles.emptyBelowBar}>
-          <CaptionText style={styles.emptyBody}>
-            No transactions for today or earlier in {period.navLabel}. Upcoming
-            repeats are listed above.
-          </CaptionText>
-        </View>
-      ) : (
-        emptyMonth
-      )
-    ) : undefined;
-
-  const renderAdjacent = useCallback(
-    (adjacentFocus: PeriodFocus) => (
-      <TransactionsMonthPeek
-        focus={adjacentFocus}
-        allRows={allRows}
-        listLoading={isLoading}
-        timeZone={timeZone}
-        dateView={dateView}
-        currency={currency}
-      />
-    ),
-    [allRows, isLoading, timeZone, dateView, currency]
+      );
+    },
+    [
+      allRows,
+      isLoading,
+      isError,
+      error,
+      isRefetching,
+      onRefetch,
+      timeZone,
+      dateView,
+      currency,
+      pendingIds,
+      categoryFixIds,
+      selectedDay,
+      selectionMode,
+      selectedIds,
+      onRowPress,
+      onRowLongPress,
+    ]
   );
 
   return (
@@ -460,93 +394,10 @@ export default function TransactionsScreen() {
         focus={focus}
         enabled={!selectionMode}
         onStep={onMonthStep}
-        renderAdjacent={renderAdjacent}
+        renderPage={renderPage}
         translateX={swipeTranslateX}
         pagerWidth={swipePagerWidth}
-      >
-      {isLoading || allRows == null ? (
-        // Cold miss only — warm peeks / settle use real rows or true empty.
-        <MonthSwipeSkeleton />
-      ) : isError ? (
-        <View style={styles.centered}>
-          <TitleText style={styles.emptyTitle}>
-            Couldn’t load transactions
-          </TitleText>
-          <CaptionText style={styles.emptyBody}>
-            {error instanceof Error ? error.message : 'Something went wrong.'}
-          </CaptionText>
-          <Pressable
-            style={({ pressed }) => [
-              styles.secondary,
-              pressed && styles.secondaryPressed,
-            ]}
-            onPress={() => void refetch()}
-          >
-            <CaptionText style={styles.secondaryText}>Try again</CaptionText>
-          </Pressable>
-        </View>
-      ) : (
-        <ScrollEdgeHost edges={edges}>
-          {dateView === 'list' ? (
-            <SectionList
-              sections={daySections}
-              keyExtractor={(item) => item.id}
-              {...scrollProps}
-              stickySectionHeadersEnabled
-              ListHeaderComponent={sharedHeader}
-              renderSectionHeader={({ section }) => (
-                <View style={styles.sectionHeader}>
-                  <StrongText style={styles.sectionHeaderText}>
-                    {section.title}
-                  </StrongText>
-                  <DayNetAmount
-                    net={netOfTransactions(section.data)}
-                    currency={currency}
-                  />
-                </View>
-              )}
-              renderItem={({ item }) => renderRow(item)}
-              refreshing={isRefetching}
-              onRefresh={() => void refetch()}
-              contentContainerStyle={
-                daySections.length === 0 ? styles.emptyList : styles.list
-              }
-              ListEmptyComponent={emptyListBody}
-            />
-          ) : (
-            <FlatList
-              data={dayRows}
-              keyExtractor={(item) => item.id}
-              {...scrollProps}
-              ListHeaderComponent={sharedHeader}
-              renderItem={({ item }) => renderRow(item)}
-              refreshing={isRefetching}
-              onRefresh={() => void refetch()}
-              contentContainerStyle={
-                dayRows.length === 0 && (data?.length ?? 0) === 0 && !upcoming
-                  ? styles.emptyList
-                  : styles.list
-              }
-              ListEmptyComponent={
-                (data?.length ?? 0) === 0 && !upcoming
-                  ? emptyMonth
-                  : (data?.length ?? 0) === 0 && upcoming
-                    ? (
-                        <View style={styles.emptyBelowBar}>
-                          <CaptionText style={styles.emptyBody}>
-                            No transactions for today or earlier in{' '}
-                            {period.navLabel}. Upcoming repeats are listed
-                            above.
-                          </CaptionText>
-                        </View>
-                      )
-                    : emptyDay
-              }
-            />
-          )}
-        </ScrollEdgeHost>
-      )}
-      </MonthCardPager>
+      />
 
       <Modal
         visible={overflowOpen}
@@ -597,132 +448,10 @@ export default function TransactionsScreen() {
   );
 }
 
-function dayNetColor(tone: DayNetTone): string {
-  if (tone === 'income') return colors.income;
-  if (tone === 'expense') return colors.expense;
-  return colors.inkMuted;
-}
-
-function DayNetAmount({
-  net,
-  currency,
-}: {
-  net: number | null | undefined;
-  currency?: string;
-}) {
-  if (net == null) return null;
-  const label = formatDayNet(net, { currency });
-  return (
-    <StrongText
-      style={[styles.dayNet, { color: dayNetColor(label.tone) }]}
-      accessibilityLabel={`Day net ${label.text}`}
-    >
-      {label.text}
-    </StrongText>
-  );
-}
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.canvas,
-  },
-  list: {
-    paddingBottom: space.xxl,
-  },
-  emptyList: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    paddingBottom: space.xxl,
-  },
-  emptyBelowBar: {
-    paddingHorizontal: space.xl,
-    paddingTop: space.lg,
-  },
-  emptyDay: {
-    paddingHorizontal: space.xl,
-    paddingVertical: space.lg,
-  },
-  dayHeading: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: space.sm,
-    paddingHorizontal: space.md,
-    paddingVertical: space.sm,
-    backgroundColor: colors.surfaceMuted,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  /** Stronger than a hairline so the month grid and this row stay separate. */
-  dayHeadingBelowCalendar: {
-    borderTopWidth: chromeHairline.width,
-    borderTopColor: chromeHairline.color,
-  },
-  dayHeadingText: {
-    flexShrink: 1,
-    color: colors.green[700],
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: space.sm,
-    paddingHorizontal: space.md,
-    paddingVertical: space.sm,
-    backgroundColor: colors.surfaceMuted,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  sectionHeaderText: {
-    flexShrink: 1,
-    color: colors.green[700],
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  dayNet: {
-    ...typography.amount,
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  centered: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: space.md,
-    gap: space.sm,
-  },
-  emptyTitle: {
-    color: colors.green[950],
-    textAlign: 'center',
-  },
-  emptyBody: {
-    color: colors.inkMuted,
-    textAlign: 'center',
-    ...typography.body,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  secondary: {
-    marginTop: space.sm,
-    paddingHorizontal: space.md,
-    height: 40,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  secondaryPressed: {
-    backgroundColor: colors.surfaceMuted,
-  },
-  secondaryText: {
-    color: colors.green[700],
-    fontFamily: fonts.bodyStrong,
   },
   menuBackdrop: {
     flex: 1,
