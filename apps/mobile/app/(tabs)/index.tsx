@@ -77,6 +77,7 @@ export default function TransactionsScreen() {
   // Shared with PeriodSelector so the header month tracks the card swipe.
   const swipeTranslateX = useSharedValue(0);
   const swipePagerWidth = useSharedValue(0);
+  const [monthNavLocked, setMonthNavLocked] = useState(false);
 
   const period = useMemo(
     () => resolvePeriodBounds('month', timeZone, { focus }),
@@ -289,6 +290,7 @@ export default function TransactionsScreen() {
             timeZone={timeZone}
             showModeMenu={false}
             swipeMotion={swipeMotion}
+            monthNavLocked={monthNavLocked}
             onFocusChange={setFocus}
           />
         </PeriodNavHeader>
@@ -305,6 +307,7 @@ export default function TransactionsScreen() {
     focus,
     timeZone,
     swipeMotion,
+    monthNavLocked,
   ]);
 
   const onRowPress = useCallback(
@@ -397,6 +400,9 @@ export default function TransactionsScreen() {
         renderPage={renderPage}
         translateX={swipeTranslateX}
         pagerWidth={swipePagerWidth}
+        // Shared list feeds every month slot — ready once the list is warm.
+        neighborsReady={!isLoading && allRows != null}
+        onInputLockChange={setMonthNavLocked}
       />
 
       <Modal

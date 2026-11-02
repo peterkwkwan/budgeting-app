@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { adjacentMonthFocuses } from './monthSwipe.ts';
+import { adjacentMonthFocuses, nearbyMonthFocuses } from './monthSwipe.ts';
 import { resolvePeriodBounds } from './periods.ts';
 
 /**
@@ -31,4 +31,27 @@ test('adjacent months resolve distinct period bounds', () => {
   );
   assert.equal(prevPeriod.end.toISOString(), current.start.toISOString());
   assert.equal(current.end.toISOString(), nextPeriod.start.toISOString());
+});
+
+test('nearby ±2 months resolve distinct contiguous bounds', () => {
+  const focus = { year: 2026, month: 11 };
+  const timeZone = 'UTC';
+  const nearby = nearbyMonthFocuses(focus);
+  assert.equal(nearby.length, 4);
+
+  const starts = new Set(
+    nearby.map(
+      (m) =>
+        resolvePeriodBounds('month', timeZone, { focus: m }).start.toISOString()
+    )
+  );
+  assert.equal(starts.size, 4);
+
+  const mMinus2 = resolvePeriodBounds('month', timeZone, {
+    focus: nearby[0]!,
+  });
+  const mMinus1 = resolvePeriodBounds('month', timeZone, {
+    focus: nearby[1]!,
+  });
+  assert.equal(mMinus2.end.toISOString(), mMinus1.start.toISOString());
 });

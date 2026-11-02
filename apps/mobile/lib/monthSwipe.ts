@@ -23,6 +23,18 @@ export const MONTH_CARD_VELOCITY_PX = 700;
 export const MONTH_CARD_SNAP_MS = 240;
 
 /**
+ * After a settle, lock swipe / header month input until M±1 neighbors are
+ * ready (or this timeout elapses — then skeleton is allowed).
+ */
+export const MONTH_NEIGHBOR_LOCK_MS = 480;
+
+/**
+ * Calendar-month offsets to prefetch around focus for rapid swipes.
+ * Visible slots stay M±1; ±2 is data-only warm cache.
+ */
+export const MONTH_PREFETCH_OFFSETS = [-2, -1, 1, 2] as const;
+
+/**
  * Legacy short-drag threshold (tests + older call sites).
  * Card pager uses width-based {@link monthStepFromCardSwipe} instead.
  */
@@ -87,7 +99,7 @@ export function monthContentKey(focus: YearMonth): string {
   return `${focus.year}-${focus.month}`;
 }
 
-/** Previous and next calendar months around `focus` (for adjacent prefetch). */
+/** Previous and next calendar months around `focus` (visible pager slots). */
 export function adjacentMonthFocuses(focus: YearMonth): {
   prev: YearMonth;
   next: YearMonth;
@@ -96,6 +108,11 @@ export function adjacentMonthFocuses(focus: YearMonth): {
     prev: shiftYearMonth(focus, -1),
     next: shiftYearMonth(focus, 1),
   };
+}
+
+/** Focus months at {@link MONTH_PREFETCH_OFFSETS} (data warm for rapid swipes). */
+export function nearbyMonthFocuses(focus: YearMonth): YearMonth[] {
+  return MONTH_PREFETCH_OFFSETS.map((delta) => shiftYearMonth(focus, delta));
 }
 
 /**

@@ -1,8 +1,10 @@
 import {
   useCallback,
+  useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
+  useState,
   type ReactNode,
 } from 'react';
 import {
@@ -24,8 +26,10 @@ import Animated, {
 
 import {
   MONTH_CARD_SNAP_MS,
+  MONTH_NEIGHBOR_LOCK_MS,
   MONTH_SWIPE_ACTIVATION_PX,
   MONTH_SWIPE_FAIL_Y_PX,
+  monthContentKey,
   monthStepDirection,
   monthStepFromCardSwipe,
   shiftYearMonth,
@@ -57,14 +61,28 @@ type MonthCardPagerProps = {
    */
   translateX?: SharedValue<number>;
   pagerWidth?: SharedValue<number>;
+  /**
+   * True when M±1 for the current focus can paint without a cold skeleton.
+   * After a settle, swipe + header stay locked until this is true (or the
+   * short neighbor-lock timeout). Omit to skip locking.
+   */
+  neighborsReady?: boolean;
+  /** Mirror of the settle input lock — disable header month chevrons. */
+  onInputLockChange?: (locked: boolean) => void;
 };
 
 const easeOut = Easing.out(Easing.cubic);
 
+type PageSpec = {
+  focus: PeriodFocus;
+  slot: MonthCardSlot;
+};
+
 /**
  * Tinder-style horizontal month cards.
  * Drag left/right to peek the next/previous month; release to snap.
- * Hosts three full month UIs; on settle, focus recycles to the new M±1.
+ * Pages are keyed by month content so settle promotes the warm adjacent
+ * fiber instead of rewriting the center instance in place.
  */
 export function MonthCardPager({
   focus,
@@ -74,6 +92,8 @@ export function MonthCardPager({
   renderPage,
   translateX: translateXProp,
   pagerWidth: pagerWidthProp,
+  neighborsReady,
+  onInputLockChange,
 }: MonthCardPagerProps) {
   const widthInternal = useSharedValue(0);
   const translateInternal = useSharedValue(0);
@@ -81,21 +101,31 @@ export function MonthCardPager({
   const translateX = translateXProp ?? translateInternal;
 
   const ignoreFocusAnimRef = useRef(false);
+  const lockAfterStepRef = useRef(false);
   const prevFocusRef = useRef(focus);
   const onStepRef = useRef(onStep);
   onStepRef.current = onStep;
+  const onInputLockChangeRef = useRef(onInputLockChange);
+  onInputLockChangeRef.current = onInputLockChange;
 
-  const prevMonth = useMemo(
-    () => shiftYearMonth(focus, -1),
+  const [inputLocked, setInputLocked] = useState(false);
+
+  const pages = useMemo<PageSpec[]>(
+    () => [
+      { focus: shiftYearMonth(focus, -1), slot: 'prev' },
+      { focus, slot: 'current' },
+      { focus: shiftYearMonth(focus, 1), slot: 'next' },
+    ],
     [focus.year, focus.month]
   );
-  const nextMonth = useMemo(
-    () => shiftYearMonth(focus, 1),
-    [focus.year, focus.month]
-  );
+
+  useEffect(() => {
+    onInputLockChangeRef.current?.(inputLocked);
+  }, [inputLocked]);
 
   const commitStep = useCallback((delta: -1 | 1) => {
     ignoreFocusAnimRef.current = true;
+    lockAfterStepRef.current = true;
     onStepRef.current(delta);
   }, []);
 
@@ -141,11 +171,14 @@ export function MonthCardPager({
     prevFocusRef.current = focus;
     if (ignoreFocusAnimRef.current) {
       ignoreFocusAnimRef.current = false;
-      // New month content is already mounted; show it centered before paint.
+      // Promoted adjacent fiber is already under the viewport offset; show it
+      // centered before paint (content key recycle keeps that tree mounted).
       translateX.value = 0;
       return;
     }
     if (!enabled || step === 0 || widthSV.value <= 0) return;
+    // Header chevron / programmatic step — also arm neighbor lock.
+    lockAfterStepRef.current = true;
     translateX.value = -step * widthSV.value;
     translateX.value = withTiming(0, {
       duration: MONTH_CARD_SNAP_MS,
@@ -153,8 +186,32 @@ export function MonthCardPager({
     });
   }, [enabled, focus.year, focus.month, translateX, widthSV]);
 
+  // Lock swipe + header until new M±1 neighbors are ready (or short timeout).
+  useEffect(() => {
+    if (!enabled || neighborsReady === undefined) {
+      lockAfterStepRef.current = false;
+      setInputLocked(false);
+      return;
+    }
+    if (!lockAfterStepRef.current) {
+      setInputLocked(false);
+      return;
+    }
+    if (neighborsReady) {
+      lockAfterStepRef.current = false;
+      setInputLocked(false);
+      return;
+    }
+    setInputLocked(true);
+    const timer = setTimeout(() => {
+      lockAfterStepRef.current = false;
+      setInputLocked(false);
+    }, MONTH_NEIGHBOR_LOCK_MS);
+    return () => clearTimeout(timer);
+  }, [enabled, neighborsReady, focus.year, focus.month]);
+
   const gesture = usePanGesture({
-    enabled,
+    enabled: enabled && !inputLocked,
     activeOffsetX: [-MONTH_SWIPE_ACTIVATION_PX, MONTH_SWIPE_ACTIVATION_PX],
     failOffsetY: [-MONTH_SWIPE_FAIL_Y_PX, MONTH_SWIPE_FAIL_Y_PX],
     onUpdate: (event) => {
@@ -192,25 +249,31 @@ export function MonthCardPager({
     <GestureDetector gesture={gesture} touchAction="pan-y">
       <View style={[styles.clip, style]} onLayout={onLayout}>
         <Animated.View style={[styles.track, trackStyle]}>
-          <View
-            style={[styles.page, styles.pagePrev]}
-            pointerEvents="none"
-            accessibilityElementsHidden
-            importantForAccessibility="no-hide-descendants"
-          >
-            {renderPage(prevMonth, 'prev')}
-          </View>
-          <View style={styles.pageCurrent} pointerEvents="box-none">
-            {renderPage(focus, 'current')}
-          </View>
-          <View
-            style={[styles.page, styles.pageNext]}
-            pointerEvents="none"
-            accessibilityElementsHidden
-            importantForAccessibility="no-hide-descendants"
-          >
-            {renderPage(nextMonth, 'next')}
-          </View>
+          {pages.map((page) => {
+            const isCurrent = page.slot === 'current';
+            return (
+              <View
+                key={monthContentKey(page.focus)}
+                style={
+                  isCurrent
+                    ? styles.pageCurrent
+                    : [
+                        styles.page,
+                        page.slot === 'prev'
+                          ? styles.pagePrev
+                          : styles.pageNext,
+                      ]
+                }
+                pointerEvents={isCurrent ? 'box-none' : 'none'}
+                accessibilityElementsHidden={!isCurrent}
+                importantForAccessibility={
+                  isCurrent ? 'yes' : 'no-hide-descendants'
+                }
+              >
+                {renderPage(page.focus, page.slot)}
+              </View>
+            );
+          })}
         </Animated.View>
       </View>
     </GestureDetector>

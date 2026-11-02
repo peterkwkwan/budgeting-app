@@ -1,10 +1,11 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 import type { TransactionType } from '@/constants/categories';
 import { useAuth } from '@/lib/auth';
 import { useConnectivity } from '@/hooks/useConnectivity';
 import {
+  areAdjacentStatsMonthsCached,
   prefetchAdjacentStatsMonths,
   prefetchTransactionList,
 } from '@/lib/monthPrefetch';
@@ -21,8 +22,8 @@ function usePersonalStatsLocal(): boolean {
 }
 
 /**
- * While viewing month M, warm caches for M−1 and M+1 so adjacent full month
- * UIs render ready data (skeleton only when truly uncached).
+ * While viewing month M, warm caches for M±1 and M±2 so rapid swipes hit
+ * ready data (skeleton only when truly uncached past the prefetch window).
  */
 export function usePrefetchAdjacentStatsMonths(args: {
   focus: PeriodFocus;
@@ -67,6 +68,44 @@ export function usePrefetchAdjacentStatsMonths(args: {
     pairLive,
     trendMetric,
   ]);
+}
+
+/**
+ * True when Stats totals for the visible M±1 neighbors are already cached.
+ * Re-subscribes to the query cache until both neighbors are warm.
+ */
+export function useAdjacentStatsMonthsReady(args: {
+  focus: PeriodFocus;
+  timeZone: string;
+  pairLive: boolean;
+  enabled: boolean;
+}): boolean {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const useLocal = usePersonalStatsLocal();
+  const { focus, timeZone, pairLive, enabled } = args;
+  const [cacheEpoch, setCacheEpoch] = useState(0);
+
+  const ready =
+    !enabled ||
+    areAdjacentStatsMonthsCached(queryClient, {
+      focus,
+      timeZone,
+      useLocal,
+      userId: user?.id,
+      pairLive,
+    });
+
+  useEffect(() => {
+    if (!enabled || ready) return;
+    return queryClient.getQueryCache().subscribe(() => {
+      setCacheEpoch((n) => n + 1);
+    });
+  }, [queryClient, enabled, ready, focus.year, focus.month]);
+
+  // cacheEpoch forces a re-read of the query cache after updates.
+  void cacheEpoch;
+  return ready;
 }
 
 /**

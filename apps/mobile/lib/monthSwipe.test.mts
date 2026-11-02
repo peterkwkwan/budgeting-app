@@ -4,12 +4,15 @@ import { test } from 'node:test';
 import {
   MONTH_CARD_SNAP_RATIO,
   MONTH_CARD_VELOCITY_PX,
+  MONTH_NEIGHBOR_LOCK_MS,
+  MONTH_PREFETCH_OFFSETS,
   MONTH_SWIPE_DISTANCE_PX,
   adjacentMonthFocuses,
   monthContentKey,
   monthStepDirection,
   monthStepFromCardSwipe,
   monthStepFromSwipe,
+  nearbyMonthFocuses,
   shiftYearMonth,
 } from './monthSwipe.ts';
 
@@ -48,6 +51,17 @@ test('adjacentMonthFocuses returns prev and next', () => {
     prev: { year: 2025, month: 12 },
     next: { year: 2026, month: 2 },
   });
+});
+
+test('nearbyMonthFocuses covers ±2 for rapid-swipe prefetch', () => {
+  assert.deepEqual(MONTH_PREFETCH_OFFSETS, [-2, -1, 1, 2]);
+  assert.ok(MONTH_NEIGHBOR_LOCK_MS > 0);
+  assert.deepEqual(nearbyMonthFocuses({ year: 2026, month: 11 }), [
+    { year: 2026, month: 9 },
+    { year: 2026, month: 10 },
+    { year: 2026, month: 12 },
+    { year: 2027, month: 1 },
+  ]);
 });
 
 test('monthStepDirection compares calendar months', () => {

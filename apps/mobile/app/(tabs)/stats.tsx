@@ -19,7 +19,10 @@ import { StatsMonthBody } from '@/components/stats/StatsMonthBody';
 import { CaptionText } from '@/components/StyledText';
 import type { TransactionType } from '@/constants/categories';
 import { colors, fonts, radius, space } from '@/constants/theme';
-import { usePrefetchAdjacentStatsMonths } from '@/hooks/useMonthPrefetch';
+import {
+  useAdjacentStatsMonthsReady,
+  usePrefetchAdjacentStatsMonths,
+} from '@/hooks/useMonthPrefetch';
 import { useOfflineGates } from '@/hooks/useOfflineGates';
 import { usePartnerLink } from '@/hooks/usePartner';
 import { type StatsScope } from '@/hooks/useStats';
@@ -71,6 +74,7 @@ export default function StatsScreen() {
   // Shared with PeriodSelector so the header month tracks the card swipe.
   const swipeTranslateX = useSharedValue(0);
   const swipePagerWidth = useSharedValue(0);
+  const [monthNavLocked, setMonthNavLocked] = useState(false);
 
   // Unlink → Pair scope disappears immediately; fall back to personal.
   useEffect(() => {
@@ -140,6 +144,7 @@ export default function StatsScreen() {
             customEnd={customEnd}
             showModeMenu
             swipeMotion={swipeMotion}
+            monthNavLocked={monthNavLocked}
             onPresetChange={setPreset}
             onFocusChange={setFocus}
             onCustomStartChange={(date) => {
@@ -167,19 +172,27 @@ export default function StatsScreen() {
     customStart,
     customEnd,
     swipeMotion,
+    monthNavLocked,
   ]);
 
   const showPair = scope === 'pair' && isPaired;
   const pairLive = showPair && !pairStatsBlocked;
   const pairBlocked = showPair && pairStatsBlocked;
 
-  // Warm M−1 / M+1 so adjacent full month UIs hit cache (skeleton only on cold).
+  // Warm M±1 / M±2 so rapid swipes hit cache (skeleton only past the window).
   usePrefetchAdjacentStatsMonths({
     focus,
     timeZone,
     pieType,
     pairLive,
     trendMetric,
+    enabled: preset === 'month',
+  });
+
+  const neighborsReady = useAdjacentStatsMonthsReady({
+    focus,
+    timeZone,
+    pairLive,
     enabled: preset === 'month',
   });
 
@@ -294,6 +307,8 @@ export default function StatsScreen() {
         renderPage={renderPage}
         translateX={swipeTranslateX}
         pagerWidth={swipePagerWidth}
+        neighborsReady={neighborsReady}
+        onInputLockChange={setMonthNavLocked}
       />
     </View>
   );
